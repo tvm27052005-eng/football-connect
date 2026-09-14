@@ -1,0 +1,6 @@
+{
+  "name": "Football Connect",
+  "description": "Nền tảng quản lý lịch sân bóng đá, đặt sân trực tuyến và kết nối ghép đối thông minh thời gian thực.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
