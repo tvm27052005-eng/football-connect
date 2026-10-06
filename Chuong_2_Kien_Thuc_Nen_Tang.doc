@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<title>Chương 2. Kiến Thức Nền Tảng - Football Connect</title>
+<style>
+  body {
+    font-family: 'Times New Roman', Times, serif;
+    font-size: 13pt;
+    line-height: 1.5;
+    color: #000000;
+    margin: 25px 30px;
+  }
+  h1 {
+    font-size: 17pt;
+    font-weight: bold;
+    text-align: center;
+    text-transform: uppercase;
+    margin-bottom: 20px;
+  }
+  h2 {
+    font-size: 15pt;
+    font-weight: bold;
+    color: #0F172A;
+    margin-top: 22px;
+    margin-bottom: 10px;
+  }
+  h3 {
+    font-size: 13.5pt;
+    font-weight: bold;
+    color: #1E293B;
+    margin-top: 14px;
+    margin-bottom: 6px;
+  }
+  p {
+    text-align: justify;
+    text-indent: 1.27cm;
+    margin-bottom: 8px;
+    margin-top: 0;
+  }
+  ul {
+    margin-top: 4px;
+    margin-bottom: 10px;
+    padding-left: 40px;
+  }
+  li {
+    margin-bottom: 4px;
+    text-align: justify;
+  }
+  .bold {
+    font-weight: bold;
+  }
+</style>
+</head>
+<body>
+
+<h1>CHƯƠNG 2. KIẾN THỨC NỀN TẢNG VÀ CÔNG CỤ PHÁT TRIỂN</h1>
+
+<h2>2.1. Cơ sở lý thuyết và công nghệ sử dụng</h2>
+
+<h3>2.1.1. Phương pháp phân tích thiết kế hệ thống và Ngôn ngữ mô hình hóa UML</h3>
+<p>
+Phương pháp phân tích và thiết kế hướng đối tượng (Object-Oriented Analysis and Design - OOAD) được nhóm áp dụng để mô hình hóa toàn diện các yêu cầu nghiệp vụ của hệ thống Football Connect. Kết hợp cùng Ngôn ngữ mô hình hóa thống nhất (Unified Modeling Language - UML), nhóm tiến hành xây dựng các biểu đồ chuẩn mực bao gồm: Biểu đồ trường hợp sử dụng (Use Case Diagram), Biểu đồ tuần tự (Sequence Diagram), Biểu đồ lớp (Class Diagram), Biểu đồ thành phần (Component Diagram) và Biểu đồ triển khai (Deployment Diagram). Qua đó giúp chuẩn hóa luồng hoạt động, cấu trúc thực thể và kiến trúc vận hành của phần mềm trước khi tiến hành viết mã.
+</p>
+
+<h3>2.1.2. Ngôn ngữ lập trình TypeScript</h3>
+<p>
+TypeScript là ngôn ngữ mã nguồn mở phát triển bởi Microsoft, đóng vai trò là một siêu tập con (superset) của JavaScript có bổ sung hệ thống kiểu tĩnh (Static Typing). Trong dự án Football Connect, TypeScript được áp dụng đồng bộ trên cả tầng Frontend và Backend nhằm:
+</p>
+<ul>
+  <li>Phát hiện lỗi logic và lỗi không tương thích kiểu dữ liệu ngay trong quá trình biên dịch (Compile-time), giảm thiểu tối đa lỗi lúc chạy (Runtime errors).</li>
+  <li>Định nghĩa chặt chẽ các kiểu giao diện dữ liệu (Interfaces/Types) cho toàn bộ hệ thống thực thể: Người dùng, Sân bóng, Đơn đặt sân, Kèo đấu, Giao dịch thanh toán.</li>
+  <li>Nâng cao năng suất lập trình, tối ưu khả năng gợi ý mã nguồn (IntelliSense) và hỗ trợ tái cấu trúc mã (Refactoring) an toàn.</li>
+</ul>
+
+<h3>2.1.3. Thư viện giao diện người dùng ReactJS và Công cụ đóng gói Vite</h3>
+<p>
+ReactJS là thư viện JavaScript hàng đầu do Meta (Facebook) phát triển, chuyên xây dựng giao diện người dùng theo kiến trúc hướng thành phần (Component-Based Architecture). Nhóm sử dụng React phiên bản mới nhất kết hợp với bộ công cụ đóng gói Vite:
+</p>
+<ul>
+  <li><span class="bold">Kiến trúc Single Page Application (SPA):</span> Mang lại trải nghiệm chuyển trang mượt mà, tốc độ phản hồi nhanh như ứng dụng máy tính bản địa mà không cần tải lại toàn bộ trang web.</li>
+  <li><span class="bold">Virtual DOM:</span> Tối ưu hóa hiệu năng render giao diện, tự động cập nhật chính xác các phần tử có dữ liệu thay đổi (như trạng thái sân trống, số lượng cầu thủ nhận kèo).</li>
+  <li><span class="bold">Vite Bundler:</span> Cung cấp cơ chế Hot Module Replacement (HMR) cực nhanh, rút ngắn thời gian khởi động môi trường phát triển và tối ưu dung lượng gói ứng dụng xuất bản.</li>
+</ul>
+
+<h3>2.1.4. Quản lý trạng thái với Zustand và Thiết kế giao diện với Tailwind CSS</h3>
+<p>
+Để xây dựng giao diện thể thao hiện đại, trực quan và xử lý dữ liệu động hiệu quả, nhóm tích hợp:
+</p>
+<ul>
+  <li><span class="bold">Zustand:</span> Giải pháp quản lý trạng thái toàn cục (State Management) gọn nhẹ, trực quan và tối ưu hơn Redux. Zustand chịu trách nhiệm lưu trữ phiên đăng nhập của người dùng, phân quyền vai trò tức thời và quản lý bộ nhớ đệm thông báo, tin nhắn.</li>
+  <li><span class="bold">Tailwind CSS:</span> Framework CSS theo phương pháp Utility-First, cho phép thiết kế giao diện thể thao hiện đại, tạo hiệu ứng kính mờ (Glassmorphism), bóng đổ chiều sâu và tương thích hoàn hảo trên mọi kích thước màn hình (Responsive Design).</li>
+</ul>
+
+<h3>2.1.5. Môi trường Node.js và Framework Express.js</h3>
+<p>
+Backend của hệ thống được xây dựng trên nền tảng Node.js - môi trường thực thi mã JavaScript phía máy chủ hoạt động dựa trên V8 Engine của Google Chrome. Kết hợp cùng Express.js - một Web Framework linh hoạt và tối giản:
+</p>
+<ul>
+  <li>Cơ chế bất đồng bộ non-blocking I/O và kiến trúc hướng sự kiện (Event-driven) cho phép máy chủ xử lý đồng thời hàng ngàn yêu cầu đặt sân và kiểm tra lịch trống với mức tiêu tốn tài nguyên tối thiểu.</li>
+  <li>Cung cấp hệ thống Middleware mạnh mẽ để kiểm soát luồng dữ liệu, xử lý xác thực bảo mật và bắt lỗi tập trung.</li>
+</ul>
+
+<h3>2.1.6. Kiến trúc dịch vụ web RESTful API</h3>
+<p>
+Hệ thống giao tiếp giữa máy khách (Client) và máy chủ (Server) được thiết kế tuân thủ nghiêm ngặt các nguyên tắc của kiến trúc RESTful API. Dữ liệu trao đổi hoàn toàn ở định dạng chuẩn JSON thông qua các phương thức HTTP tiêu chuẩn (GET, POST, PUT, DELETE, PATCH). Cấu trúc URL được định danh rõ ràng theo tài nguyên: <code>/api/venues</code>, <code>/api/bookings</code>, <code>/api/matches</code>, <code>/api/auth</code>.
+</p>
+
+<h3>2.1.7. Cơ sở dữ liệu tài liệu MongoDB và Thư viện ODM Mongoose</h3>
+<p>
+Dự án sử dụng MongoDB - hệ quản trị cơ sở dữ liệu NoSQL hướng tài liệu (Document-Oriented Database) kết hợp cùng thư viện ODM Mongoose để quản lý dữ liệu:
+</p>
+<ul>
+  <li>Lưu trữ dữ liệu linh hoạt dưới dạng BSON/JSON, phù hợp hoàn hảo với mô hình dữ liệu động của các sân bóng (nhiều mức giá theo giờ, mảng danh sách tiện ích, hình ảnh thực tế).</li>
+  <li>Mongoose đóng vai trò định nghĩa Schema nghiêm ngặt, tự động ràng buộc dữ liệu đầu vào và thiết lập các mối quan hệ tham chiếu logic giữa các bảng (User, Venue, Booking, Match, Payment).</li>
+  <li>Tối ưu hóa tốc độ truy vấn tìm kiếm sân bóng theo vị trí địa lý và lọc theo mức giá.</li>
+</ul>
+
+<h3>2.1.8. Cơ chế bảo mật và xác thực với JWT và Bcrypt</h3>
+<p>
+Bảo mật thông tin người dùng và chống truy cập trái phép là tiêu chí trọng tâm của đồ án:
+</p>
+<ul>
+  <li><span class="bold">Bcrypt (bcryptjs):</span> Thuật toán băm mật khẩu một chiều kết hợp kỹ thuật Salt ngẫu nhiên, đảm bảo ngay cả khi cơ sở dữ liệu bị lộ, mật khẩu gốc của người dùng vẫn được bảo vệ tuyệt đối.</li>
+  <li><span class="bold">JSON Web Token (JWT):</span> Cơ chế xác thực không trạng thái (Stateless Authentication). Sau khi đăng nhập, hệ thống cấp một chữ ký điện tử an toàn chứa định danh và quyền hạn của người dùng, làm căn cứ để Middleware RBAC phân quyền chính xác cho Khách hàng, Chủ sân hoặc Quản trị viên.</li>
+</ul>
+
+<h3>2.1.9. Giao tiếp thời gian thực với Socket.IO</h3>
+<p>
+Để giải quyết bài toán tương tác trực tiếp trong thể thao phong trào, nhóm tích hợp Socket.IO (dựa trên giao thức WebSocket):
+</p>
+<ul>
+  <li>Cung cấp kênh truyền thông hai chiều thời gian thực với độ trễ cực thấp giữa Client và Server.</li>
+  <li>Ứng dụng cho tính năng phòng chat trực tuyến giữa các thành viên ghép đội, trao đổi giữa người chơi và chủ sân, cũng như phát thông báo tức thời khi có đơn đặt sân mới hoặc có đội bạn nhận kèo.</li>
+</ul>
+
+<h3>2.1.10. Tích hợp Trí tuệ nhân tạo Google Gemini AI</h3>
+<p>
+Một điểm sáng công nghệ nổi bật của đề tài là việc tích hợp Google Gemini AI SDK (Gemini 2.5 Flash):
+</p>
+<ul>
+  <li>Đóng vai trò là Trợ lý ảo tư vấn thông minh (Chatbot CSKH) sẵn sàng hỗ trợ người dùng 24/7.</li>
+  <li>Có khả năng hiểu ngữ cảnh câu hỏi tự nhiên bằng tiếng Việt (tìm sân giá rẻ nhất quanh Cầu Giấy, gợi ý giờ đá ít người, tư vấn ghép kèo) và tự động truy vấn dữ liệu thực tế của hệ thống để trả lời chính xác, thân thiện như nhân viên chăm sóc khách hàng.</li>
+</ul>
+
+<h3>2.1.11. Xác thực và kiểm tra tính toàn vẹn dữ liệu với Zod</h3>
+<p>
+Thư viện Zod được áp dụng để thẩm định dữ liệu đầu vào (Schema Validation) cho cả Form giao diện và Endpoint API, đảm bảo số điện thoại đúng định dạng, email hợp lệ, khung giờ nhận sân không bị âm và số tiền thanh toán chính xác trước khi lưu trữ vào hệ thống.
+</p>
+
+<h3>2.1.12. Tích hợp bản đồ số Google Maps API</h3>
+<p>
+Hỗ trợ trực quan hóa vị trí địa lý của các cụm sân bóng thông qua tọa độ kinh độ (Longitude) và vĩ độ (Latitude), giúp người chơi dễ dàng tra cứu khoảng cách từ vị trí hiện tại đến sân bóng và nhận chỉ đường di chuyển thuận tiện.
+</p>
+
+<h3>2.1.13. Tải lên và quản trị lưu trữ hình ảnh trên đám mây với Multer và Cloudinary</h3>
+<p>
+Hệ thống quản lý lượng lớn hình ảnh gồm ảnh đại diện cầu thủ, ảnh chụp thực tế các cụm sân bóng và hình ảnh biên lai thanh toán. Nhóm kết hợp Multer và dịch vụ đám mây Cloudinary:
+</p>
+<ul>
+  <li><span class="bold">Multer:</span> Đóng vai trò là Middleware xử lý dữ liệu biểu mẫu đa phần (multipart/form-data), nạp tệp hình ảnh an toàn vào bộ nhớ đệm (Memory Buffer) có kiểm duyệt định dạng tệp (chỉ chấp nhận JPEG, PNG, WEBP) và giới hạn dung lượng tối đa 5MB.</li>
+  <li><span class="bold">Cloudinary:</span> Dịch vụ lưu trữ và phân phối nội dung (CDN) hình ảnh chuyên nghiệp trên đám mây, tự động nén tối ưu dung lượng (Auto Quality & Format), tự động cấp phát URL bảo mật (HTTPS) và bảo đảm tốc độ hiển thị ảnh sắc nét, mượt mà trên mọi thiết bị.</li>
+</ul>
+
+<br>
+
+<h2>2.2. Các công cụ hỗ trợ phát triển hệ thống</h2>
+
+<ul>
+  <li><span class="bold">Visual Studio Code:</span> Môi trường phát triển tích hợp (IDE) chính của nhóm, với hệ thống tiện ích mở rộng phong phú hỗ trợ TypeScript, React, Tailwind CSS và Git.</li>
+  <li><span class="bold">draw.io:</span> Công cụ thiết kế trực quan hỗ trợ biểu diễn các sơ đồ chuẩn UML (Biểu đồ trường hợp sử dụng, Biểu đồ tuần tự, Biểu đồ lớp, Biểu đồ thành phần và Biểu đồ triển khai).</li>
+  <li><span class="bold">Postman:</span> Công cụ kiểm thử chuyên nghiệp dùng để gửi yêu cầu, kiểm tra dữ liệu phản hồi, kiểm định tính bảo mật của mã JWT và đo lường hiệu năng của các Endpoint RESTful API trước khi kết nối với giao diện.</li>
+  <li><span class="bold">Git & GitHub:</span> Hệ thống quản lý phiên bản phân tán (VCS) kết hợp nền tảng lưu trữ mã nguồn GitHub, giúp các thành viên trong nhóm phân nhánh tính năng, phối hợp làm việc nhóm và theo dõi lịch sử chỉnh sửa mã nguồn một cách khoa học.</li>
+  <li><span class="bold">Vite:</span> Công cụ tự động hóa build và dev server thế hệ mới với hiệu năng vượt trội dành cho các ứng dụng React hiện đại.</li>
+  <li><span class="bold">MongoDB & MongoDB Compass:</span> Hệ quản trị cơ sở dữ liệu NoSQL lưu trữ thực tế cùng phần mềm giao diện đồ họa MongoDB Compass dùng để theo dõi trực quan các Collection, tài liệu Document và quản lý bộ chỉ mục (Indexes).</li>
+</ul>
+
+</body>
+</html>

@@ -10,6 +10,9 @@ import chatRoutes from './routes/chat.routes.js';
 import notificationRoutes from './routes/notification.routes.js';
 import reviewRoutes from './routes/review.routes.js';
 import statsRoutes from './routes/stats.routes.js';
+import aiRoutes from './routes/ai.routes.js';
+import uploadRoutes from './routes/upload.routes.js';
+import path from 'path';
 
 export function createApp(): Express {
   const app = express();
@@ -22,6 +25,9 @@ export function createApp(): Express {
   }));
   app.use(express.json({ limit: '10mb' }));
   app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+  // Static uploads directory for local fallback
+  app.use('/uploads', express.static(path.join(process.cwd(), 'public', 'uploads')));
 
   // API Health Check
   app.get('/api/health', (_req, res) => {
@@ -43,6 +49,8 @@ export function createApp(): Express {
   app.use('/api/notifications', notificationRoutes);
   app.use('/api/reviews', reviewRoutes);
   app.use('/api/stats', statsRoutes);
+  app.use('/api/ai', aiRoutes);
+  app.use('/api/upload', uploadRoutes);
 
   return app;
 }

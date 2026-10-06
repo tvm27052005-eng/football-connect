@@ -3,9 +3,13 @@ import path from 'path';
 import { Server as SocketIOServer } from 'socket.io';
 import { createApp } from './server/app.js';
 import { initSocketService } from './server/sockets/socket.service.js';
+import { connectDB } from './server/config/db.config.js';
 import { createServer as createViteServer } from 'vite';
 
 async function startServer() {
+  // Connect to MongoDB
+  await connectDB();
+
   const app = createApp();
   const PORT = 3000;
   const server = http.createServer(app);

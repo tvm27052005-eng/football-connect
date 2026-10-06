@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<title>Thiet Ke CSDL Vat Ly - Football Connect</title>
+<style>
+  body {
+    font-family: 'Times New Roman', Times, serif;
+    font-size: 13pt;
+    line-height: 1.4;
+    color: #000;
+    margin: 20px;
+  }
+  h2 {
+    font-size: 16pt;
+    color: #0F172A;
+    margin-top: 25px;
+    margin-bottom: 8px;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 25px;
+    page-break-inside: avoid;
+  }
+  th {
+    background-color: #E2E8F0;
+    color: #0F172A;
+    font-weight: bold;
+    text-align: center;
+    border: 1px solid #000000;
+    padding: 7px 8px;
+    font-size: 11pt;
+  }
+  td {
+    border: 1px solid #000000;
+    padding: 6px 8px;
+    font-size: 11pt;
+    vertical-align: middle;
+  }
+  .center {
+    text-align: center;
+  }
+  .pk {
+    font-weight: bold;
+    color: #B91C1C;
+    text-align: center;
+  }
+  .fk {
+    font-weight: bold;
+    color: #1D4ED8;
+    text-align: center;
+  }
+  .bold {
+    font-weight: bold;
+  }
+</style>
+</head>
+<body>
+
+<h1 style="text-align: center; font-size: 18pt; text-transform: uppercase;">THIẾT KẾ CƠ SỞ DỮ LIỆU VẬT LÝ<br><span style="font-size: 14pt; font-weight: normal;">HỆ THỐNG FOOTBALL CONNECT</span></h1>
+
+<h2>1. Bảng <code>nguoi_dung</code> (Quản lý tài khoản người dùng)</h2>
+<table>
+  <thead>
+    <tr>
+      <th style="width: 5%;">STT</th>
+      <th style="width: 18%;">Tên thuộc tính</th>
+      <th style="width: 15%;">Kiểu dữ liệu</th>
+      <th style="width: 8%;">Khóa</th>
+      <th style="width: 20%;">Ràng buộc</th>
+      <th style="width: 34%;">Diễn giải ý nghĩa</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr><td class="center">1</td><td class="bold">ma_nguoi_dung</td><td>VARCHAR(50)</td><td class="pk">PK</td><td>NOT NULL, UNIQUE</td><td>Mã định danh duy nhất của người dùng</td></tr>
+    <tr><td class="center">2</td><td>ho_ten</td><td>VARCHAR(100)</td><td></td><td>NOT NULL</td><td>Họ và tên đầy đủ</td></tr>
+    <tr><td class="center">3</td><td>email</td><td>VARCHAR(100)</td><td></td><td>NOT NULL, UNIQUE</td><td>Địa chỉ email đăng nhập hệ thống</td></tr>
+    <tr><td class="center">4</td><td>mat_khau</td><td>VARCHAR(255)</td><td></td><td>NOT NULL</td><td>Mật khẩu tài khoản (đã băm Bcrypt)</td></tr>
+    <tr><td class="center">5</td><td>so_dien_thoai</td><td>VARCHAR(15)</td><td></td><td>NULL</td><td>Số điện thoại liên hệ</td></tr>
+    <tr><td class="center">6</td><td>vai_tro</td><td>ENUM</td><td></td><td>DEFAULT 'KHACH_HANG'</td><td>Vai trò: KHACH_HANG, CHU_SAN, ADMIN</td></tr>
+    <tr><td class="center">7</td><td>anh_dai_dien</td><td>VARCHAR(255)</td><td></td><td>NULL</td><td>Đường dẫn URL ảnh đại diện</td></tr>
+    <tr><td class="center">8</td><td>gioi_thieu</td><td>TEXT</td><td></td><td>NULL</td><td>Tiểu sử / giới thiệu bản thân</td></tr>
+    <tr><td class="center">9</td><td>thanh_pho</td><td>VARCHAR(50)</td><td></td><td>DEFAULT 'Hà Nội'</td><td>Tỉnh/Thành phố sinh sống</td></tr>
+    <tr><td class="center">10</td><td>quan_huyen</td><td>VARCHAR(50)</td><td></td><td>DEFAULT 'Cầu Giấy'</td><td>Quận/Huyện sinh sống</td></tr>
+    <tr><td class="center">11</td><td>trinh_do</td><td>VARCHAR(50)</td><td></td><td>NULL</td><td>Trình độ đá bóng (Cơ bản, Khá, Giỏi)</td></tr>
+    <tr><td class="center">12</td><td>vi_tri_so_truong</td><td>VARCHAR(50)</td><td></td><td>NULL</td><td>Vị trí sở trường (Tiền đạo, Tiền vệ...)</td></tr>
+    <tr><td class="center">13</td><td>trang_thai</td><td>BOOLEAN</td><td></td><td>DEFAULT TRUE</td><td>Trạng thái tài khoản (1: Hoạt động, 0: Khóa)</td></tr>
+    <tr><td class="center">14</td><td>ngay_tao</td><td>TIMESTAMP</td><td></td><td>DEFAULT CURRENT_TIMESTAMP</td><td>Thời điểm đăng ký tài khoản</td></tr>
+  </tbody>
+</table>
+
+<h2>2. Bảng <code>cum_san_bong</code> (Quản lý các cụm sân bóng)</h2>
+<table>
+  <thead>
+    <tr>
+      <th style="width: 5%;">STT</th>
+      <th style="width: 18%;">Tên thuộc tính</th>
+      <th style="width: 15%;">Kiểu dữ liệu</th>
+      <th style="width: 8%;">Khóa</th>
+      <th style="width: 20%;">Ràng buộc</th>
+      <th style="width: 34%;">Diễn giải ý nghĩa</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr><td class="center">1</td><td class="bold">ma_cum_san</td><td>VARCHAR(50)</td><td class="pk">PK</td><td>NOT NULL, UNIQUE</td><td>Mã định danh cụm sân bóng</td></tr>
+    <tr><td class="center">2</td><td>ma_chu_san</td><td>VARCHAR(50)</td><td class="fk">FK</td><td>NOT NULL</td><td>Tham chiếu tới nguoi_dung(ma_nguoi_dung)</td></tr>
+    <tr><td class="center">3</td><td>ten_cum_san</td><td>VARCHAR(150)</td><td></td><td>NOT NULL</td><td>Tên cụm sân (VD: Cầu Giấy Arena)</td></tr>
+    <tr><td class="center">4</td><td>dia_chi</td><td>VARCHAR(255)</td><td></td><td>NOT NULL</td><td>Địa chỉ chi tiết (số nhà, tên đường)</td></tr>
+    <tr><td class="center">5</td><td>thanh_pho</td><td>VARCHAR(50)</td><td></td><td>NOT NULL</td><td>Tỉnh / Thành phố</td></tr>
+    <tr><td class="center">6</td><td>quan_huyen</td><td>VARCHAR(50)</td><td></td><td>NOT NULL</td><td>Quận / Huyện</td></tr>
+    <tr><td class="center">7</td><td>mo_ta</td><td>TEXT</td><td></td><td>NULL</td><td>Giới thiệu mặt cỏ, dịch vụ của sân</td></tr>
+    <tr><td class="center">8</td><td>vi_do</td><td>DOUBLE</td><td></td><td>NOT NULL</td><td>Tọa độ vĩ độ (Latitude)</td></tr>
+    <tr><td class="center">9</td><td>kinh_do</td><td>DOUBLE</td><td></td><td>NOT NULL</td><td>Tọa độ kinh độ (Longitude)</td></tr>
+    <tr><td class="center">10</td><td>tien_ich</td><td>TEXT</td><td></td><td>NULL</td><td>Tiện ích (Bãi đỗ xe, tắm nóng lạnh...)</td></tr>
+    <tr><td class="center">11</td><td>danh_gia_sao</td><td>DECIMAL(2,1)</td><td></td><td>DEFAULT 5.0</td><td>Điểm đánh giá trung bình (1.0 - 5.0 sao)</td></tr>
+    <tr><td class="center">12</td><td>so_luong_danh_gia</td><td>INT</td><td></td><td>DEFAULT 0</td><td>Tổng số lượt nhận xét</td></tr>
+    <tr><td class="center">13</td><td>gia_tu</td><td>DECIMAL(12,2)</td><td></td><td>DEFAULT 200000</td><td>Mức giá thấp nhất theo giờ (VNĐ)</td></tr>
+    <tr><td class="center">14</td><td>gia_den</td><td>DECIMAL(12,2)</td><td></td><td>DEFAULT 800000</td><td>Mức giá cao nhất theo giờ (VNĐ)</td></tr>
+    <tr><td class="center">15</td><td>gio_mo_cua</td><td>VARCHAR(10)</td><td></td><td>DEFAULT '06:00'</td><td>Giờ mở cửa hàng ngày</td></tr>
+    <tr><td class="center">16</td><td>gio_dong_cua</td><td>VARCHAR(10)</td><td></td><td>DEFAULT '23:00'</td><td>Giờ đóng cửa hàng ngày</td></tr>
+    <tr><td class="center">17</td><td>trang_thai</td><td>ENUM</td><td></td><td>DEFAULT 'DANG_HOAT_DONG'</td><td>DANG_HOAT_DONG, BAO_TRI, DONG_CUA</td></tr>
+  </tbody>
+</table>
+
+<h2>3. Bảng <code>san_chi_tiet</code> (Quản lý từng sân bóng con)</h2>
+<table>
+  <thead>
+    <tr>
+      <th style="width: 5%;">STT</th>
+      <th style="width: 18%;">Tên thuộc tính</th>
+      <th style="width: 15%;">Kiểu dữ liệu</th>
+      <th style="width: 8%;">Khóa</th>
+      <th style="width: 20%;">Ràng buộc</th>
+      <th style="width: 34%;">Diễn giải ý nghĩa</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr><td class="center">1</td><td class="bold">ma_san_con</td><td>VARCHAR(50)</td><td class="pk">PK</td><td>NOT NULL, UNIQUE</td><td>Mã sân bóng con (Sân 1, Sân 2...)</td></tr>
+    <tr><td class="center">2</td><td>ma_cum_san</td><td>VARCHAR(50)</td><td class="fk">FK</td><td>NOT NULL</td><td>Tham chiếu tới cum_san_bong(ma_cum_san)</td></tr>
+    <tr><td class="center">3</td><td>ten_san</td><td>VARCHAR(100)</td><td></td><td>NOT NULL</td><td>Tên định danh sân con</td></tr>
+    <tr><td class="center">4</td><td>loai_san</td><td>ENUM</td><td></td><td>NOT NULL</td><td>Phân loại: SAN_5, SAN_7, SAN_11</td></tr>
+    <tr><td class="center">5</td><td>suc_chua</td><td>INT</td><td></td><td>DEFAULT 14</td><td>Sức chứa cầu thủ tối đa</td></tr>
+    <tr><td class="center">6</td><td>gia_thue_gio</td><td>DECIMAL(12,2)</td><td></td><td>NOT NULL</td><td>Đơn giá thuê mỗi giờ (VNĐ)</td></tr>
+    <tr><td class="center">7</td><td>mat_co</td><td>VARCHAR(50)</td><td></td><td>DEFAULT 'Cỏ nhân tạo'</td><td>Mặt sân (Cỏ nhân tạo, Futsal, Tự nhiên)</td></tr>
+    <tr><td class="center">8</td><td>trang_thai</td><td>ENUM</td><td></td><td>DEFAULT 'DANG_HOAT_DONG'</td><td>Trạng thái: DANG_HOAT_DONG, BAO_TRI</td></tr>
+  </tbody>
+</table>
+
+<h2>4. Bảng <code>don_dat_san</code> (Quản lý các lượt đặt sân)</h2>
+<table>
+  <thead>
+    <tr>
+      <th style="width: 5%;">STT</th>
+      <th style="width: 18%;">Tên thuộc tính</th>
+      <th style="width: 15%;">Kiểu dữ liệu</th>
+      <th style="width: 8%;">Khóa</th>
+      <th style="width: 20%;">Ràng buộc</th>
+      <th style="width: 34%;">Diễn giải ý nghĩa</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr><td class="center">1</td><td class="bold">ma_don_dat</td><td>VARCHAR(50)</td><td class="pk">PK</td><td>NOT NULL, UNIQUE</td><td>Mã đơn đặt sân</td></tr>
+    <tr><td class="center">2</td><td>ma_khach_hang</td><td>VARCHAR(50)</td><td class="fk">FK</td><td>NOT NULL</td><td>Tham chiếu tới nguoi_dung(ma_nguoi_dung)</td></tr>
+    <tr><td class="center">3</td><td>ma_cum_san</td><td>VARCHAR(50)</td><td class="fk">FK</td><td>NOT NULL</td><td>Tham chiếu tới cum_san_bong(ma_cum_san)</td></tr>
+    <tr><td class="center">4</td><td>ma_san_con</td><td>VARCHAR(50)</td><td class="fk">FK</td><td>NOT NULL</td><td>Tham chiếu tới san_chi_tiet(ma_san_con)</td></tr>
+    <tr><td class="center">5</td><td>ngay_dat</td><td>DATE</td><td></td><td>NOT NULL</td><td>Ngày thi đấu (YYYY-MM-DD)</td></tr>
+    <tr><td class="center">6</td><td>gio_bat_dau</td><td>VARCHAR(10)</td><td></td><td>NOT NULL</td><td>Giờ bắt đầu nhận sân (HH:mm)</td></tr>
+    <tr><td class="center">7</td><td>gio_ket_thuc</td><td>VARCHAR(10)</td><td></td><td>NOT NULL</td><td>Giờ kết thúc trận đấu (HH:mm)</td></tr>
+    <tr><td class="center">8</td><td>thoi_luong_gio</td><td>DECIMAL(3,1)</td><td></td><td>DEFAULT 1.5</td><td>Tổng số giờ thuê sân</td></tr>
+    <tr><td class="center">9</td><td>tong_tien</td><td>DECIMAL(12,2)</td><td></td><td>NOT NULL</td><td>Tổng số tiền thuê sân (VNĐ)</td></tr>
+    <tr><td class="center">10</td><td>trang_thai_don</td><td>ENUM</td><td></td><td>DEFAULT 'DA_XAC_NHAN'</td><td>CHO_DUYET, DA_XAC_NHAN, DA_HUY, HOAN_THANH</td></tr>
+    <tr><td class="center">11</td><td>trang_thai_thanh_toan</td><td>ENUM</td><td></td><td>DEFAULT 'CHUA_THANH_TOAN'</td><td>CHUA_THANH_TOAN, DA_THANH_TOAN, HOAN_TIEN</td></tr>
+    <tr><td class="center">12</td><td>phuong_thuc_thanh_toan</td><td>ENUM</td><td></td><td>DEFAULT 'TIEN_MAT'</td><td>TIEN_MAT, VNPAY, MOMO, BANK_TRANSFER</td></tr>
+    <tr><td class="center">13</td><td>ghi_chu</td><td>TEXT</td><td></td><td>NULL</td><td>Yêu cầu chuẩn bị (áo bib, bóng...)</td></tr>
+    <tr><td class="center">14</td><td>ly_do_huy</td><td>TEXT</td><td></td><td>NULL</td><td>Nguyên nhân khi đơn bị hủy</td></tr>
+    <tr><td class="center">15</td><td>ngay_tao</td><td>TIMESTAMP</td><td></td><td>DEFAULT CURRENT_TIMESTAMP</td><td>Thời điểm tạo đơn</td></tr>
+  </tbody>
+</table>
+
+<h2>5. Bảng <code>thanh_toan</code> (Quản lý giao dịch thanh toán)</h2>
+<table>
+  <thead>
+    <tr>
+      <th style="width: 5%;">STT</th>
+      <th style="width: 18%;">Tên thuộc tính</th>
+      <th style="width: 15%;">Kiểu dữ liệu</th>
+      <th style="width: 8%;">Khóa</th>
+      <th style="width: 20%;">Ràng buộc</th>
+      <th style="width: 34%;">Diễn giải ý nghĩa</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr><td class="center">1</td><td class="bold">ma_thanh_toan</td><td>VARCHAR(50)</td><td class="pk">PK</td><td>NOT NULL, UNIQUE</td><td>Mã bản ghi thanh toán</td></tr>
+    <tr><td class="center">2</td><td>ma_don_dat</td><td>VARCHAR(50)</td><td class="fk">FK</td><td>NOT NULL</td><td>Tham chiếu tới don_dat_san(ma_don_dat)</td></tr>
+    <tr><td class="center">3</td><td>ma_nguoi_dung</td><td>VARCHAR(50)</td><td class="fk">FK</td><td>NOT NULL</td><td>Tham chiếu tới nguoi_dung(ma_nguoi_dung)</td></tr>
+    <tr><td class="center">4</td><td>so_tien</td><td>DECIMAL(12,2)</td><td></td><td>NOT NULL</td><td>Số tiền thanh toán (VNĐ)</td></tr>
+    <tr><td class="center">5</td><td>phuong_thuc</td><td>VARCHAR(20)</td><td></td><td>NOT NULL</td><td>Cổng thanh toán (VNPAY, MoMo, Tiền mặt)</td></tr>
+    <tr><td class="center">6</td><td>trang_thai</td><td>ENUM</td><td></td><td>DEFAULT 'THANH_CONG'</td><td>CHO_XU_LY, THANH_CONG, THAT_BAI</td></tr>
+    <tr><td class="center">7</td><td>ma_giao_dich</td><td>VARCHAR(100)</td><td></td><td>NOT NULL</td><td>Mã đối soát từ cổng thanh toán/ngân hàng</td></tr>
+    <tr><td class="center">8</td><td>ngay_thanh_toan</td><td>TIMESTAMP</td><td></td><td>DEFAULT CURRENT_TIMESTAMP</td><td>Thời gian thực hiện giao dịch</td></tr>
+  </tbody>
+</table>
+
+<h2>6. Bảng <code>keo_giao_huu</code> (Quản lý cáp kèo giao hữu)</h2>
+<table>
+  <thead>
+    <tr>
+      <th style="width: 5%;">STT</th>
+      <th style="width: 18%;">Tên thuộc tính</th>
+      <th style="width: 15%;">Kiểu dữ liệu</th>
+      <th style="width: 8%;">Khóa</th>
+      <th style="width: 20%;">Ràng buộc</th>
+      <th style="width: 34%;">Diễn giải ý nghĩa</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr><td class="center">1</td><td class="bold">ma_keo_dau</td><td>VARCHAR(50)</td><td class="pk">PK</td><td>NOT NULL, UNIQUE</td><td>Mã định danh trận cáp kèo</td></tr>
+    <tr><td class="center">2</td><td>ma_nguoi_tao</td><td>VARCHAR(50)</td><td class="fk">FK</td><td>NOT NULL</td><td>Tham chiếu tới nguoi_dung(ma_nguoi_dung)</td></tr>
+    <tr><td class="center">3</td><td>ma_cum_san</td><td>VARCHAR(50)</td><td class="fk">FK</td><td>NOT NULL</td><td>Tham chiếu tới cum_san_bong(ma_cum_san)</td></tr>
+    <tr><td class="center">4</td><td>ma_san_con</td><td>VARCHAR(50)</td><td class="fk">FK</td><td>NULL</td><td>Tham chiếu tới san_chi_tiet(ma_san_con)</td></tr>
+    <tr><td class="center">5</td><td>tieu_de_keo</td><td>VARCHAR(255)</td><td></td><td>NOT NULL</td><td>Tiêu đề tìm đối (VD: FC Cầu Giấy tìm đối)</td></tr>
+    <tr><td class="center">6</td><td>ngay_thi_dau</td><td>DATE</td><td></td><td>NOT NULL</td><td>Ngày diễn ra trận giao hữu</td></tr>
+    <tr><td class="center">7</td><td>gio_bat_dau</td><td>VARCHAR(10)</td><td></td><td>NOT NULL</td><td>Giờ bóng lăn</td></tr>
+    <tr><td class="center">8</td><td>gio_ket_thuc</td><td>VARCHAR(10)</td><td></td><td>NOT NULL</td><td>Giờ kết thúc</td></tr>
+    <tr><td class="center">9</td><td>loai_san</td><td>VARCHAR(20)</td><td></td><td>NOT NULL</td><td>Quy mô sân (5_vs_5, 7_vs_7, 11_vs_11)</td></tr>
+    <tr><td class="center">10</td><td>trinh_do</td><td>VARCHAR(50)</td><td></td><td>DEFAULT 'Trung bình'</td><td>Mức độ kỹ năng thi đấu</td></tr>
+    <tr><td class="center">11</td><td>so_nguoi_toi_da</td><td>INT</td><td></td><td>DEFAULT 14</td><td>Số lượng cầu thủ tối đa 2 đội</td></tr>
+    <tr><td class="center">12</td><td>so_nguoi_hien_tai</td><td>INT</td><td></td><td>DEFAULT 1</td><td>Số cầu thủ đã đăng ký</td></tr>
+    <tr><td class="center">13</td><td>tien_san_moi_nguoi</td><td>DECIMAL(12,2)</td><td></td><td>DEFAULT 0</td><td>Chi phí đóng góp cho mỗi người chơi</td></tr>
+    <tr><td class="center">14</td><td>tong_tien_san</td><td>DECIMAL(12,2)</td><td></td><td>NULL</td><td>Tổng chi phí thuê sân của trận đấu</td></tr>
+    <tr><td class="center">15</td><td>hinh_thuc_chia_tien</td><td>ENUM</td><td></td><td>DEFAULT 'CHIA_DOI_50_50'</td><td>CHIA_DOI_50_50, THUA_TRA, BAO_SAN</td></tr>
+    <tr><td class="center">16</td><td>trang_thai_keo</td><td>ENUM</td><td></td><td>DEFAULT 'DANG_TIM_DOI'</td><td>DANG_TIM_DOI, DA_DU_DOI, HOAN_THANH, DA_HUY</td></tr>
+  </tbody>
+</table>
+
+<h2>7. Bảng <code>thanh_vien_keo</code> (Danh sách tham gia kèo)</h2>
+<table>
+  <thead>
+    <tr>
+      <th style="width: 5%;">STT</th>
+      <th style="width: 18%;">Tên thuộc tính</th>
+      <th style="width: 15%;">Kiểu dữ liệu</th>
+      <th style="width: 8%;">Khóa</th>
+      <th style="width: 20%;">Ràng buộc</th>
+      <th style="width: 34%;">Diễn giải ý nghĩa</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr><td class="center">1</td><td class="bold">ma_tham_gia</td><td>VARCHAR(50)</td><td class="pk">PK</td><td>NOT NULL, UNIQUE</td><td>Mã đăng ký tham gia</td></tr>
+    <tr><td class="center">2</td><td>ma_keo_dau</td><td>VARCHAR(50)</td><td class="fk">FK</td><td>NOT NULL</td><td>Tham chiếu tới keo_giao_huu(ma_keo_dau)</td></tr>
+    <tr><td class="center">3</td><td>ma_nguoi_dung</td><td>VARCHAR(50)</td><td class="fk">FK</td><td>NOT NULL</td><td>Tham chiếu tới nguoi_dung(ma_nguoi_dung)</td></tr>
+    <tr><td class="center">4</td><td>doi_thi_dau</td><td>ENUM</td><td></td><td>DEFAULT 'CHUA_CHON'</td><td>Đội hình chọn: DOI_A, DOI_B, CHUA_CHON</td></tr>
+    <tr><td class="center">5</td><td>trang_thai</td><td>ENUM</td><td></td><td>DEFAULT 'XAC_NHAN'</td><td>Trạng thái: XAC_NHAN, CHO_DUYET, DA_ROI</td></tr>
+    <tr><td class="center">6</td><td>ngay_tham_gia</td><td>TIMESTAMP</td><td></td><td>DEFAULT CURRENT_TIMESTAMP</td><td>Thời điểm bấm nhận kèo</td></tr>
+  </tbody>
+</table>
+
+<h2>8. Bảng <code>danh_gia</code> (Đánh giá và nhận xét sân bóng)</h2>
+<table>
+  <thead>
+    <tr>
+      <th style="width: 5%;">STT</th>
+      <th style="width: 18%;">Tên thuộc tính</th>
+      <th style="width: 15%;">Kiểu dữ liệu</th>
+      <th style="width: 8%;">Khóa</th>
+      <th style="width: 20%;">Ràng buộc</th>
+      <th style="width: 34%;">Diễn giải ý nghĩa</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr><td class="center">1</td><td class="bold">ma_danh_gia</td><td>VARCHAR(50)</td><td class="pk">PK</td><td>NOT NULL, UNIQUE</td><td>Mã nhận xét</td></tr>
+    <tr><td class="center">2</td><td>ma_nguoi_dung</td><td>VARCHAR(50)</td><td class="fk">FK</td><td>NOT NULL</td><td>Người gửi nhận xét</td></tr>
+    <tr><td class="center">3</td><td>ma_cum_san</td><td>VARCHAR(50)</td><td class="fk">FK</td><td>NOT NULL</td><td>Cụm sân được nhận xét</td></tr>
+    <tr><td class="center">4</td><td>ma_don_dat</td><td>VARCHAR(50)</td><td class="fk">FK</td><td>NULL</td><td>Đơn đặt sân tương ứng</td></tr>
+    <tr><td class="center">5</td><td>so_sao</td><td>INT</td><td></td><td>NOT NULL</td><td>Đánh giá từ 1 đến 5 sao</td></tr>
+    <tr><td class="center">6</td><td>nhan_xet</td><td>TEXT</td><td></td><td>NOT NULL</td><td>Nội dung đánh giá chất lượng sân</td></tr>
+    <tr><td class="center">7</td><td>danh_sach_anh</td><td>TEXT</td><td></td><td>NULL</td><td>Danh sách link ảnh chụp thực tế</td></tr>
+    <tr><td class="center">8</td><td>phan_hoi_chu_san</td><td>TEXT</td><td></td><td>NULL</td><td>Lời cảm ơn/phản hồi từ chủ sân</td></tr>
+    <tr><td class="center">9</td><td>ngay_danh_gia</td><td>TIMESTAMP</td><td></td><td>DEFAULT CURRENT_TIMESTAMP</td><td>Thời gian đăng đánh giá</td></tr>
+  </tbody>
+</table>
+
+<h2>9. Bảng <code>tin_nhan</code> (Tin nhắn phòng chat)</h2>
+<table>
+  <thead>
+    <tr>
+      <th style="width: 5%;">STT</th>
+      <th style="width: 18%;">Tên thuộc tính</th>
+      <th style="width: 15%;">Kiểu dữ liệu</th>
+      <th style="width: 8%;">Khóa</th>
+      <th style="width: 20%;">Ràng buộc</th>
+      <th style="width: 34%;">Diễn giải ý nghĩa</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr><td class="center">1</td><td class="bold">ma_tin_nhan</td><td>VARCHAR(50)</td><td class="pk">PK</td><td>NOT NULL, UNIQUE</td><td>Mã tin nhắn</td></tr>
+    <tr><td class="center">2</td><td>ma_hoi_thoai</td><td>VARCHAR(50)</td><td></td><td>NOT NULL</td><td>Mã phòng chat</td></tr>
+    <tr><td class="center">3</td><td>ma_nguoi_gui</td><td>VARCHAR(50)</td><td class="fk">FK</td><td>NOT NULL</td><td>Người gửi tin</td></tr>
+    <tr><td class="center">4</td><td>noi_dung</td><td>TEXT</td><td></td><td>NOT NULL</td><td>Nội dung tin nhắn</td></tr>
+    <tr><td class="center">5</td><td>loai_tin_nhan</td><td>VARCHAR(20)</td><td></td><td>DEFAULT 'VAN_BAN'</td><td>VAN_BAN hoặc HE_THONG</td></tr>
+    <tr><td class="center">6</td><td>ngay_gui</td><td>TIMESTAMP</td><td></td><td>DEFAULT CURRENT_TIMESTAMP</td><td>Thời điểm gửi</td></tr>
+  </tbody>
+</table>
+
+<h2>10. Bảng <code>thong_bao</code> (Thông báo người dùng)</h2>
+<table>
+  <thead>
+    <tr>
+      <th style="width: 5%;">STT</th>
+      <th style="width: 18%;">Tên thuộc tính</th>
+      <th style="width: 15%;">Kiểu dữ liệu</th>
+      <th style="width: 8%;">Khóa</th>
+      <th style="width: 20%;">Ràng buộc</th>
+      <th style="width: 34%;">Diễn giải ý nghĩa</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr><td class="center">1</td><td class="bold">ma_thong_bao</td><td>VARCHAR(50)</td><td class="pk">PK</td><td>NOT NULL, UNIQUE</td><td>Mã thông báo</td></tr>
+    <tr><td class="center">2</td><td>ma_nguoi_dung</td><td>VARCHAR(50)</td><td class="fk">FK</td><td>NOT NULL</td><td>Người nhận thông báo</td></tr>
+    <tr><td class="center">3</td><td>tieu_de</td><td>VARCHAR(150)</td><td></td><td>NOT NULL</td><td>Tiêu đề thông báo</td></tr>
+    <tr><td class="center">4</td><td>noi_dung</td><td>TEXT</td><td></td><td>NOT NULL</td><td>Chi tiết thông báo</td></tr>
+    <tr><td class="center">5</td><td>duong_dan</td><td>VARCHAR(255)</td><td></td><td>NULL</td><td>Đường dẫn điều hướng</td></tr>
+    <tr><td class="center">6</td><td>da_doc</td><td>BOOLEAN</td><td></td><td>DEFAULT FALSE</td><td>Trạng thái đọc (0: Chưa đọc, 1: Đã đọc)</td></tr>
+    <tr><td class="center">7</td><td>ngay_tao</td><td>TIMESTAMP</td><td></td><td>DEFAULT CURRENT_TIMESTAMP</td><td>Thời gian phát thông báo</td></tr>
+  </tbody>
+</table>
+
+</body>
+</html>

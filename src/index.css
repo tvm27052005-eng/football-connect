@@ -28,3 +28,31 @@
 ::-webkit-scrollbar-thumb:hover {
   background: #94A3B8;
 }
+
+/* Sporty Glass & Glow Utilities */
+.glass-panel {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(226, 232, 240, 0.8);
+}
+
+.glass-panel-dark {
+  background: rgba(15, 23, 42, 0.85);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(51, 65, 85, 0.6);
+}
+
+.pitch-gradient {
+  background: linear-gradient(135deg, #059669 0%, #10B981 50%, #047857 100%);
+}
+
+.sport-card-hover {
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.sport-card-hover:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 16px 30px -10px rgba(5, 150, 105, 0.15), 0 4px 12px -2px rgba(0, 0, 0, 0.05);
+}

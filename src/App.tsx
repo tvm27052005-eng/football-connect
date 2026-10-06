@@ -8,6 +8,7 @@ import { Navbar } from './components/layout/Navbar.js';
 import { Footer } from './components/layout/Footer.js';
 import { BottomNav } from './components/layout/BottomNav.js';
 import { ProtectedRoute, RoleRoute } from './components/auth/ProtectedRoute.js';
+import { AIChatWidget } from './components/common/AIChatWidget.js';
 
 // Public / Player Pages
 import { HomePage } from './pages/HomePage.js';
@@ -46,6 +47,7 @@ const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       <main className="flex-1">{children}</main>
       {!isPortal && <Footer />}
       {!isPortal && <BottomNav />}
+      <AIChatWidget />
     </div>
   );
 };
