@@ -66,14 +66,28 @@ export const VenuesPage: React.FC = () => {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
-      {/* Header */}
-      <div>
-        <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
-          Danh Sách Sân Bóng Cỏ Nhân Tạo
-        </h1>
-        <p className="text-xs text-slate-500 mt-1">
-          Tìm kiếm và đặt lịch sân bóng đá chất lượng cao tại Hà Nội, TP. HCM và các tỉnh thành.
-        </p>
+      {/* Header Banner with High-Angle Pitch Visual */}
+      <div className="relative rounded-3xl overflow-hidden bg-slate-950 p-6 sm:p-10 text-white shadow-xl border border-emerald-900/30">
+        <div className="absolute inset-0 z-0">
+          <img
+            src="/images/turf-pitch-top.png"
+            alt="Cụm sân cỏ nhân tạo từ trên cao"
+            className="w-full h-full object-cover opacity-35"
+          />
+          <div className="absolute inset-0 bg-gradient-to-r from-slate-950 via-slate-950/80 to-emerald-950/70" />
+        </div>
+
+        <div className="relative z-10 max-w-2xl">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/20 border border-emerald-400/30 backdrop-blur-md text-emerald-300 text-xs font-bold mb-3">
+            <MapPin className="w-3.5 h-3.5" /> Hệ Thống Cụm Sân Đối Tác Toàn Quốc
+          </div>
+          <h1 className="text-2xl sm:text-4xl font-black text-white tracking-tight leading-tight">
+            Danh Sách Sân Bóng Cỏ Nhân Tạo
+          </h1>
+          <p className="text-xs sm:text-sm text-slate-300 mt-2 leading-relaxed">
+            Khám phá và đặt trước các sân bóng đạt chuẩn FIFA, hệ thống thoát nước chuẩn quốc tế, đèn cao áp ban đêm và bãi đỗ xe an ninh tại Hà Nội, TP. HCM & Đà Nẵng.
+          </p>
+        </div>
       </div>
 
       {/* Filter Component */}

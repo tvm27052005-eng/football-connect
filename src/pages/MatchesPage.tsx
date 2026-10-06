@@ -134,44 +134,55 @@ export const MatchesPage: React.FC = () => {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
-      {/* Top Banner */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200 shadow-xs">
-              ⚡ Sàn Đấu & Tìm Đối Thủ
-            </span>
-          </div>
-          <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
-            Kèo Đá Bóng & Ghép Đội Trực Tuyến
-          </h1>
-          <p className="text-xs text-slate-500 mt-1">
-            Tham gia ngay các trận đấu đang thiếu chân hoặc tạo kèo mới để tìm đối thủ xứng tầm.
-          </p>
+      {/* Top Banner with Action Photo */}
+      <div className="relative rounded-3xl overflow-hidden bg-slate-950 p-6 sm:p-10 text-white shadow-xl border border-slate-800">
+        <div className="absolute inset-0 z-0">
+          <img
+            src="/images/vn-match-action.png"
+            alt="Trận đấu bóng đá phong trào Việt Nam"
+            className="w-full h-full object-cover opacity-30"
+          />
+          <div className="absolute inset-0 bg-gradient-to-r from-slate-950 via-slate-950/85 to-slate-950/60" />
         </div>
 
-        <div className="flex items-center gap-3">
-          {isAuthenticated && (
-            <button
-              onClick={() => setShowSmartModal(true)}
-              className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition-all shadow-xs flex items-center gap-1.5 cursor-pointer"
-            >
-              <Sparkles className="w-4 h-4 text-emerald-100" /> Kèo Phù Hợp Cho Tôi ({recommendations.length})
-            </button>
-          )}
+        <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-2 mb-2">
+              <span className="px-2.5 py-1 rounded-full text-[11px] font-black bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 backdrop-blur-md uppercase tracking-wider">
+                ⚡ Sàn Đấu & Tìm Đối Thủ
+              </span>
+            </div>
+            <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
+              Kèo Đá Bóng & Ghép Đội Trực Tuyến
+            </h1>
+            <p className="text-xs sm:text-sm text-slate-300 mt-1 max-w-xl">
+              Tham gia ngay các trận đấu đang thiếu chân hoặc tạo kèo mới để tìm đối thủ xứng tầm.
+            </p>
+          </div>
 
-          <button
-            onClick={() => {
-              if (!isAuthenticated) {
-                window.location.href = '/login';
-              } else {
-                setShowCreateModal(true);
-              }
-            }}
-            className="px-4 py-2.5 rounded-xl bg-white hover:bg-slate-50 text-slate-800 font-bold text-xs transition-all flex items-center gap-1.5 border border-slate-300 shadow-xs cursor-pointer"
-          >
-            <Plus className="w-4 h-4 text-emerald-600" /> Tạo Kèo Mới
-          </button>
+          <div className="flex items-center gap-3">
+            {isAuthenticated && (
+              <button
+                onClick={() => setShowSmartModal(true)}
+                className="px-4 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs transition-all shadow-md flex items-center gap-1.5 cursor-pointer active:scale-95"
+              >
+                <Sparkles className="w-4 h-4" /> Kèo Phù Hợp ({recommendations.length})
+              </button>
+            )}
+
+            <button
+              onClick={() => {
+                if (!isAuthenticated) {
+                  window.location.href = '/login';
+                } else {
+                  setShowCreateModal(true);
+                }
+              }}
+              className="px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs transition-all flex items-center gap-1.5 border border-white/20 backdrop-blur-md cursor-pointer"
+            >
+              <Plus className="w-4 h-4" /> Tạo Kèo Mới
+            </button>
+          </div>
         </div>
       </div>
 
