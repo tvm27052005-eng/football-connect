@@ -485,22 +485,22 @@ export const HomePage: React.FC = () => {
 
       {/* 6. Call To Action Banner with Night Stadium Background */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="relative overflow-hidden rounded-3xl p-8 sm:p-14 text-white shadow-2xl flex flex-col lg:flex-row items-center justify-between gap-8 border border-emerald-900/40">
+        <div className="relative overflow-hidden rounded-3xl p-8 sm:p-14 text-white shadow-2xl flex flex-col lg:flex-row items-center justify-between gap-8 border border-emerald-900/40 bg-gradient-to-r from-emerald-950 via-slate-950 to-teal-950">
           {/* Background Image with Dark Overlay */}
-          <div className="absolute inset-0 -z-10">
+          <div className="absolute inset-0 z-0">
             <img
               src="/images/stadium-night.png"
               alt="Sân vận động rực sáng dưới trăng"
-              className="w-full h-full object-cover object-bottom"
+              className="w-full h-full object-cover object-bottom opacity-50"
             />
-            <div className="absolute inset-0 bg-gradient-to-r from-emerald-950/95 via-slate-950/85 to-teal-950/90" />
+            <div className="absolute inset-0 bg-gradient-to-r from-emerald-950/90 via-slate-950/85 to-teal-950/90" />
           </div>
 
           <div className="max-w-xl text-center lg:text-left relative z-10">
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/30 backdrop-blur-md text-xs font-bold text-emerald-200 mb-3 border border-emerald-400/30">
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/25 backdrop-blur-md text-xs font-extrabold text-emerald-300 mb-3 border border-emerald-400/40 shadow-xs">
               <Zap className="w-3.5 h-3.5 fill-amber-300 text-amber-300" /> Dành cho cả Cầu thủ & Chủ sân
             </div>
-            <h2 className="text-2xl sm:text-4xl font-black tracking-tight leading-tight">
+            <h2 className="text-2xl sm:text-4xl font-black text-white tracking-tight leading-tight">
               Sẵn Sàng Cho Trận Cầu Tối Nay Của Bạn?
             </h2>
             <p className="mt-3 text-xs sm:text-sm text-slate-200 leading-relaxed font-medium">
@@ -511,13 +511,13 @@ export const HomePage: React.FC = () => {
           <div className="flex flex-col sm:flex-row items-center gap-3 w-full lg:w-auto relative z-10">
             <Link
               to="/venues"
-              className="w-full sm:w-auto px-6 py-3.5 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs sm:text-sm transition-all text-center shadow-lg active:scale-95 cursor-pointer"
+              className="w-full sm:w-auto px-6 py-3.5 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs sm:text-sm transition-all text-center shadow-lg shadow-emerald-500/25 active:scale-95 cursor-pointer"
             >
               Đặt Sân Ngay Bây Giờ
             </Link>
             <Link
               to="/matches"
-              className="w-full sm:w-auto px-6 py-3.5 rounded-2xl bg-white/10 hover:bg-white/20 text-white font-black text-xs sm:text-sm border border-white/20 backdrop-blur-md transition-all text-center cursor-pointer"
+              className="w-full sm:w-auto px-6 py-3.5 rounded-2xl bg-white/10 hover:bg-white/20 text-white font-black text-xs sm:text-sm border border-white/25 backdrop-blur-md transition-all text-center cursor-pointer"
             >
               Tìm Đội Cáp Kèo
             </Link>
