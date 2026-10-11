@@ -12,7 +12,7 @@ export const bookingController = {
         return;
       }
 
-      const { status, venueId, date, search } = req.query;
+      const { status, venueId, date, search, sort } = req.query;
       let bookings = [...db.bookings];
 
       // Role filter
@@ -45,12 +45,27 @@ export const bookingController = {
         );
       }
 
-      // Sort by bookingDate and startTime descending
-      bookings.sort((a, b) => {
-        const timeA = new Date(`${a.bookingDate}T${a.startTime}`).getTime();
-        const timeB = new Date(`${b.bookingDate}T${b.startTime}`).getTime();
-        return timeB - timeA;
-      });
+      // Sorting
+      if (sort === 'date_asc') {
+        bookings.sort((a, b) => a.bookingDate.localeCompare(b.bookingDate) || a.startTime.localeCompare(b.startTime));
+      } else if (sort === 'time_asc') {
+        bookings.sort((a, b) => a.startTime.localeCompare(b.startTime) || a.bookingDate.localeCompare(b.bookingDate));
+      } else if (sort === 'time_desc') {
+        bookings.sort((a, b) => b.startTime.localeCompare(a.startTime) || b.bookingDate.localeCompare(a.bookingDate));
+      } else if (sort === 'alpha_asc') {
+        bookings.sort((a, b) => (a.venueName || '').localeCompare(b.venueName || ''));
+      } else if (sort === 'price_desc') {
+        bookings.sort((a, b) => b.totalPrice - a.totalPrice);
+      } else if (sort === 'price_asc') {
+        bookings.sort((a, b) => a.totalPrice - b.totalPrice);
+      } else {
+        // Default sort: latest bookingDate and startTime descending
+        bookings.sort((a, b) => {
+          const timeA = new Date(`${a.bookingDate}T${a.startTime}`).getTime();
+          const timeB = new Date(`${b.bookingDate}T${b.startTime}`).getTime();
+          return timeB - timeA;
+        });
+      }
 
       res.json({ success: true, count: bookings.length, data: bookings });
     } catch {
@@ -112,8 +127,16 @@ export const bookingController = {
         startTime,
         endTime,
         note,
-        paymentMethod = 'CASH'
+        paymentMethod = 'BANK_TRANSFER'
       } = req.body;
+
+      if (paymentMethod === 'CASH') {
+        res.status(400).json({
+          success: false,
+          message: 'Phương thức thanh toán tiền mặt tại sân đã ngừng áp dụng để chống bùng sân. Vui lòng thanh toán chuyển khoản hoặc ví điện tử.'
+        });
+        return;
+      }
 
       if (!venueId || !fieldId || !bookingDate || !startTime || !endTime) {
         res.status(400).json({ success: false, message: 'Vui lòng cung cấp đầy đủ thông tin đặt sân' });
@@ -171,7 +194,7 @@ export const bookingController = {
         durationHours,
         totalPrice: price,
         status: 'CONFIRMED',
-        paymentStatus: paymentMethod === 'CASH' ? 'UNPAID' : 'PAID',
+        paymentStatus: 'PAID',
         paymentMethod,
         note: note || '',
         createdAt: new Date().toISOString(),

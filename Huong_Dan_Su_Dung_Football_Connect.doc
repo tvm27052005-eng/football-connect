@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
+<head>
+<meta charset="utf-8">
+<title>HƯỚNG DẪN SỬ DỤNG HỆ THỐNG FOOTBALL CONNECT</title>
+<style>
+  body {
+    font-family: 'Times New Roman', Arial, sans-serif;
+    font-size: 13pt;
+    line-height: 1.5;
+    color: #1a1a1a;
+    margin: 40px;
+  }
+  h1 {
+    font-size: 20pt;
+    color: #047857;
+    text-align: center;
+    text-transform: uppercase;
+    font-weight: bold;
+    margin-bottom: 5px;
+  }
+  .subtitle {
+    text-align: center;
+    font-style: italic;
+    font-size: 12pt;
+    color: #4b5563;
+    margin-bottom: 30px;
+  }
+  h2 {
+    font-size: 15pt;
+    color: #065f46;
+    border-bottom: 2px solid #10b981;
+    padding-bottom: 5px;
+    margin-top: 25px;
+  }
+  h3 {
+    font-size: 13pt;
+    color: #111827;
+    font-weight: bold;
+    margin-top: 15px;
+  }
+  p, li {
+    text-align: justify;
+  }
+  ul, ol {
+    margin-left: 20px;
+  }
+  .note-box {
+    background-color: #ecfdf5;
+    border-left: 4px solid #10b981;
+    padding: 10px 15px;
+    margin: 15px 0;
+    font-size: 11.5pt;
+  }
+  .tip-box {
+    background-color: #fffbeb;
+    border-left: 4px solid #f59e0b;
+    padding: 10px 15px;
+    margin: 15px 0;
+    font-size: 11.5pt;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 20px 0;
+  }
+  table, th, td {
+    border: 1px solid #d1d5db;
+  }
+  th {
+    background-color: #047857;
+    color: white;
+    padding: 8px 12px;
+    text-align: center;
+    font-weight: bold;
+  }
+  td {
+    padding: 8px 12px;
+    font-size: 11.5pt;
+  }
+  .role-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 10pt;
+    font-weight: bold;
+  }
+  .badge-user { background-color: #d1fae5; color: #065f46; }
+  .badge-owner { background-color: #fef3c7; color: #92400e; }
+  .badge-admin { background-color: #f3e8ff; color: #6b21a8; }
+  .step-num {
+    font-weight: bold;
+    color: #047857;
+  }
+</style>
+</head>
+<body>
+
+<h1>HƯỚNG DẪN SỬ DỤNG NỀN TẢNG FOOTBALL CONNECT</h1>
+<div class="subtitle">Hệ Thống Đặt Sân Bóng Cỏ Nhân Tạo & Kết Nối Cáp Kèo Giao Hữu Thông Minh</div>
+
+<hr />
+
+<h2>CHƯƠNG 1: GIỚI THIỆU TỔNG QUAN HỆ THỐNG</h2>
+
+<p><strong>Football Connect</strong> là nền tảng công nghệ toàn diện kết nối giữa <strong>Cầu thủ / Đội bóng phong trào</strong> và <strong>Chủ cụm sân bóng đá cỏ nhân tạo</strong> trên toàn quốc. Hệ thống giải quyết triệt để các bài toán khó khăn của bóng đá phủi như: trùng lịch đặt sân, thiếu đối thủ giao hữu, tìm sân trống theo khung giờ vàng và quản lý doanh thu sân bóng.</p>
+
+<h3>1.1. Các Phân Quyền Người Dùng Chính</h3>
+<table>
+  <thead>
+    <tr>
+      <th style="width: 20%;">Phân quyền</th>
+      <th style="width: 30%;">Đối tượng sử dụng</th>
+      <th style="width: 50%;">Chức năng trọng tâm</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><span class="role-badge badge-user">CẦU THỦ (USER)</span></td>
+      <td>Cầu thủ cá nhân, Đội trưởng đội bóng phong trào.</td>
+      <td>Tìm kiếm sân, xem ma trận khung giờ còn trống, đặt sân giữ chỗ, tạo kèo tìm đối thủ, nhắn tin trao đổi, đánh giá chất lượng sân.</td>
+    </tr>
+    <tr>
+      <td><span class="role-badge badge-owner">CHỦ SÂN (OWNER)</span></td>
+      <td>Chủ sở hữu, Quản lý cụm sân bóng cỏ nhân tạo.</td>
+      <td>Cấu hình cụm sân, tạo danh sách sân con (sân 5, 7, 11), thiết lập bảng giá theo khung giờ vàng, duyệt đơn đặt sân, xem báo cáo doanh thu.</td>
+    </tr>
+    <tr>
+      <td><span class="role-badge badge-admin">QUẢN TRỊ (ADMIN)</span></td>
+      <td>Quản trị viên hệ thống Football Connect.</td>
+      <td>Quản lý tài khoản toàn hệ thống, phê duyệt cụm sân mới, quản lý báo cáo vi phạm, theo dõi tổng quan chỉ số hệ thống.</td>
+    </tr>
+  </tbody>
+</table>
+
+<hr />
+
+<h2>CHƯƠNG 2: HƯỚNG DẪN DÀNH CHO CẦU THỦ (KHÁCH HÀNG)</h2>
+
+<h3>2.1. Đăng Nhập & Đăng Ký Tài Khoản</h3>
+<ol>
+  <li><span class="step-num">Bước 1:</span> Truy cập trang chủ hệ thống tại địa chỉ <code>http://localhost:3000</code>.</li>
+  <li><span class="step-num">Bước 2:</span> Nhấp vào nút <strong>Đăng Nhập</strong> hoặc <strong>Đăng Ký</strong> ở góc trên bên phải thanh Menu.</li>
+  <li><span class="step-num">Bước 3:</span> Chọn vai trò <strong>"Tôi là Cầu Thủ"</strong>, điền Họ tên, Email, Số điện thoại và Mật khẩu.</li>
+</ol>
+<div class="tip-box">
+  💡 <strong>Tính năng Đăng nhập nhanh 1-Click:</strong> Tại màn hình Đăng nhập, hệ thống cung cấp nút bấm tiện ích <code>👤 Cầu thủ</code>, <code>🏟️ Chủ sân</code>, <code>🛡️ Admin</code> giúp bạn trải nghiệm ngay mọi tính năng mà không cần nhập thủ công tài khoản thử nghiệm.
+</div>
+
+<h3>2.2. Quy Trình Tìm Kiếm & Đặt Lịch Sân Bóng</h3>
+<ol>
+  <li><span class="step-num">Bước 1: Tìm sân phù hợp</span>
+    <ul>
+      <li>Vào mục <strong>"Tìm sân bóng"</strong> trên thanh menu.</li>
+      <li>Sử dụng thanh lọc thông minh để lọc sân theo <strong>Khu vực/Thành phố</strong> (Hà Nội, TP.HCM, Đà Nẵng), <strong>Quy mô sân</strong> (Sân 5 người, Sân 7 người, Sân 11 người tiêu chuẩn FIFA) hoặc sắp xếp theo <strong>Giá tiền / Đánh giá sao</strong>.</li>
+    </ul>
+  </li>
+  <li><span class="step-num">Bước 2: Xem ma trận khung giờ còn trống</span>
+    <ul>
+      <li>Nhấp vào sân bóng bạn muốn chọn để xem thông tin chi tiết (địa chỉ, hình ảnh thực tế, tiện ích kèm theo như wifi, bãi đỗ xe, căn tin, đèn chiếu sáng).</li>
+      <li>Chọn <strong>Ngày đá bóng</strong> mong muốn. Hệ thống sẽ hiển thị ma trận khung giờ real-time (khung giờ màu xanh là còn trống, màu xám là đã có người đặt).</li>
+    </ul>
+  </li>
+  <li><span class="step-num">Bước 3: Khóa sân & Xác nhận đặt chỗ</span>
+    <ul>
+      <li>Chọn khung giờ (ví dụ: 19:00 - 20:30) và chọn sân con mong muốn.</li>
+      <li>Kiểm tra tổng tiền tự động tính toán theo bảng giá khung giờ của chủ sân.</li>
+      <li>Nhấn <strong>"Xác nhận đặt sân"</strong>. Đơn đặt sẽ lập tức chuyển trạng thái <code>CONFIRMED</code> và chống trùng lịch 100%.</li>
+    </ul>
+  </li>
+</ol>
+
+<h3>2.3. Hướng Dẫn Đăng Tin Tìm Đối / Cáp Kèo Giao Hữu</h3>
+<p>Trong trường hợp đội bạn đã đặt được sân nhưng chưa có đối thủ giao lưu hoặc muốn chia tiền sân:</p>
+<ol>
+  <li><span class="step-num">Bước 1:</span> Vào trang <strong>"Cáp kèo & Đối thủ"</strong> ➔ Chọn <strong>"Tạo Kèo Mới"</strong>.</li>
+  <li><span class="step-num">Bước 2:</span> Điền thông tin kèo đá:
+    <ul>
+      <li><strong>Tên đội bóng của bạn:</strong> Ví dụ <code>FC Cầu Giấy Juniors</code>.</li>
+      <li><strong>Địa điểm & Khung giờ:</strong> Chọn sân bóng và giờ đã đặt.</li>
+      <li><strong>Trình độ giao lưu:</strong> Tập sự / Dưỡng sinh, Trung bình, Nâng cao hoặc Pro.</li>
+      <li><strong>Hình thức chia tiền sân (Cost Sharing):</strong>
+        <ul>
+          <li><code>Chia đôi 50-50:</code> Hai đội chia sòng phẳng 50% tiền sân.</li>
+          <li><code>Đội thua trả 100%:</code> Đội thua chung toàn bộ tiền sân & nước uống.</li>
+          <li><code>Đội A bao sân:</code> Đội nhà tài trợ 100% tiền sân.</li>
+        </ul>
+      </li>
+    </ul>
+  </li>
+  <li><span class="step-num">Bước 3:</span> Nhấn <strong>"Đăng Kèo Đá Bóng"</strong>. Kèo sẽ xuất hiện công khai trên sàn giao lưu để các đội bóng khác bắt đối.</li>
+</ol>
+
+<h3>2.4. Tính Năng Gợi Ý Ghép Kèo Thông Minh AI (Smart Recommendation)</h3>
+<p>Hệ thống tích hợp thuật toán AI tự động phân tích <em>Vị trí địa lý, Trình độ thi đấu và Khung giờ yêu thích</em> của bạn để đưa ra danh sách các trận đấu cân tài cân sức nhất. Nhấp vào nút <strong>"Kèo Phù Hợp Cho Tôi"</strong> có biểu tượng ngôi sao để xem các trận được gợi ý riêng cho bạn.</p>
+
+<h3>2.5. Phòng Chat Realtime & Trao Đổi</h3>
+<p>Mỗi trận đấu ghép kèo thành công sẽ tự động mở một <strong>Phòng Chat trực tuyến</strong> (sử dụng công nghệ Socket.IO). Bạn có thể chat thỏa thuận màu áo đấu, nhắn số điện thoại liên hệ và chốt kèo bóng đá sát giờ.</p>
+
+<hr />
+
+<h2>CHƯƠNG 3: HƯỚNG DẪN DÀNH CHO CHỦ SÂN BÓNG (OWNER)</h2>
+
+<h3>3.1. Truy Cập Trang Quản Lý (Owner Dashboard)</h3>
+<p>Sau khi đăng nhập với tài khoản Chủ sân (hoặc sử dụng nút chuyển quyền nhanh <code>🏟️ Chủ sân</code> trên thanh menu), hệ thống sẽ chuyển hướng bạn đến bảng điều khiển <strong>Owner Dashboard</strong> tại <code>/owner/dashboard</code>.</p>
+
+<h3>3.2. Quản Lý Thông Tin Cụm Sân & Tải Ảnh Sân Bóng (Multer + Cloudinary)</h3>
+<ol>
+  <li>Vào trang <strong>Quản lý sân bóng</strong>.</li>
+  <li>Cập nhật tên cụm sân, địa chỉ chi tiết, giờ mở cửa/đóng cửa và danh sách tiện ích (Đèn LED, Căn tin, Trọng tài, Khán đài).</li>
+  <li><strong>Upload ảnh sân bóng thực tế:</strong> Nhấp chọn file ảnh từ máy tính. Hệ thống sẽ sử dụng middleware Multer để kiểm tra định dạng (jpg, png, webp) & dung lượng (&le; 5MB), sau đó tải trực tiếp lên Cloudinary CDN để có đường dẫn nét và load siêu nhanh.</li>
+</ol>
+
+<h3>3.3. Quản Lý Danh Sách Sân Con & Khung Giờ Bảng Giá</h3>
+<ul>
+  <li><strong>Tạo sân con:</strong> Thêm các sân con với mã sân cụ thể (ví dụ: Sân 7A, Sân 7B, Sân 5 Mini 1).</li>
+  <li><strong>Cấu hình bảng giá:</strong> Cài đặt mức giá cho giờ thường (ví dụ: 300.000đ/h trước 17:00) và giờ vàng ban đêm (ví dụ: 600.000đ/h từ 17:30 - 22:30).</li>
+</ul>
+
+<h3>3.4. Quản Lý Lịch Đặt & Doanh Thu</h3>
+<ul>
+  <li><strong>Theo dõi ma trận đặt sân:</strong> Xem trực quan lịch đặt trong ngày của tất cả các sân con.</li>
+  <li><strong>Duyệt & Đổi trạng thái:</strong> Cập nhật trạng thái đơn từ <code>PENDING</code> (Chờ xác nhận) ➔ <code>CONFIRMED</code> (Đã giữ chỗ) ➔ <code>COMPLETED</code> (Khách đã đá xong).</li>
+  <li><strong>Xem báo cáo thống kê:</strong> Theo dõi tổng biểu đồ doanh thu theo tuần/tháng và số lượt khách đặt sân.</li>
+</ul>
+
+<hr />
+
+<h2>CHƯƠNG 4: HƯỚNG DẪN DÀNH CHO QUẢN TRỊ VIÊN (ADMIN)</h2>
+
+<ol>
+  <li>Chuyển sang quyền <strong>🛡️ Admin</strong> từ thanh công cụ.</li>
+  <li>Truy cập bảng điều khiển Admin Dashboard tại <code>/admin/dashboard</code>.</li>
+  <li><strong>Quản lý Người dùng:</strong> Xử lý khóa/mở khóa các tài khoản vi phạm văn hóa ứng xử hoặc hẹn hủy kèo vô lý.</li>
+  <li><strong>Quản lý Cụm sân:</strong> Phê duyệt các cụm sân bóng mới đăng ký vào hệ thống đối tác.</li>
+</ol>
+
+<hr />
+
+<h2>CHƯƠNG 5: CÂU HỎI THƯỜNG GẶP (FAQ)</h2>
+
+<div class="note-box">
+  <p><strong>Q1: Nếu hai đội bóng cùng bấm đặt một khung giờ thì sao?</strong><br />
+  <em>Trả lời: Hệ thống sử dụng cơ chế khóa giao dịch Atomic locking 100% tự động, đảm bảo tuyệt đối không bao giờ xảy ra tình trạng trùng lịch đặt.</em></p>
+
+  <p><strong>Q2: Ảnh upload lên bị báo lỗi quá dung lượng phải làm sao?</strong><br />
+  <em>Trả lời: Hệ thống quy định mỗi ảnh có dung lượng tối đa 5MB và chấp nhận định dạng JPG, PNG, WEBP, GIF. Vui lòng nén bớt ảnh trước khi tải lên.</em></p>
+
+  <p><strong>Q3: Tôi muốn hủy lịch đặt sân có được hoàn tiền không?</strong><br />
+  <em>Trả lời: Bạn có thể vào mục "Lịch của tôi" để xem chính sách hủy sân của từng chủ cụm sân. Nếu hủy trước 24h bóng lăn, hệ thống sẽ hỗ trợ hoàn tiền hoặc đổi lịch đá sang buổi khác.</em></p>
+</div>
+
+<p style="text-align: center; margin-top: 40px; font-weight: bold; color: #047857;">
+  --- TRÂN TRỌNG CẢM ƠN BẠN ĐÃ SỬ DỤNG FOOTBALL CONNECT ---
+</p>
+
+</body>
+</html>
