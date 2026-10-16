@@ -1,11 +1,25 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Grid3X3, DollarSign, Edit, Wrench, CheckCircle2, AlertTriangle } from 'lucide-react';
+import { Plus, Grid3X3, DollarSign, Edit, Clock3, Save, Wrench, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { api } from '../../services/api.js';
-import { IField, IVenue } from '../../types/index.js';
+import { IField, IFieldTimeSlot, IVenue } from '../../types/index.js';
 import { OwnerSidebar } from '../../components/layout/OwnerSidebar.js';
 import { Modal } from '../../components/common/Modal.js';
 import { Badge } from '../../components/common/Badge.js';
 import { LoadingSkeleton } from '../../components/common/LoadingSkeleton.js';
+// Định nghĩa các khung giờ tiêu chuẩn cho sân bóng
+const standardSlots = [
+  ['06:00', '07:30'], ['07:30', '09:00'], ['09:00', '10:30'],
+  ['14:30', '16:00'], ['16:00', '17:30'], ['17:30', '19:00'],
+  ['19:00', '20:30'], ['20:30', '22:00'], ['22:00', '23:30']
+];
+// Tạo các khung giờ mặc định dựa trên giá thuê mỗi giờ của sân
+const buildDefaultSlots = (pricePerHour: number): IFieldTimeSlot[] => standardSlots.map(([startTime, endTime]) => {
+  const [sh, sm] = startTime.split(':').map(Number);
+  const [eh, em] = endTime.split(':').map(Number);
+  const duration = (eh * 60 + em - sh * 60 - sm) / 60;
+  const isPeak = ['17:30', '19:00', '20:30'].includes(startTime);
+  return { startTime, endTime, price: Math.round(pricePerHour * duration * (isPeak ? 1.15 : 1)), isActive: true };
+});
 
 export const OwnerFieldsPage: React.FC = () => {
   const [venues, setVenues] = useState<IVenue[]>([]);
@@ -20,6 +34,7 @@ export const OwnerFieldsPage: React.FC = () => {
     name: '',
     fieldType: '7_vs_7',
     pricePerHour: 350000,
+    timeSlots: buildDefaultSlots(350000),
     surfaceType: 'ARTIFICIAL_TURF',
     hasLighting: true,
     hasRoof: false,
@@ -66,6 +81,7 @@ export const OwnerFieldsPage: React.FC = () => {
       name: '',
       fieldType: '7_vs_7',
       pricePerHour: 350000,
+      timeSlots: buildDefaultSlots(350000),
       surfaceType: 'ARTIFICIAL_TURF',
       hasLighting: true,
       hasRoof: false,
@@ -80,6 +96,7 @@ export const OwnerFieldsPage: React.FC = () => {
       name: f.name,
       fieldType: f.fieldType,
       pricePerHour: f.pricePerHour,
+      timeSlots: f.timeSlots?.length ? f.timeSlots : buildDefaultSlots(f.pricePerHour),
       surfaceType: f.surfaceType,
       hasLighting: f.hasLighting,
       hasRoof: f.hasRoof,
@@ -110,6 +127,10 @@ export const OwnerFieldsPage: React.FC = () => {
     } finally {
       setIsSubmitting(false);
     }
+  };
+// Cập nhật thông tin của một khung giờ
+  const updateTimeSlot = (index: number, changes: Partial<IFieldTimeSlot>) => {
+    setForm({ ...form, timeSlots: form.timeSlots.map((slot, slotIndex) => slotIndex === index ? { ...slot, ...changes } : slot) });
   };
 
   return (
@@ -200,7 +221,7 @@ export const OwnerFieldsPage: React.FC = () => {
                     onClick={() => handleOpenEdit(f)}
                     className="px-3 py-1.5 rounded-lg bg-slate-50 border border-slate-200 hover:bg-slate-100 text-slate-700 text-xs font-semibold flex items-center gap-1 cursor-pointer transition-colors shadow-xs"
                   >
-                    <Edit className="w-3.5 h-3.5 text-emerald-600" /> Sửa cấu hình
+                    <Edit className="w-3.5 h-3.5 text-emerald-600" /> Sửa sân & bảng giá
                   </button>
                 </div>
               </div>
@@ -215,7 +236,35 @@ export const OwnerFieldsPage: React.FC = () => {
           title={editingField ? 'Sửa Cấu Hình Sân Con' : 'Thêm Sân Con Mới'}
           maxWidth="md"
         >
+           {/* Biểu mẫu tạo mới hoặc chỉnh sửa sân bóng  */}
           <form onSubmit={handleSubmit} className="space-y-4 text-xs">
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <div>
+                  <label className="block text-slate-700 font-bold">Bảng giá theo khung giờ</label>
+                  <p className="text-[11px] text-slate-500 mt-0.5">Giá dưới đây được hiển thị trực tiếp ở phần đặt lịch sân.</p>
+                </div>
+                <Clock3 className="w-4 h-4 text-emerald-600" />
+              </div>
+              <div className="border border-slate-200 rounded-xl overflow-hidden">
+                <div className="grid grid-cols-[1fr_1fr_auto] gap-2 px-3 py-2 bg-slate-50 text-[10px] font-bold uppercase tracking-wide text-slate-500">
+                  <span>Giờ bắt đầu</span><span>Giờ kết thúc</span><span>Giá/ca</span>
+                </div>
+                <div className="max-h-64 overflow-y-auto divide-y divide-slate-100">
+                  {form.timeSlots.map((slot, index) => (
+                    <div key={index} className={`grid grid-cols-[1fr_1fr_auto] gap-2 items-center px-3 py-2 ${!slot.isActive ? 'bg-slate-50 opacity-60' : ''}`}>
+                      <input type="time" value={slot.startTime} onChange={(e) => updateTimeSlot(index, { startTime: e.target.value })} className="px-2 py-1.5 border border-slate-200 rounded-lg text-xs" />
+                      <input type="time" value={slot.endTime} onChange={(e) => updateTimeSlot(index, { endTime: e.target.value })} className="px-2 py-1.5 border border-slate-200 rounded-lg text-xs" />
+                      <div className="flex items-center gap-1">
+                        <input type="number" min="0" step="10000" value={slot.price} onChange={(e) => updateTimeSlot(index, { price: Number(e.target.value) })} className="w-28 px-2 py-1.5 border border-slate-200 rounded-lg text-xs" />
+                        <button type="button" title={slot.isActive ? 'Tạm khóa ca' : 'Mở lại ca'} onClick={() => updateTimeSlot(index, { isActive: !slot.isActive })} className={`w-7 h-7 rounded-lg text-xs font-bold ${slot.isActive ? 'text-emerald-700 bg-emerald-50' : 'text-slate-500 bg-slate-100'}`}>{slot.isActive ? '✓' : '—'}</button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
             <div>
               <label className="block text-slate-700 font-bold mb-1">Tên Sân Con *</label>
               <input

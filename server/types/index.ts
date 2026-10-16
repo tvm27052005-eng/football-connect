@@ -72,10 +72,19 @@ export interface IField {
   fieldType: FieldType;
   capacity: number; // e.g. 10, 14, 22
   pricePerHour: number;
+  /** Giá bán thực tế cho từng ca; dùng chung cho availability và booking. */
+  timeSlots?: IFieldTimeSlot[];
   surfaceType: 'ARTIFICIAL_GRASS' | 'NATURAL_GRASS' | 'INDOOR_FUTSAL';
   status: 'ACTIVE' | 'MAINTENANCE' | 'INACTIVE';
   createdAt: string;
   updatedAt: string;
+}
+// Định nghĩa cấu trúc cho từng khung giờ của sân bóng
+export interface IFieldTimeSlot {
+  startTime: string;
+  endTime: string;
+  price: number;
+  isActive: boolean;
 }
 
 export interface IBooking {

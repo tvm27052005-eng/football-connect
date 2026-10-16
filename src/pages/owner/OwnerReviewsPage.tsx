@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Star, MessageSquare, Reply, CheckCircle2, User, Building } from 'lucide-react';
+import { Star, Reply, MapPin } from 'lucide-react';
 import { api } from '../../services/api.js';
 import { IReview } from '../../types/index.js';
 import { OwnerSidebar } from '../../components/layout/OwnerSidebar.js';
@@ -105,6 +105,14 @@ export const OwnerReviewsPage: React.FC = () => {
                     <span className="text-xs font-bold text-amber-500">({r.rating} / 5)</span>
                   </div>
                 </div>
+                  {/* thông tin sân bóng liên quan đến đánh giá */}
+                <div className="p-3 bg-emerald-50/70 rounded-xl border border-emerald-100 space-y-1">
+                  <div className="font-bold text-emerald-800 text-xs">{r.venueName || 'Sân không xác định'}</div>
+                  <div className="flex items-start gap-1.5 text-[11px] text-slate-600">
+                    <MapPin className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
+                    <span>{r.venueAddress || 'Chưa có thông tin địa điểm'}</span>
+                  </div>
+                </div>
 
                 <p className="text-xs text-slate-700 leading-relaxed bg-slate-50 p-3.5 rounded-xl border border-slate-200">
                   "{r.comment}"
@@ -138,8 +146,14 @@ export const OwnerReviewsPage: React.FC = () => {
           onClose={() => setSelectedReview(null)}
           title="Phản Hồi Đánh Giá Khách Hàng"
         >
+          // Biểu mẫu phản hồi đánh giá
           <form onSubmit={handleSendReply} className="space-y-4 text-xs">
             <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-1">
+              <div className="font-bold text-emerald-800">{selectedReview?.venueName || 'Sân không xác định'}</div>
+              <div className="flex items-start gap-1.5 text-slate-600">
+                <MapPin className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
+                <span>{selectedReview?.venueAddress || 'Chưa có thông tin địa điểm'}</span>
+              </div>
               <div className="font-bold text-slate-900">{selectedReview?.userName}</div>
               <div className="text-slate-600">"{selectedReview?.comment}"</div>
             </div>

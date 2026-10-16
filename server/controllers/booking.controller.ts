@@ -2,6 +2,7 @@ import { Response } from 'express';
 import { db } from '../models/db.js';
 import { AuthenticatedRequest } from '../middlewares/auth.middleware.js';
 import { IBooking, BookingStatus, PaymentStatus } from '../types/index.js';
+import { getFieldTimeSlots } from './field.controller.js';
 
 export const bookingController = {
   // GET /api/bookings
@@ -170,11 +171,13 @@ export const bookingController = {
       const [sh, sm] = startTime.split(':').map(Number);
       const [eh, em] = endTime.split(':').map(Number);
       const durationHours = Math.max(1, (eh * 60 + em - (sh * 60 + sm)) / 60);
-
-      let price = Math.round(field.pricePerHour * durationHours);
-      if (startTime === '17:30' || startTime === '19:00' || startTime === '20:30') {
-        price = Math.round(price * 1.15); // Peak hour surcharge
+// “Tìm khung giờ đã được cấu hình cho sân này vào thời điểm này.”
+      const configuredSlot = getFieldTimeSlots(field).find(slot => slot.startTime === startTime && slot.endTime === endTime);
+      if (!configuredSlot) {
+        res.status(400).json({ success: false, message: 'Khung giờ này hiện không được sân cung cấp' });
+        return;
       }
+      const price = configuredSlot.price;
 
       const newBooking: IBooking = {
         id: db.generateId('book'),

@@ -78,6 +78,7 @@ export interface IField {
   fieldType: FieldType;
   capacity?: number;
   pricePerHour: number;
+  timeSlots?: IFieldTimeSlot[];
   surfaceType?: string;
   hasLighting?: boolean;
   hasRoof?: boolean;
@@ -86,6 +87,13 @@ export interface IField {
   venueAddress?: string;
   createdAt: string;
   updatedAt: string;
+}
+// Định nghĩa cấu trúc cho từng khung giờ của sân bóng
+export interface IFieldTimeSlot {
+  startTime: string;
+  endTime: string;
+  price: number;
+  isActive: boolean;
 }
 
 export interface ITimeSlot {
@@ -244,6 +252,8 @@ export interface IReview {
   userName: string;
   userAvatar?: string;
   venueId: string;
+  venueName?: string; // tên sân bóng
+  venueAddress?: string;  // địa chỉ sân bóng
   bookingId?: string;
   rating: number;
   comment: string;

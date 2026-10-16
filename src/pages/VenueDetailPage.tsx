@@ -416,6 +416,13 @@ export const VenueDetailPage: React.FC = () => {
                   </div>
                   <StarRating rating={rev.rating} size="sm" />
                 </div>
+                      {/* thông tin sân bóng liên quan đến đánh giá */}
+                <div className="flex items-start gap-2 text-[11px] text-slate-500 border-l-2 border-emerald-300 pl-3">
+                  <MapPin className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
+                  <span>
+                    Đánh giá tại <strong className="text-slate-700">{venue.name}</strong> · {venue.address}, {venue.district}, {venue.city}
+                  </span>
+                </div>
 
                 <p className="text-xs text-slate-600 leading-relaxed">{rev.comment}</p>
 
