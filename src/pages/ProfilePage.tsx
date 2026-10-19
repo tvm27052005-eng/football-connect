@@ -73,7 +73,7 @@ export const ProfilePage: React.FC = () => {
     <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8 space-y-8">
       <div>
         <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
-          Hồ Sơ Cầu Thủ & Cài Đặt
+          Hồ Sơ & Cài Đặt
         </h1>
         <p className="text-xs text-slate-500 mt-1">
           Cập nhật kỹ năng, vị trí thi đấu và khu vực để nhận gợi ý ghép kèo chuẩn xác nhất.

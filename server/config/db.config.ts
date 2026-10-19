@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import { db } from '../models/db.js';
 import { seedInitialData } from '../utils/seed.js';
 
 export async function connectDB(): Promise<boolean> {
@@ -15,6 +16,9 @@ export async function connectDB(): Promise<boolean> {
 
     // Run automatic seeding if database is fresh
     await seedInitialData();
+
+    // Synchronize live memory engine with MongoDB data
+    await db.initFromMongoDB();
 
     return true;
   } catch (error: any) {

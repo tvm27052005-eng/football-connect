@@ -228,10 +228,10 @@ export const bookingController = {
         updatedAt: new Date().toISOString()
       };
 
-      db.bookings.push(newBooking);
+      await db.syncBooking(newBooking);
 
       // Create notification for User
-      db.notifications.push({
+      await db.syncNotification({
         id: db.generateId('notif'),
         userId: req.user.id,
         title: 'Đặt sân thành công!',
@@ -243,7 +243,7 @@ export const bookingController = {
       });
 
       // Create notification for Owner
-      db.notifications.push({
+      await db.syncNotification({
         id: db.generateId('notif'),
         userId: venue.ownerId,
         title: 'Có lượt đặt sân mới',
@@ -322,10 +322,11 @@ export const bookingController = {
         }
       }
       booking.updatedAt = new Date().toISOString();
+      await db.syncBooking(booking);
 
       // Notify the user if cancelled by owner
       if (isOwner || isAdmin) {
-        db.notifications.push({
+        await db.syncNotification({
           id: db.generateId('notif'),
           userId: booking.userId,
           title: 'Đơn đặt sân đã bị hủy',
@@ -368,6 +369,7 @@ export const bookingController = {
       if (status) booking.status = status as BookingStatus;
       if (paymentStatus) booking.paymentStatus = paymentStatus as PaymentStatus;
       booking.updatedAt = new Date().toISOString();
+      await db.syncBooking(booking);
 
       res.json({
         success: true,

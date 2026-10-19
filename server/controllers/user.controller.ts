@@ -72,7 +72,7 @@ export const userController = {
         updatedAt: new Date().toISOString()
       };
 
-      db.users[userIndex] = updatedUser;
+      await db.syncUser(updatedUser);
       const { password: _, ...safeUser } = updatedUser;
 
       res.json({
@@ -108,6 +108,7 @@ export const userController = {
 
       user.password = await hashPassword(newPassword);
       user.updatedAt = new Date().toISOString();
+      await db.syncUser(user);
 
       res.json({ success: true, message: 'Đổi mật khẩu thành công' });
     } catch {
@@ -162,6 +163,7 @@ export const userController = {
 
       user.isActive = !user.isActive;
       user.updatedAt = new Date().toISOString();
+      await db.syncUser(user);
 
       res.json({
         success: true,
@@ -192,6 +194,7 @@ export const userController = {
 
       user.role = role;
       user.updatedAt = new Date().toISOString();
+      await db.syncUser(user);
 
       res.json({
         success: true,

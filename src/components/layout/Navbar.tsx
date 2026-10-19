@@ -260,7 +260,7 @@ export const Navbar: React.FC = () => {
                           onClick={() => setShowUserMenu(false)}
                           className="flex items-center gap-2.5 px-4 py-2 text-xs font-semibold text-slate-700 hover:text-emerald-700 hover:bg-emerald-50/50 transition-colors"
                         >
-                          <User className="w-4 h-4 text-slate-400" /> Hồ sơ cầu thủ
+                          <User className="w-4 h-4 text-slate-400" /> Hồ sơ của tôi
                         </Link>
                         <Link
                           to="/bookings"

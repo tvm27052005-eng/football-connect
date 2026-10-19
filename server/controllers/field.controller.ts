@@ -177,7 +177,7 @@ export const fieldController = {
         updatedAt: new Date().toISOString()
       };
 
-      db.fields.push(newField);
+      await db.syncField(newField);
 
       res.status(201).json({
         success: true,
@@ -225,7 +225,7 @@ export const fieldController = {
         updatedAt: new Date().toISOString()
       };
 
-      db.fields[fieldIndex] = updatedField;
+      await db.syncField(updatedField);
 
       res.json({
         success: true,
@@ -253,7 +253,7 @@ export const fieldController = {
         return;
       }
 
-      db.fields = db.fields.filter(f => f.id !== id);
+      await db.deleteField(id);
 
       res.json({ success: true, message: 'Đã xóa sân con thành công' });
     } catch {

@@ -216,7 +216,7 @@ export const venueController = {
         updatedAt: new Date().toISOString()
       };
 
-      db.venues.push(newVenue);
+      await db.syncVenue(newVenue);
 
       // Create a default field 7-vs-7 for this venue
       const defaultField: IField = {
@@ -231,7 +231,7 @@ export const venueController = {
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
       };
-      db.fields.push(defaultField);
+      await db.syncField(defaultField);
 
       res.status(201).json({
         success: true,
@@ -269,7 +269,7 @@ export const venueController = {
         updatedAt: new Date().toISOString()
       };
 
-      db.venues[venueIndex] = updatedVenue;
+      await db.syncVenue(updatedVenue);
 
       res.json({
         success: true,
@@ -296,9 +296,7 @@ export const venueController = {
         return;
       }
 
-      db.venues = db.venues.filter(v => v.id !== id);
-      // Clean up fields associated
-      db.fields = db.fields.filter(f => f.venueId !== id);
+      await db.deleteVenue(id);
 
       res.json({ success: true, message: 'Đã xóa sân bóng thành công' });
     } catch {

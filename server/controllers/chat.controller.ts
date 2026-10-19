@@ -129,7 +129,7 @@ export const chatController = {
         createdAt: new Date().toISOString()
       };
 
-      db.messages.push(newMessage);
+      await db.syncMessage(newMessage);
 
       conversation.lastMessage = {
         content: newMessage.content,
@@ -138,6 +138,7 @@ export const chatController = {
         createdAt: newMessage.createdAt
       };
       conversation.updatedAt = newMessage.createdAt;
+      await db.syncConversation(conversation);
 
       res.status(201).json({ success: true, data: newMessage });
     } catch {
@@ -181,7 +182,7 @@ export const chatController = {
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString()
         };
-        db.conversations.push(conv);
+        await db.syncConversation(conv);
       }
 
       res.json({ success: true, data: conv });

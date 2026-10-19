@@ -114,6 +114,12 @@ export interface ISanChiTiet {
   gia_thue_gio: number;
   mat_co: string;
   trang_thai: 'DANG_HOAT_DONG' | 'BAO_TRI';
+  khung_gio_thue?: Array<{
+    startTime: string;
+    endTime: string;
+    price: number;
+    isActive: boolean;
+  }>;
 }
 
 const SanChiTietSchema = new Schema<ISanChiTiet>({
@@ -124,7 +130,13 @@ const SanChiTietSchema = new Schema<ISanChiTiet>({
   suc_chua: { type: Number, default: 14 },
   gia_thue_gio: { type: Number, required: true },
   mat_co: { type: String, default: 'Cỏ nhân tạo' },
-  trang_thai: { type: String, enum: ['DANG_HOAT_DONG', 'BAO_TRI'], default: 'DANG_HOAT_DONG' }
+  trang_thai: { type: String, enum: ['DANG_HOAT_DONG', 'BAO_TRI'], default: 'DANG_HOAT_DONG' },
+  khung_gio_thue: [{
+    startTime: { type: String },
+    endTime: { type: String },
+    price: { type: Number },
+    isActive: { type: Boolean, default: true }
+  }]
 }, {
   collection: 'san_chi_tiet',
   timestamps: { createdAt: 'ngay_tao', updatedAt: 'ngay_cap_nhat' }

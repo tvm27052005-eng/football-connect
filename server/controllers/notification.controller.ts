@@ -35,6 +35,7 @@ export const notificationController = {
 
       if (notif) {
         notif.isRead = true;
+        await db.syncNotification(notif);
       }
 
       res.json({ success: true, message: 'Đã đánh dấu đã đọc' });
@@ -51,11 +52,12 @@ export const notificationController = {
         return;
       }
 
-      db.notifications.forEach(n => {
+      for (const n of db.notifications) {
         if (n.userId === req.user?.id) {
           n.isRead = true;
+          await db.syncNotification(n);
         }
-      });
+      }
 
       res.json({ success: true, message: 'Đã đánh dấu tất cả thông báo là đã đọc' });
     } catch {

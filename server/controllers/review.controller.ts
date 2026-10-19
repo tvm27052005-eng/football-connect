@@ -74,7 +74,7 @@ export const reviewController = {
         createdAt: new Date().toISOString()
       };
 
-      db.reviews.push(newReview);
+      await db.syncReview(newReview);
 
       // Auto update Venue rating and reviewCount
       const allVenueReviews = db.reviews.filter(r => r.venueId === venueId);
@@ -82,9 +82,10 @@ export const reviewController = {
       venue.rating = Number(avgRating.toFixed(1));
       venue.reviewCount = allVenueReviews.length;
       venue.updatedAt = new Date().toISOString();
+      await db.syncVenue(venue);
 
       // Notify owner
-      db.notifications.push({
+      await db.syncNotification({
         id: db.generateId('notif'),
         userId: venue.ownerId,
         title: 'Có đánh giá mới cho sân của bạn',
@@ -165,6 +166,7 @@ export const reviewController = {
         content: contentText.trim(),
         createdAt: new Date().toISOString()
       };
+      await db.syncReview(review);
 
       res.json({
         success: true,
@@ -191,7 +193,7 @@ export const reviewController = {
         return;
       }
 
-      db.reviews = db.reviews.filter(r => r.id !== id);
+      await db.deleteReview(id);
 
       // Recompute venue rating
       const venue = db.venues.find(v => v.id === review.venueId);
@@ -201,6 +203,7 @@ export const reviewController = {
         venue.rating = remaining.length > 0
           ? Number((remaining.reduce((sum, r) => sum + r.rating, 0) / remaining.length).toFixed(1))
           : 5.0;
+        await db.syncVenue(venue);
       }
 
       res.json({ success: true, message: 'Đã xóa đánh giá thành công' });

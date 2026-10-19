@@ -227,7 +227,7 @@ export const matchController = {
         updatedAt: new Date().toISOString()
       };
 
-      db.matches.push(newMatch);
+      await db.syncMatch(newMatch);
 
       // Add creator as Team A Captain participant
       const creatorParticipant: IMatchParticipant = {
@@ -242,7 +242,7 @@ export const matchController = {
         status: 'CONFIRMED',
         joinedAt: new Date().toISOString()
       };
-      db.matchParticipants.push(creatorParticipant);
+      await db.syncMatchParticipant(creatorParticipant);
 
       // Create match conversation
       const matchConversation = {
@@ -261,7 +261,7 @@ export const matchController = {
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
       };
-      db.conversations.push(matchConversation);
+      await db.syncConversation(matchConversation);
 
       res.status(201).json({
         success: true,
@@ -311,6 +311,7 @@ export const matchController = {
       match.teamBJoined = true;
       match.status = 'FULL';
       match.updatedAt = new Date().toISOString();
+      await db.syncMatch(match);
 
       const newParticipant: IMatchParticipant = {
         id: db.generateId('part'),
@@ -324,7 +325,7 @@ export const matchController = {
         status: 'CONFIRMED',
         joinedAt: new Date().toISOString()
       };
-      db.matchParticipants.push(newParticipant);
+      await db.syncMatchParticipant(newParticipant);
 
       // Add to conversation
       const conversation = db.conversations.find(c => c.matchId === match.id);
@@ -332,7 +333,8 @@ export const matchController = {
         if (!conversation.participantIds.includes(req.user.id)) {
           conversation.participantIds.push(req.user.id);
         }
-        db.messages.push({
+        await db.syncConversation(conversation);
+        await db.syncMessage({
           id: db.generateId('msg'),
           conversationId: conversation.id,
           senderId: req.user.id,
@@ -346,7 +348,7 @@ export const matchController = {
       }
 
       // Notify match creator (Team A)
-      db.notifications.push({
+      await db.syncNotification({
         id: db.generateId('notif'),
         userId: match.creatorId,
         title: '🎉 Đã có Đội B nhận bắt kèo của bạn!',
@@ -391,13 +393,13 @@ export const matchController = {
         return;
       }
 
-      const partIndex = db.matchParticipants.findIndex(p => p.matchId === id && p.userId === req.user?.id && p.status === 'CONFIRMED');
-      if (partIndex === -1) {
+      const part = db.matchParticipants.find(p => p.matchId === id && p.userId === req.user?.id && p.status === 'CONFIRMED');
+      if (!part) {
         res.status(400).json({ success: false, message: 'Bạn chưa tham gia trận đấu này' });
         return;
       }
 
-      db.matchParticipants.splice(partIndex, 1);
+      await db.deleteMatchParticipant(part.id);
 
       const activeParticipants = db.matchParticipants.filter(p => p.matchId === match.id && p.status === 'CONFIRMED');
       match.currentPlayers = activeParticipants.length;
@@ -405,6 +407,7 @@ export const matchController = {
         match.status = 'OPEN';
       }
       match.updatedAt = new Date().toISOString();
+      await db.syncMatch(match);
 
       res.json({
         success: true,
@@ -433,12 +436,13 @@ export const matchController = {
 
       match.status = 'CANCELLED';
       match.updatedAt = new Date().toISOString();
+      await db.syncMatch(match);
 
       // Notify all participants
       const participants = db.matchParticipants.filter(p => p.matchId === id && p.status === 'CONFIRMED');
-      participants.forEach(p => {
+      for (const p of participants) {
         if (p.userId !== req.user?.id) {
-          db.notifications.push({
+          await db.syncNotification({
             id: db.generateId('notif'),
             userId: p.userId,
             title: 'Trận đấu đã bị hủy',
@@ -449,7 +453,7 @@ export const matchController = {
             createdAt: new Date().toISOString()
           });
         }
-      });
+      }
 
       res.json({
         success: true,

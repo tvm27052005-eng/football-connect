@@ -47,10 +47,10 @@ export const authController = {
         updatedAt: new Date().toISOString()
       };
 
-      db.users.push(newUser);
+      await db.syncUser(newUser);
 
       // Create welcome notification
-      db.notifications.push({
+      await db.syncNotification({
         id: db.generateId('notif'),
         userId: newUser.id,
         title: 'Chào mừng gia nhập Football Connect!',
@@ -429,9 +429,10 @@ export const authController = {
       const hashedPassword = await hashPassword(newPassword);
       user.password = hashedPassword;
       user.updatedAt = new Date().toISOString();
+      await db.syncUser(user);
 
       // Notification
-      db.notifications.push({
+      await db.syncNotification({
         id: db.generateId('notif'),
         userId: user.id,
         title: 'Mật khẩu đã được thay đổi',
