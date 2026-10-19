@@ -15,7 +15,7 @@ import { Badge } from '../common/Badge.js';
 
 interface BookingCardProps {
   booking: IBooking;
-  onCancel?: (id: string) => void;
+  onCancel?: (booking: IBooking) => void;
   onReview?: (booking: IBooking) => void;
 }
 
@@ -68,17 +68,15 @@ export const BookingCard: React.FC<BookingCardProps> = ({
 
   return (
     <div
-      className={`bg-white border rounded-2xl p-5 shadow-xs hover:shadow-md space-y-4 transition-all ${
-        isToday && booking.status === 'CONFIRMED'
-          ? 'border-emerald-500/70 ring-1 ring-emerald-500/20'
-          : 'border-slate-200/90 hover:border-slate-300'
-      }`}
+      className={`bg-white border rounded-2xl p-5 shadow-xs hover:shadow-md space-y-4 transition-all ${isToday && booking.status === 'CONFIRMED'
+        ? 'border-emerald-500/70 ring-1 ring-emerald-500/20'
+        : 'border-slate-200/90 hover:border-slate-300'
+        }`}
     >
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-100">
         <div>
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-[10px] font-mono text-slate-400 font-medium">Mã đơn: #{booking.id}</span>
             {isToday && booking.status !== 'CANCELLED' ? (
               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-100 text-emerald-800 animate-pulse">
                 <Sparkles className="w-3 h-3 text-emerald-600" /> Hôm nay đá
@@ -115,10 +113,10 @@ export const BookingCard: React.FC<BookingCardProps> = ({
       {/* Booking Specs */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-slate-50 p-3.5 rounded-xl border border-slate-200/70 text-xs">
         <div>
-          <span className="text-slate-500 block text-[11px] font-medium">Sân & Loại sân</span>
+          <span className="text-slate-500 block text-[11px] font-medium">Sân - Loại sân</span>
           <span className="font-bold text-slate-800">{booking.fieldName}</span>
           <span className="text-[10px] text-emerald-700 font-semibold block uppercase">
-            {booking.fieldType === '5_vs_5' ? 'Sân 5 người' : booking.fieldType === '7_vs_7' ? 'Sân 7 người' : 'Sân 11 người'}
+            {booking.fieldType === '5_vs_5' ? 'Sân 5 người' : 'Sân 7 người'}
           </span>
         </div>
 
@@ -149,9 +147,9 @@ export const BookingCard: React.FC<BookingCardProps> = ({
       {/* Footer Actions */}
       <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
         <div className="text-[11px] text-slate-500 font-medium">
-          Trạng thái thanh toán:{' '}
-          <span className={booking.paymentStatus === 'PAID' ? 'text-emerald-700 font-bold' : 'text-amber-700 font-bold'}>
-            {booking.paymentStatus === 'PAID' ? '✓ Đã thanh toán trực tuyến' : '⏳ Chờ đối soát thanh toán'}
+          Trạng thái:{' '}
+          <span className={booking.paymentStatus === 'PAID' ? 'text-green-500 font-bold' : 'text-red-500 font-bold'}>
+            {booking.paymentStatus === 'PAID' ? '✓ Đã thanh toán' : ' Đã hủy'}
           </span>
           {booking.createdAt && (
             <span className="text-slate-500 text-[11px] ml-2 font-medium">
@@ -163,7 +161,7 @@ export const BookingCard: React.FC<BookingCardProps> = ({
         <div className="flex items-center gap-2">
           {booking.status === 'PENDING' || booking.status === 'CONFIRMED' ? (
             <button
-              onClick={() => onCancel && onCancel(booking.id)}
+              onClick={() => onCancel && onCancel(booking)}
               className="px-3 py-1.5 rounded-xl text-xs font-semibold text-rose-700 hover:bg-rose-50 border border-rose-200 transition-colors cursor-pointer"
             >
               Hủy đặt sân

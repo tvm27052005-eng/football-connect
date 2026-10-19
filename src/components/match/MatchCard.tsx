@@ -19,10 +19,15 @@ export const MatchCard: React.FC<MatchCardProps> = ({ match }) => {
   }[match.skillLevel || 'INTERMEDIATE'];
 
   const costShareText = match.costSharing === 'LOOSER_PAYS'
-    ? '🏆 Đội thua trả 100%'
+    ? 'Đội thua trả 100%'
     : match.costSharing === 'HOME_PAYS'
-    ? '🎁 Đội A bao sân (0đ)'
-    : '🤝 Chia đôi 50 - 50';
+      ? `Đội ${match.teamAName || 'A'} bao sân (0đ)`
+      : match.costSharing === 'WIN_30_LOSE_70'
+        ? 'Thắng 30% - Thua 70%'
+        : match.costSharing === 'WIN_40_LOSE_60'
+          ? 'Thắng 40% - Thua 60%'
+          : 'Chia đôi 50 - 50';
+
 
   const progressPercent = Math.min(100, Math.round(((match.currentPlayers || 1) / (match.maxPlayers || 14)) * 100));
 
@@ -40,26 +45,25 @@ export const MatchCard: React.FC<MatchCardProps> = ({ match }) => {
             </Badge>
           </div>
           <span
-            className={`text-[11px] font-extrabold px-3 py-1 rounded-full flex items-center gap-1 ${
-              match.status === 'OPEN'
-                ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
-                : 'bg-slate-100 text-slate-600 border border-slate-200'
-            }`}
+            className={`text-[11px] font-extrabold px-3 py-1 rounded-full flex items-center gap-1 ${match.status === 'OPEN'
+              ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+              : 'bg-slate-100 text-slate-600 border border-slate-200'
+              }`}
           >
             {match.status === 'OPEN' ? (
               <>
                 <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                Đang Tìm Đối
+                Đang Tìm Đối Thủ
               </>
             ) : (
-              'Đã Đủ Kèo'
+              'Đã Có Đối Thủ'
             )}
           </span>
         </div>
 
         {/* Title */}
         <h3 className="text-base sm:text-lg font-black text-slate-900 line-clamp-1 group-hover:text-emerald-700 transition-colors">
-          {match.title}
+          {match.teamAName}
         </h3>
 
         {/* Location & Time Box */}
@@ -77,47 +81,6 @@ export const MatchCard: React.FC<MatchCardProps> = ({ match }) => {
               <Clock className="w-3.5 h-3.5 text-slate-400" />
               <span className="font-bold text-slate-700">{match.startTime} - {match.endTime}</span>
             </div>
-          </div>
-        </div>
-
-        {/* Team Matchup Box (Team A vs Team B) */}
-        <div className="mt-3.5 bg-gradient-to-r from-slate-50 via-white to-slate-50 p-3 rounded-2xl border border-slate-200 flex items-center justify-between gap-2">
-          <div className="flex-1 text-center p-2 rounded-xl bg-rose-50 border border-rose-200 text-rose-900 truncate">
-            <div className="text-[10px] font-extrabold uppercase text-rose-500">Đội Chủ Nhà</div>
-            <div className="text-xs font-black truncate">{match.teamAName || 'Đội A'}</div>
-          </div>
-
-          <div className="w-7 h-7 rounded-full bg-slate-900 text-white font-black text-[10px] flex items-center justify-center shrink-0 shadow-xs">
-            VS
-          </div>
-
-          <div className={`flex-1 text-center p-2 rounded-xl border truncate ${
-            match.status === 'FULL' || match.teamBJoined
-              ? 'bg-sky-50 border-sky-200 text-sky-900'
-              : 'bg-white border-dashed border-slate-300 text-slate-400'
-          }`}>
-            <div className="text-[10px] font-extrabold uppercase text-slate-400">Đội Đối Thủ</div>
-            <div className="text-xs font-black truncate">
-              {match.teamBName || 'Đang chờ bắt kèo...'}
-            </div>
-          </div>
-        </div>
-
-        {/* Player slots progress */}
-        <div className="mt-3">
-          <div className="flex items-center justify-between text-[11px] mb-1.5">
-            <span className="text-slate-500 font-medium flex items-center gap-1">
-              <Users className="w-3.5 h-3.5 text-emerald-600" /> Cầu thủ đã tham gia:
-            </span>
-            <span className="font-extrabold text-slate-800">
-              {match.currentPlayers || 1}/{match.maxPlayers || 14}
-            </span>
-          </div>
-          <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden border border-slate-200/60">
-            <div
-              className="bg-gradient-to-r from-emerald-500 to-teal-500 h-2 rounded-full transition-all duration-500"
-              style={{ width: `${progressPercent}%` }}
-            />
           </div>
         </div>
       </div>

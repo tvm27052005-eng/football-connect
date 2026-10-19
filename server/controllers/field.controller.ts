@@ -92,7 +92,8 @@ export const fieldController = {
         b.bookingDate === date &&
         (b.status === 'CONFIRMED' || b.status === 'PENDING')
       );
-// 
+      const now = new Date();
+
       const slots: ITimeSlot[] = getFieldTimeSlots(field).map(slot => {
         if (!isFieldActive) {
           return {
@@ -103,6 +104,10 @@ export const fieldController = {
           };
         }
 
+        // Kiểm tra xem ca đá này đã trôi qua so với hiện tại chưa
+        const slotStartDateTime = new Date(`${date}T${slot.startTime}:00`);
+        const isPastSlot = !isNaN(slotStartDateTime.getTime()) && slotStartDateTime <= now;
+
         // Check if any booking overlaps with this slot
         const conflictingBooking = dateBookings.find(b =>
           (slot.startTime < b.endTime && slot.endTime > b.startTime)
@@ -111,7 +116,7 @@ export const fieldController = {
         return {
           startTime: slot.startTime,
           endTime: slot.endTime,
-          status: conflictingBooking ? 'BOOKED' : 'AVAILABLE',
+          status: isPastSlot ? 'BLOCKED' : conflictingBooking ? 'BOOKED' : 'AVAILABLE',
           bookingId: conflictingBooking ? conflictingBooking.id : undefined,
           price: slot.price
         };

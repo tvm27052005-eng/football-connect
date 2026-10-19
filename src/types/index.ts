@@ -111,10 +111,11 @@ export interface IBooking {
   userPhone?: string;
   userEmail?: string;
   venueId: string;
-  venueName?: string;
+  venueName: string;
   venueAddress?: string;
+  ownerPhone?: string;
   fieldId: string;
-  fieldName?: string;
+  fieldName: string;
   fieldType?: FieldType;
   bookingDate: string;
   startTime: string;
@@ -145,7 +146,7 @@ export interface IMatchParticipant {
   joinedAt: string;
 }
 
-export type CostSharingType = '50_50' | 'LOOSER_PAYS' | 'HOME_PAYS';
+export type CostSharingType = '50_50' | 'LOOSER_PAYS' | 'HOME_PAYS' | 'WIN_30_LOSE_70' | 'WIN_40_LOSE_60';
 
 export interface IMatch {
   id: string;

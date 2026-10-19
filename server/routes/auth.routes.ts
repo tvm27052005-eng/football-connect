@@ -5,6 +5,10 @@ import { authenticateToken } from '../middlewares/auth.middleware.js';
 const router = Router();
 
 router.post('/register', authController.register);
+router.post('/register-otp', authController.sendRegisterOtp);
+router.post('/verify-register-otp', authController.verifyRegisterOtp);
+router.post('/forgot-password-otp', authController.sendForgotPasswordOtp);
+router.post('/reset-password', authController.resetPassword);
 router.post('/login', authController.login);
 router.post('/logout', authController.logout);
 router.get('/me', authenticateToken, authController.getMe);

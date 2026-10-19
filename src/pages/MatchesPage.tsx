@@ -4,12 +4,7 @@ import {
   Users,
   Plus,
   Sparkles,
-  Trophy,
-  Filter,
   Search,
-  CheckCircle2,
-  AlertCircle,
-  TrendingUp,
   MapPin,
   Calendar,
   Clock
@@ -208,7 +203,6 @@ export const MatchesPage: React.FC = () => {
             <option value="">Tất cả loại sân</option>
             <option value="5_vs_5">Sân 5 người</option>
             <option value="7_vs_7">Sân 7 người</option>
-            <option value="11_vs_11">Sân 11 người</option>
           </select>
         </div>
 
@@ -256,7 +250,7 @@ export const MatchesPage: React.FC = () => {
       >
         <div className="space-y-4 text-xs">
           <div className="p-3.5 bg-emerald-50 border border-emerald-200 rounded-xl text-slate-700">
-            Hệ thống dựa trên <strong className="text-emerald-700 font-bold">Vị trí ({user?.location?.district || 'Hà Nội'})</strong>, <strong className="text-emerald-700 font-bold">Trình độ ({user?.skillLevel || 'INTERMEDIATE'})</strong> và <strong className="text-emerald-700 font-bold">Loại sân yêu thích ({user?.preferredFieldType || '7_vs_7'})</strong> để tính điểm tương đồng.
+            Hệ thống dựa trên <strong className="text-emerald-700 font-bold">Vị trí ({user?.location?.district || 'Hà Nội'})</strong>, <strong className="text-emerald-700 font-bold">Trình độ ({user?.skillLevel === 'BEGINNER' ? 'Tập sự' : user?.skillLevel === 'ADVANCED' ? 'Nâng cao' : user?.skillLevel === 'PRO' ? 'Bán chuyên' : 'Trung bình / Khá'})</strong> và <strong className="text-emerald-700 font-bold">Loại sân yêu thích ({user?.preferredFieldType || '7_vs_7'})</strong> để tính điểm tương đồng.
           </div>
 
           {recommendations.length === 0 ? (
@@ -340,7 +334,7 @@ export const MatchesPage: React.FC = () => {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block text-slate-700 font-bold mb-1">Tên Đội Bóng Của Bạn (Đội A) *</label>
+              <label className="block text-slate-700 font-bold mb-1">Tên Đội Bóng Của Bạn  *</label>
               <input
                 type="text"
                 required
@@ -352,7 +346,7 @@ export const MatchesPage: React.FC = () => {
             </div>
 
             <div>
-              <label className="block text-slate-700 font-bold mb-1">SĐT/Zalo Đội Trưởng A *</label>
+              <label className="block text-slate-700 font-bold mb-1">SĐT/Zalo Đội Trưởng *</label>
               <input
                 type="text"
                 required
@@ -401,7 +395,6 @@ export const MatchesPage: React.FC = () => {
               >
                 <option value="5_vs_5">Sân 5 người (5v5)</option>
                 <option value="7_vs_7">Sân 7 người (7v7)</option>
-                <option value="11_vs_11">Sân 11 người (11v11)</option>
               </select>
             </div>
           </div>
@@ -462,10 +455,13 @@ export const MatchesPage: React.FC = () => {
                 onChange={(e) => setCreateForm({ ...createForm, costSharing: e.target.value })}
                 className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 font-medium focus:outline-none focus:bg-white focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
               >
-                <option value="50_50">🤝 Chia đôi tiền sân (50% - 50%)</option>
-                <option value="LOOSER_PAYS">🏆 Đội thua trả tiền sân</option>
-                <option value="HOME_PAYS">🎁 Đội A bao tiền sân (Miễn phí Đội B)</option>
+                <option value="50_50"> Chia đôi tiền sân (50% - 50%)</option>
+                <option value="WIN_30_LOSE_70"> Đội thắng 30% - đội thua 70%</option>
+                <option value="WIN_40_LOSE_60"> Đội thắng 40% - đội thua 60%</option>
+                <option value="LOOSER_PAYS"> Đội thua trả tiền sân (100%)</option>
+                <option value="HOME_PAYS"> Đội chủ nhà bao tiền sân (Miễn phí Đội khách)</option>
               </select>
+
             </div>
 
             <div>

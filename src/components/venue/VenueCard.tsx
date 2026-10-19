@@ -69,7 +69,7 @@ export const VenueCard: React.FC<VenueCardProps> = ({ venue }) => {
                 key={ft}
                 className="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-200"
               >
-                {ft === '5_vs_5' ? 'Sân 5' : ft === '7_vs_7' ? 'Sân 7' : 'Sân 11'}
+                {ft === '5_vs_5' ? 'Sân 5' : 'Sân 7' }
               </span>
             ))}
             {venue.amenities.slice(0, 2).map((a, i) => (

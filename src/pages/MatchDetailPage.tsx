@@ -87,11 +87,23 @@ export const MatchDetailPage: React.FC = () => {
     );
   }
 
+  const skillLevelMap: Record<string, string> = {
+    BEGINNER: 'Tập sự / Dưỡng sinh',
+    INTERMEDIATE: 'Trung bình / Khá',
+    ADVANCED: 'Nâng cao / Chuyên nghiệp',
+    PRO: 'Bán chuyên / Cao thủ',
+  };
+
   const costShareLabel = match.costSharing === 'LOOSER_PAYS'
-    ? '🏆 Đội thua trả 100% tiền sân'
+    ? ' Đội thua trả 100% tiền sân'
     : match.costSharing === 'HOME_PAYS'
-    ? '🎁 Đội A bao toàn bộ tiền sân (0đ)'
-    : '🤝 Chia đôi 50% - 50% tiền sân';
+      ? ` Đội ${match.teamAName || 'A'} bao toàn bộ tiền sân (0đ)`
+      : match.costSharing === 'WIN_30_LOSE_70'
+        ? ' Đội thắng 30% - đội thua 70%'
+        : match.costSharing === 'WIN_40_LOSE_60'
+          ? ' Đội thắng 40% - đội thua 60%'
+          : 'Chia đôi 50% - 50% tiền sân';
+
 
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 space-y-8">
@@ -106,13 +118,13 @@ export const MatchDetailPage: React.FC = () => {
           <div>
             <div className="flex flex-wrap items-center gap-2 mb-2">
               <span className="px-2.5 py-0.5 rounded-md text-[11px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
-                {match.fieldType === '5_vs_5' ? 'Sân 5v5' : match.fieldType === '7_vs_7' ? 'Sân 7v7' : 'Sân 11v11'}
+                {match.fieldType === '5_vs_5' ? 'Sân 5v5' : 'Sân 7v7'}
               </span>
               <span className="px-2.5 py-0.5 rounded-md text-[11px] font-semibold bg-slate-100 text-slate-700 border border-slate-200">
-                Trình độ: {match.skillLevel}
+                Trình độ: {skillLevelMap[match.skillLevel] || match.skillLevel}
               </span>
               <Badge variant={match.status === 'OPEN' ? 'emerald' : 'slate'} size="sm">
-                {match.status === 'OPEN' ? '🟢 Đang Tìm Đội B' : '🔵 Đã Có Đối Thủ'}
+                {match.status === 'OPEN' ? '🟢 Đang Tìm Đối Thủ' : '🔵 Đã Có Đối Thủ'}
               </Badge>
             </div>
 
@@ -125,7 +137,7 @@ export const MatchDetailPage: React.FC = () => {
           </div>
 
           <div className="text-right sm:shrink-0 bg-slate-50 p-4 rounded-2xl border border-slate-200/80">
-            <span className="text-[10px] text-slate-400 block uppercase font-medium">Thể thức tiền sân</span>
+            <span className="text-[10px] text-slate-400 block uppercase font-medium">Tiền sân</span>
             <span className="text-sm font-extrabold text-emerald-700 block mt-0.5">{costShareLabel}</span>
             <span className="text-xs text-slate-500 font-bold block mt-1">Tổng tiền sân: {(match.totalFieldFee || 600000).toLocaleString('vi-VN')} đ</span>
           </div>
@@ -135,7 +147,7 @@ export const MatchDetailPage: React.FC = () => {
         <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5 grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* Team A */}
           <div className="p-4 bg-white rounded-xl border border-rose-200 shadow-2xs space-y-2">
-            <span className="text-[10px] font-extrabold uppercase text-rose-600 tracking-wider">🔴 Đội Chủ Nhà (Team A)</span>
+            <span className="text-[10px] font-extrabold uppercase text-rose-600 tracking-wider">🔴 Đội Chủ Nhà</span>
             <h3 className="text-lg font-black text-slate-900">{match.teamAName || 'Đội A'}</h3>
             <div className="text-xs text-slate-600 space-y-1">
               <div>Đội trưởng: <strong>{match.teamACaptain || match.creatorName}</strong></div>
@@ -144,14 +156,13 @@ export const MatchDetailPage: React.FC = () => {
           </div>
 
           {/* Team B */}
-          <div className={`p-4 rounded-xl border shadow-2xs space-y-2 ${
-            match.status === 'FULL' || match.teamBJoined
-              ? 'bg-white border-sky-200'
-              : 'bg-slate-50 border-dashed border-slate-300'
-          }`}>
-            <span className="text-[10px] font-extrabold uppercase text-sky-600 tracking-wider">🔵 Đội Đối Thủ (Team B)</span>
+          <div className={`p-4 rounded-xl border shadow-2xs space-y-2 ${match.status === 'FULL' || match.teamBJoined
+            ? 'bg-white border-sky-200'
+            : 'bg-slate-50 border-dashed border-slate-300'
+            }`}>
+            <span className="text-[10px] font-extrabold uppercase text-sky-600 tracking-wider">🔵 Đội Khách</span>
             <h3 className="text-lg font-black text-slate-900">
-              {match.status === 'FULL' || match.teamBJoined ? (match.teamBName || 'Đội B') : '⏳ Đang tìm Đội B đối thủ...'}
+              {match.status === 'FULL' || match.teamBJoined ? (match.teamBName) : ' Đang tìm đối thủ...'}
             </h3>
             <div className="text-xs text-slate-600 space-y-1">
               {match.teamBCaptain ? (
@@ -186,21 +197,21 @@ export const MatchDetailPage: React.FC = () => {
             <span className="text-slate-500 block text-[11px] font-medium">Quy mô trận</span>
             <span className="font-bold text-slate-800 flex items-center gap-1 mt-0.5">
               <Users className="w-3.5 h-3.5 text-emerald-600" />
-              2 Đội Trận Đấu (Team vs Team)
+              2 Đội
             </span>
           </div>
         </div>
 
         {match.description && (
           <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200/80 text-xs text-slate-600 leading-relaxed">
-            <span className="font-bold text-slate-900 block mb-1">Mô tả từ Đội A:</span>
+            <span className="font-bold text-slate-900 block mb-1">Mô tả từ đội chủ nhà:</span>
             {match.description}
           </div>
         )}
 
         {/* Map Location */}
         <div className="space-y-2 pt-2">
-          <span className="font-bold text-slate-900 text-xs block">📍 Vị trí địa điểm thi đấu trên Google Maps:</span>
+          <span className="font-bold text-slate-900 text-xs block"> Vị trí địa điểm thi đấu trên Google Maps:</span>
           <GoogleMapView
             title={match.venueName}
             address={`${match.venueName}, ${match.venueAddress}`}
@@ -224,7 +235,7 @@ export const MatchDetailPage: React.FC = () => {
                 disabled={isProcessing}
                 className="px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white text-xs font-bold transition-all shadow-xs flex items-center gap-1.5 cursor-pointer"
               >
-                <UserPlus className="w-4 h-4" /> ⚡ Bắt Kèo Ngay (Đăng Ký Đội B)
+                <UserPlus className="w-4 h-4" />  Xác nhận bắt kèo với {match.teamAName}
               </button>
             )}
 
@@ -290,7 +301,7 @@ export const MatchDetailPage: React.FC = () => {
               disabled={isProcessing}
               className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold transition-all shadow-xs cursor-pointer"
             >
-              {isProcessing ? 'Đang xác nhận...' : '🚀 Xác Nhận Bắt Kèo Ngay'}
+              {isProcessing ? 'Đang xác nhận...' : ' Xác Nhận Bắt Kèo Ngay'}
             </button>
           </div>
         </form>

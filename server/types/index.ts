@@ -96,6 +96,7 @@ export interface IBooking {
   venueId: string;
   venueName?: string;
   venueAddress?: string;
+  ownerPhone?: string;
   fieldId: string;
   fieldName?: string;
   fieldType?: FieldType;
