@@ -1,6 +1,9 @@
 import React from 'react';
-import { Clock, Check, Ban } from 'lucide-react';
+import { Clock, Check, Ban, Flame } from 'lucide-react';
 import { ITimeSlot } from '../../types/index.js';
+
+// Các ca bắt đầu vào giờ cao điểm được xem là khung giờ vàng
+const GOLDEN_HOUR_STARTS = ['17:30', '19:00', '20:30'];
 
 interface TimeSlotMatrixProps {
   slots: ITimeSlot[];
@@ -45,12 +48,16 @@ export const TimeSlotMatrix: React.FC<TimeSlotMatrixProps> = ({
         <span className="flex items-center gap-1.5">
           <span className="w-2.5 h-2.5 rounded-full bg-slate-400" /> Tạm khóa
         </span>
+        <span className="flex items-center gap-1.5">
+          <Flame className="w-3 h-3 text-orange-500" /> Giờ vàng
+        </span>
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2.5">
         {slots.map((slot) => {
           const isSelected = selectedSlot?.startTime === slot.startTime && selectedSlot?.endTime === slot.endTime;
           const isAvailable = slot.status === 'AVAILABLE';
+          const isGoldenHour = GOLDEN_HOUR_STARTS.includes(slot.startTime);
 
           return (
             <button
@@ -67,8 +74,13 @@ export const TimeSlotMatrix: React.FC<TimeSlotMatrixProps> = ({
               }`}
             >
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold tracking-tight">
+                <span className="flex items-center gap-1 text-xs font-bold tracking-tight">
                   {slot.startTime} - {slot.endTime}
+                  {isGoldenHour && (
+                    <span title="Khung giờ vàng">
+                      <Flame className={`w-3.5 h-3.5 ${isSelected ? 'text-amber-200' : 'text-orange-500'}`} />
+                    </span>
+                  )}
                 </span>
                 {isSelected ? (
                   <Check className="w-4 h-4 text-white stroke-[3]" />

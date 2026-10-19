@@ -57,14 +57,18 @@ export const Navbar: React.FC = () => {
     navigate('/login');
   };
 
-  const navLinks = [
-    { name: 'Trang chủ', path: '/' },
-    { name: 'Tìm sân bóng', path: '/venues', icon: Search },
-    { name: 'Cáp kèo & Đối thủ', path: '/matches', icon: Users, badge: 'HOT' },
-    { name: 'Đặt lịch sân', path: '/booking/create', icon: Calendar },
-    ...(isAuthenticated ? [{ name: 'Lịch của tôi', path: '/bookings' }] : []),
-    ...(isAuthenticated ? [{ name: 'Phòng chat', path: '/chat', icon: MessageSquare }] : [])
-  ];
+  const chatLink = { name: 'Phòng chat', path: '/chat', icon: MessageSquare };
+  // Chủ sân chỉ cần Phòng chat, các mục còn lại dành cho cầu thủ
+  const navLinks: { name: string; path: string; icon?: typeof Search; badge?: string }[] = user?.role === 'OWNER'
+    ? [chatLink]
+    : [
+        { name: 'Trang chủ', path: '/' },
+        { name: 'Tìm sân bóng', path: '/venues', icon: Search },
+        { name: 'Cáp kèo & Đối thủ', path: '/matches', icon: Users, badge: 'HOT' },
+        { name: 'Đặt lịch sân', path: '/booking/create', icon: Calendar },
+        ...(isAuthenticated ? [{ name: 'Lịch của tôi', path: '/bookings' }] : []),
+        ...(isAuthenticated ? [chatLink] : [])
+      ];
 
   return (
     <header className="sticky top-0 z-50 bg-white/90 backdrop-blur-md border-b border-slate-200/90 text-slate-800 transition-all shadow-xs">
@@ -297,13 +301,15 @@ export const Navbar: React.FC = () => {
                         >
                           <User className="w-4 h-4 text-slate-400" /> Hồ sơ cầu thủ
                         </Link>
-                        <Link
-                          to="/bookings"
-                          onClick={() => setShowUserMenu(false)}
-                          className="flex items-center gap-2.5 px-4 py-2 text-xs font-semibold text-slate-700 hover:text-emerald-700 hover:bg-emerald-50/50 transition-colors"
-                        >
-                          <Calendar className="w-4 h-4 text-slate-400" /> Lịch đặt sân của tôi
-                        </Link>
+                        {user?.role !== 'OWNER' && (
+                          <Link
+                            to="/bookings"
+                            onClick={() => setShowUserMenu(false)}
+                            className="flex items-center gap-2.5 px-4 py-2 text-xs font-semibold text-slate-700 hover:text-emerald-700 hover:bg-emerald-50/50 transition-colors"
+                          >
+                            <Calendar className="w-4 h-4 text-slate-400" /> Lịch đặt sân của tôi
+                          </Link>
+                        )}
                         <Link
                           to="/chat"
                           onClick={() => setShowUserMenu(false)}

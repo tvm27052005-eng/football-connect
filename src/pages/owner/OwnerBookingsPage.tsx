@@ -13,19 +13,27 @@ import {
   X
 } from 'lucide-react';
 import { api } from '../../services/api.js';
-import { IBooking } from '../../types/index.js';
+import { BookingStatus, IBooking } from '../../types/index.js';
 import { OwnerSidebar } from '../../components/layout/OwnerSidebar.js';
 import { Badge } from '../../components/common/Badge.js';
 import { LoadingSkeleton, EmptyState } from '../../components/common/LoadingSkeleton.js';
 import { formatBookingDate, formatBookingCreationTime } from '../../components/booking/BookingCard.js';
 
 type OwnerSortOption =
+  | 'created_desc'
   | 'time_asc'
   | 'time_desc'
   | 'date_asc'
   | 'date_desc'
   | 'name_asc'
   | 'price_desc';
+
+const STATUS_META: Record<BookingStatus, { label: string; variant: 'amber' | 'emerald' | 'blue' | 'rose' }> = {
+  PENDING: { label: 'Chờ duyệt', variant: 'amber' },
+  CONFIRMED: { label: 'Đã xác nhận', variant: 'emerald' },
+  COMPLETED: { label: 'Hoàn thành', variant: 'blue' },
+  CANCELLED: { label: 'Đã hủy', variant: 'rose' }
+};
 
 export const OwnerBookingsPage: React.FC = () => {
   const [bookings, setBookings] = useState<IBooking[]>([]);
@@ -97,6 +105,8 @@ export const OwnerBookingsPage: React.FC = () => {
     // Sort list
     list.sort((a, b) => {
       switch (sortBy) {
+        case 'created_desc':
+          return (b.createdAt || '').localeCompare(a.createdAt || '');
         case 'time_asc': {
           const comp = a.startTime.localeCompare(b.startTime);
           if (comp !== 0) return comp;
@@ -194,6 +204,7 @@ export const OwnerBookingsPage: React.FC = () => {
                 onChange={(e) => setSortBy(e.target.value as OwnerSortOption)}
                 className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 font-semibold focus:outline-none focus:bg-white focus:border-emerald-600 focus:ring-2 focus:ring-emerald-600/20 cursor-pointer"
               >
+                <option value="created_desc">🆕 Mới đặt gần nhất</option>
                 <option value="time_asc">⏰ Giờ đá: Sớm nhất trước (06:00 → 23:00)</option>
                 <option value="time_desc">⏰ Giờ đá: Muộn nhất trước (23:00 → 06:00)</option>
                 <option value="date_asc">📅 Ngày đá: Gần nhất trước</option>
@@ -211,10 +222,10 @@ export const OwnerBookingsPage: React.FC = () => {
                 className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 font-semibold focus:outline-none focus:bg-white focus:border-emerald-600 focus:ring-2 focus:ring-emerald-600/20 cursor-pointer"
               >
                 <option value="ALL">Tất cả trạng thái</option>
-                <option value="PENDING">Chờ duyệt (PENDING)</option>
-                <option value="CONFIRMED">Đã xác nhận (CONFIRMED)</option>
-                <option value="COMPLETED">Đã hoàn thành (COMPLETED)</option>
-                <option value="CANCELLED">Đã hủy (CANCELLED)</option>
+                <option value="PENDING">Chờ duyệt</option>
+                <option value="CONFIRMED">Đã xác nhận</option>
+                <option value="COMPLETED">Đã hoàn thành</option>
+                <option value="CANCELLED">Đã hủy</option>
               </select>
             </div>
 
@@ -317,19 +328,8 @@ export const OwnerBookingsPage: React.FC = () => {
                         </span>
                       </td>
                       <td className="p-4">
-                        <Badge
-                          variant={
-                            b.status === 'CONFIRMED'
-                              ? 'emerald'
-                              : b.status === 'PENDING'
-                              ? 'amber'
-                              : b.status === 'COMPLETED'
-                              ? 'blue'
-                              : 'rose'
-                          }
-                          size="sm"
-                        >
-                          {b.status}
+                        <Badge variant={STATUS_META[b.status]?.variant || 'rose'} size="sm">
+                          {STATUS_META[b.status]?.label || b.status}
                         </Badge>
                       </td>
                       <td className="p-4 text-right">

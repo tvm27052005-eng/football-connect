@@ -1,5 +1,6 @@
 import mongoose from 'mongoose';
 import { seedInitialData } from '../utils/seed.js';
+import { loadBookingsFromMongo } from '../services/bookingStore.js';
 
 export async function connectDB(): Promise<boolean> {
   const mongoURI = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/football-connect';
@@ -15,6 +16,9 @@ export async function connectDB(): Promise<boolean> {
 
     // Run automatic seeding if database is fresh
     await seedInitialData();
+
+    // Nạp đơn đặt sân đã lưu để thống kê dùng dữ liệu thật
+    await loadBookingsFromMongo();
 
     return true;
   } catch (error: any) {

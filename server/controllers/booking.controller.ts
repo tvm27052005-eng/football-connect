@@ -3,6 +3,7 @@ import { db } from '../models/db.js';
 import { AuthenticatedRequest } from '../middlewares/auth.middleware.js';
 import { IBooking, BookingStatus, PaymentStatus } from '../types/index.js';
 import { getFieldTimeSlots } from './field.controller.js';
+import { persistBooking } from '../services/bookingStore.js';
 
 export const bookingController = {
   // GET /api/bookings
@@ -205,6 +206,7 @@ export const bookingController = {
       };
 
       db.bookings.push(newBooking);
+      await persistBooking(newBooking);
 
       // Create notification for User
       db.notifications.push({
@@ -274,6 +276,7 @@ export const bookingController = {
         booking.paymentStatus = 'REFUNDED';
       }
       booking.updatedAt = new Date().toISOString();
+      await persistBooking(booking);
 
       // Notify the user if cancelled by owner
       if (isOwner || isAdmin) {
@@ -320,6 +323,7 @@ export const bookingController = {
       if (status) booking.status = status as BookingStatus;
       if (paymentStatus) booking.paymentStatus = paymentStatus as PaymentStatus;
       booking.updatedAt = new Date().toISOString();
+      await persistBooking(booking);
 
       res.json({
         success: true,

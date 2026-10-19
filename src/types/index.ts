@@ -278,3 +278,58 @@ export interface IReport {
   resolutionNote?: string;
   createdAt: string;
 }
+
+export type OwnerStatsRange = '7d' | '30d' | '90d' | '6m';
+
+export interface IOwnerStats {
+  range: OwnerStatsRange;
+  period: { from: string; to: string; days: number; prevFrom: string; prevTo: string };
+  generatedAt: string;
+  summary: {
+    totalRevenue: number;
+    periodRevenue: number;
+    prevPeriodRevenue: number;
+    revenueGrowth: number | null;
+    todayRevenue: number;
+    todayBookings: number;
+    upcomingRevenue: number;
+    upcomingBookings: number;
+    periodBookings: number;
+    prevPeriodBookings: number;
+    bookingGrowth: number | null;
+    avgBookingValue: number;
+    cancellationRate: number;
+    paidRevenue: number;
+    unpaidRevenue: number;
+    refundedAmount: number;
+    utilizationRate: number;
+    avgRating: number;
+    reviewCount: number;
+    totalVenues: number;
+    totalFields: number;
+    activeFields: number;
+    totalBookings: number;
+    pendingBookings: number;
+    uniqueCustomers: number;
+    peakSlot: string | null;
+  };
+  monthlyRevenue: { month: string; revenue: number; bookings: number }[];
+  dailyRevenue: { label: string; date: string; revenue: number; bookings: number }[];
+  weekdayStats: { day: string; revenue: number; bookings: number }[];
+  timeSlotStats: { slot: string; bookings: number; revenue: number; rate: number }[];
+  fieldStats: {
+    id: string;
+    name: string;
+    fieldType: FieldType;
+    status: 'ACTIVE' | 'MAINTENANCE' | 'INACTIVE';
+    venueName: string;
+    totalBookings: number;
+    periodBookings: number;
+    revenue: number;
+    periodRevenue: number;
+    utilization: number;
+  }[];
+  paymentMethodStats: { method: string; revenue: number; count: number }[];
+  statusBreakdown: { status: BookingStatus; count: number }[];
+  recentBookings: IBooking[];
+}

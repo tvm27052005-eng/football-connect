@@ -28,6 +28,7 @@ import {
   ThongBaoModel,
   BaoCaoModel
 } from '../models/mongoose.models.js';
+import { toBookingDoc } from '../services/bookingStore.js';
 
 async function runSeed() {
   console.log('🚀 Dang khoi tao va luu database co dinh vao MongoDB...');
@@ -107,29 +108,7 @@ async function runSeed() {
   })));
 
   // 4. Don Dat San
-  await DonDatSanModel.insertMany(initialBookings.map(b => ({
-    ma_don_dat: b.id,
-    ma_khach_hang: b.userId,
-    ten_khach_hang: b.userName,
-    so_dien_thoai: b.userPhone,
-    email: b.userEmail,
-    ma_cum_san: b.venueId,
-    ten_cum_san: b.venueName,
-    dia_chi_san: b.venueAddress,
-    ma_san_con: b.fieldId,
-    ten_san_con: b.fieldName,
-    loai_san: b.fieldType,
-    ngay_dat: b.bookingDate,
-    gio_bat_dau: b.startTime,
-    gio_ket_thuc: b.endTime,
-    thoi_luong_gio: b.durationHours,
-    tong_tien: b.totalPrice,
-    trang_thai_don: b.status === 'CONFIRMED' ? 'DA_XAC_NHAN' : b.status === 'PENDING' ? 'CHO_DUYET' : b.status === 'CANCELLED' ? 'DA_HUY' : 'HOAN_THANH',
-    trang_thai_thanh_toan: b.paymentStatus === 'PAID' ? 'DA_THANH_TOAN' : b.paymentStatus === 'REFUNDED' ? 'HOAN_TIEN' : 'CHUA_THANH_TOAN',
-    phuong_thuc_thanh_toan: b.paymentMethod === 'CASH' ? 'TIEN_MAT' : (b.paymentMethod || 'TIEN_MAT'),
-    ghi_chu: b.note,
-    ly_do_huy: b.cancellationReason
-  })));
+  await DonDatSanModel.insertMany(initialBookings.map(toBookingDoc));
 
   // 5. Keo Giao Huu
   await KeoGiaoHuuModel.insertMany(initialMatches.map(m => ({

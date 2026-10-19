@@ -1,6 +1,30 @@
 import { Response } from 'express';
 import { db } from '../models/db.js';
 import { AuthenticatedRequest } from '../middlewares/auth.middleware.js';
+import { IBooking } from '../types/index.js';
+import { getFieldTimeSlots } from './field.controller.js';
+
+type StatsRange = '7d' | '30d' | '90d' | '6m';
+const RANGES: StatsRange[] = ['7d', '30d', '90d', '6m'];
+const RANGE_DAYS: Record<Exclude<StatsRange, '6m'>, number> = { '7d': 7, '30d': 30, '90d': 90 };
+const WEEKDAYS = ['Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7', 'CN'];
+
+// Đơn được tính vào doanh thu khi đã xác nhận hoặc đã hoàn thành
+const isRevenue = (b: IBooking) => b.status === 'CONFIRMED' || b.status === 'COMPLETED';
+
+const pad = (n: number) => String(n).padStart(2, '0');
+const toDateStr = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+const parseDateStr = (s: string) => {
+  const [y, m, d] = s.split('-').map(Number);
+  return new Date(y, m - 1, d);
+};
+const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
+const addDays = (d: Date, n: number) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + n);
+const diffDays = (a: Date, b: Date) => Math.round((startOfDay(b).getTime() - startOfDay(a).getTime()) / 86400000);
+const round1 = (n: number) => Math.round(n * 10) / 10;
+const percent = (part: number, total: number) => (total > 0 ? Math.min(100, round1((part / total) * 100)) : 0);
+const growth = (current: number, previous: number) =>
+  previous > 0 ? round1(((current - previous) / previous) * 100) : null;
 
 export const statsController = {
   // GET /api/stats/owner
@@ -25,81 +49,224 @@ export const statsController = {
 
       const ownerVenueIds = new Set(ownerVenues.map(v => v.id));
       const ownerFields = db.fields.filter(f => ownerVenueIds.has(f.venueId));
+      const activeFields = ownerFields.filter(f => f.status === 'ACTIVE');
       const ownerBookings = db.bookings.filter(b => ownerVenueIds.has(b.venueId));
 
-      const todayStr = new Date().toISOString().split('T')[0];
+      // Khoảng thời gian thống kê: kỳ hiện tại [from, to] và kỳ trước cùng độ dài
+      const range: StatsRange = RANGES.includes(req.query.range as StatsRange)
+        ? (req.query.range as StatsRange)
+        : '30d';
+      const today = startOfDay(new Date());
+      const todayStr = toDateStr(today);
+      const from = range === '6m'
+        ? new Date(today.getFullYear(), today.getMonth() - 5, 1)
+        : addDays(today, -(RANGE_DAYS[range] - 1));
+      const periodDays = diffDays(from, today) + 1;
+      const fromStr = toDateStr(from);
+      const prevFromStr = toDateStr(addDays(from, -periodDays));
+      const prevToStr = toDateStr(addDays(from, -1));
 
+      const inRange = (b: IBooking, start: string, end: string) => b.bookingDate >= start && b.bookingDate <= end;
+      const sumRevenue = (list: IBooking[]) => list.filter(isRevenue).reduce((s, b) => s + b.totalPrice, 0);
+
+      const periodBookings = ownerBookings.filter(b => inRange(b, fromStr, todayStr));
+      const prevBookings = ownerBookings.filter(b => inRange(b, prevFromStr, prevToStr));
       const todayBookings = ownerBookings.filter(b => b.bookingDate === todayStr);
-      const confirmedBookings = ownerBookings.filter(b => b.status === 'CONFIRMED' || b.status === 'COMPLETED');
-      const totalRevenue = confirmedBookings.reduce((sum, b) => sum + b.totalPrice, 0);
 
-      const todayRevenue = todayBookings
-        .filter(b => b.status === 'CONFIRMED' || b.status === 'COMPLETED')
-        .reduce((sum, b) => sum + b.totalPrice, 0);
+      const totalRevenue = sumRevenue(ownerBookings);
+      const periodRevenue = sumRevenue(periodBookings);
+      const prevPeriodRevenue = sumRevenue(prevBookings);
+      const todayRevenue = sumRevenue(todayBookings);
+      const upcomingBookings = ownerBookings.filter(b => b.bookingDate > todayStr && isRevenue(b));
+      const upcomingRevenue = sumRevenue(upcomingBookings);
 
-      // Revenue by month (Last 6 months)
-      const monthlyRevenue = [
-        { month: 'T09', revenue: 14500000, bookings: 32 },
-        { month: 'T10', revenue: 19800000, bookings: 44 },
-        { month: 'T11', revenue: 24200000, bookings: 53 },
-        { month: 'T12', revenue: 31000000, bookings: 68 },
-        { month: 'T01', revenue: 28500000, bookings: 61 },
-        { month: 'T02 (Hiện tại)', revenue: totalRevenue + 12000000, bookings: ownerBookings.length + 20 }
-      ];
+      const periodRevenueBookings = periodBookings.filter(isRevenue);
+      const periodActiveBookings = periodBookings.filter(b => b.status !== 'CANCELLED');
+      const cancelledCount = periodBookings.filter(b => b.status === 'CANCELLED').length;
 
-      // Daily revenue for the last 7 days
-      const days = ['Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7', 'Chủ Nhật'];
-      const dailyRevenue = days.map((day, idx) => ({
-        day,
-        revenue: Math.round(1800000 + idx * 450000 + (idx >= 5 ? 1200000 : 0)),
-        bookings: 4 + idx + (idx >= 5 ? 3 : 0)
-      }));
+      const paidRevenue = periodRevenueBookings
+        .filter(b => b.paymentStatus === 'PAID')
+        .reduce((s, b) => s + b.totalPrice, 0);
+      const unpaidRevenue = periodRevenue - paidRevenue;
+      const refundedAmount = periodBookings
+        .filter(b => b.paymentStatus === 'REFUNDED')
+        .reduce((s, b) => s + b.totalPrice, 0);
 
-      // Popular time slot utilization
-      const timeSlotStats = [
-        { slot: '06:00-07:30', bookings: 12, rate: '45%' },
-        { slot: '07:30-09:00', bookings: 18, rate: '60%' },
-        { slot: '16:00-17:30', bookings: 25, rate: '78%' },
-        { slot: '17:30-19:00', bookings: 42, rate: '96%' }, // Peak
-        { slot: '19:00-20:30', bookings: 48, rate: '99%' }, // Peak
-        { slot: '20:30-22:00', bookings: 36, rate: '85%' }
-      ];
+      // Công suất: chỉ tính các ca đã đến giờ (hôm nay tính tới hiện tại) của các sân đang hoạt động
+      const now = new Date();
+      const nowTime = `${pad(now.getHours())}:${pad(now.getMinutes())}`;
+      const activeFieldIds = new Set(activeFields.map(f => f.id));
+      const totalCapacity = activeFields.reduce((s, f) => {
+        const slots = getFieldTimeSlots(f);
+        const startedToday = slots.filter(slot => slot.startTime <= nowTime).length;
+        return s + slots.length * (periodDays - 1) + startedToday;
+      }, 0);
+      const utilizedBookings = periodActiveBookings.filter(b =>
+        activeFieldIds.has(b.fieldId) && (b.bookingDate < todayStr || b.startTime <= nowTime)
+      );
+      const utilizationRate = percent(utilizedBookings.length, totalCapacity);
 
-      // Field performance
-      const fieldStats = ownerFields.map(f => {
-        const fieldBookings = ownerBookings.filter(b => b.fieldId === f.id);
-        const fRevenue = fieldBookings
-          .filter(b => b.status === 'CONFIRMED' || b.status === 'COMPLETED')
-          .reduce((s, b) => s + b.totalPrice, 0);
+      // Đánh giá trung bình từ review thật, nếu chưa có thì lấy rating của cụm sân
+      const ownerReviews = db.reviews.filter(r => ownerVenueIds.has(r.venueId));
+      const ratedVenues = ownerVenues.filter(v => v.reviewCount > 0);
+      const avgRating = ownerReviews.length
+        ? round1(ownerReviews.reduce((s, r) => s + r.rating, 0) / ownerReviews.length)
+        : ratedVenues.length
+          ? round1(ratedVenues.reduce((s, v) => s + v.rating, 0) / ratedVenues.length)
+          : 0;
+
+      // Doanh thu 6 tháng gần nhất
+      const monthlyRevenue = Array.from({ length: 6 }, (_, i) => {
+        const d = new Date(today.getFullYear(), today.getMonth() - 5 + i, 1);
+        const prefix = toDateStr(d).slice(0, 7);
+        const monthBookings = ownerBookings.filter(b => b.bookingDate.startsWith(prefix));
         return {
-          id: f.id,
-          name: f.name,
-          fieldType: f.fieldType,
-          totalBookings: fieldBookings.length,
-          revenue: fRevenue,
-          utilization: `${Math.min(95, 60 + fieldBookings.length * 5)}%`
+          month: `T${pad(d.getMonth() + 1)}/${String(d.getFullYear()).slice(2)}`,
+          revenue: sumRevenue(monthBookings),
+          bookings: monthBookings.filter(b => b.status !== 'CANCELLED').length
         };
       });
+
+      // Xu hướng doanh thu trong kỳ: theo ngày, riêng kỳ 6 tháng nhóm theo tuần
+      const bucketSize = range === '6m' ? 7 : 1;
+      const dailyRevenue: { label: string; date: string; revenue: number; bookings: number }[] = [];
+      for (let start = new Date(from); start <= today; start = addDays(start, bucketSize)) {
+        const startStr = toDateStr(start);
+        const end = addDays(start, bucketSize - 1);
+        const endStr = toDateStr(end > today ? today : end);
+        const bucket = periodBookings.filter(b => inRange(b, startStr, endStr));
+        dailyRevenue.push({
+          label: `${pad(start.getDate())}/${pad(start.getMonth() + 1)}`,
+          date: startStr,
+          revenue: sumRevenue(bucket),
+          bookings: bucket.filter(b => b.status !== 'CANCELLED').length
+        });
+      }
+
+      // Lượt đặt và doanh thu theo thứ trong tuần (Thứ 2 → Chủ nhật)
+      const weekdayStats = WEEKDAYS.map(day => ({ day, revenue: 0, bookings: 0 }));
+      periodActiveBookings.forEach(b => {
+        const idx = (parseDateStr(b.bookingDate).getDay() + 6) % 7;
+        weekdayStats[idx].bookings += 1;
+        if (isRevenue(b)) weekdayStats[idx].revenue += b.totalPrice;
+      });
+
+      // Tỷ lệ đặt theo khung giờ dựa trên ca thực tế của các sân
+      const slotMap = new Map<string, { slot: string; startTime: string; fieldCount: number; bookings: number; revenue: number }>();
+      activeFields.forEach(f => {
+        getFieldTimeSlots(f).forEach(s => {
+          const key = `${s.startTime}-${s.endTime}`;
+          const entry = slotMap.get(key) || { slot: key, startTime: s.startTime, fieldCount: 0, bookings: 0, revenue: 0 };
+          entry.fieldCount += 1;
+          slotMap.set(key, entry);
+        });
+      });
+      periodActiveBookings.forEach(b => {
+        const key = `${b.startTime}-${b.endTime}`;
+        const entry = slotMap.get(key) || { slot: key, startTime: b.startTime, fieldCount: 1, bookings: 0, revenue: 0 };
+        entry.bookings += 1;
+        if (isRevenue(b)) entry.revenue += b.totalPrice;
+        slotMap.set(key, entry);
+      });
+      const timeSlotStats = [...slotMap.values()]
+        .sort((a, b) => a.startTime.localeCompare(b.startTime))
+        .map(s => ({
+          slot: s.slot,
+          bookings: s.bookings,
+          revenue: s.revenue,
+          rate: percent(s.bookings, s.fieldCount * periodDays)
+        }));
+      const peakSlot = timeSlotStats.reduce<typeof timeSlotStats[number] | null>(
+        (best, s) => (s.bookings > 0 && (!best || s.rate > best.rate) ? s : best),
+        null
+      )?.slot || null;
+
+      // Hiệu suất từng sân con
+      const fieldStats = ownerFields
+        .map(f => {
+          const fieldBookings = ownerBookings.filter(b => b.fieldId === f.id);
+          const fieldPeriod = periodBookings.filter(b => b.fieldId === f.id);
+          const fieldCapacity = f.status === 'ACTIVE' ? getFieldTimeSlots(f).length * periodDays : 0;
+          return {
+            id: f.id,
+            name: f.name,
+            fieldType: f.fieldType,
+            status: f.status,
+            venueName: ownerVenues.find(v => v.id === f.venueId)?.name || '',
+            totalBookings: fieldBookings.length,
+            periodBookings: fieldPeriod.filter(b => b.status !== 'CANCELLED').length,
+            revenue: sumRevenue(fieldBookings),
+            periodRevenue: sumRevenue(fieldPeriod),
+            utilization: percent(fieldPeriod.filter(b => b.status !== 'CANCELLED').length, fieldCapacity)
+          };
+        })
+        .sort((a, b) => b.periodRevenue - a.periodRevenue || b.revenue - a.revenue);
+
+      // Doanh thu theo phương thức thanh toán
+      const methodMap = new Map<string, { method: string; revenue: number; count: number }>();
+      periodRevenueBookings.forEach(b => {
+        const method = b.paymentMethod || 'CASH';
+        const entry = methodMap.get(method) || { method, revenue: 0, count: 0 };
+        entry.revenue += b.totalPrice;
+        entry.count += 1;
+        methodMap.set(method, entry);
+      });
+      const paymentMethodStats = [...methodMap.values()].sort((a, b) => b.revenue - a.revenue);
+
+      const statusBreakdown = (['PENDING', 'CONFIRMED', 'COMPLETED', 'CANCELLED'] as const).map(status => ({
+        status,
+        count: periodBookings.filter(b => b.status === status).length
+      }));
+
+      const recentBookings = [...ownerBookings]
+        .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+        .slice(0, 6);
 
       res.json({
         success: true,
         data: {
+          range,
+          period: { from: fromStr, to: todayStr, days: periodDays, prevFrom: prevFromStr, prevTo: prevToStr },
+          generatedAt: new Date().toISOString(),
           summary: {
             totalRevenue,
+            periodRevenue,
+            prevPeriodRevenue,
+            revenueGrowth: growth(periodRevenue, prevPeriodRevenue),
             todayRevenue,
+            todayBookings: todayBookings.filter(b => b.status !== 'CANCELLED').length,
+            upcomingRevenue,
+            upcomingBookings: upcomingBookings.length,
+            periodBookings: periodActiveBookings.length,
+            prevPeriodBookings: prevBookings.filter(b => b.status !== 'CANCELLED').length,
+            bookingGrowth: growth(
+              periodActiveBookings.length,
+              prevBookings.filter(b => b.status !== 'CANCELLED').length
+            ),
+            avgBookingValue: periodRevenueBookings.length ? Math.round(periodRevenue / periodRevenueBookings.length) : 0,
+            cancellationRate: percent(cancelledCount, periodBookings.length),
+            paidRevenue,
+            unpaidRevenue,
+            refundedAmount,
+            utilizationRate,
+            avgRating,
+            reviewCount: ownerReviews.length,
             totalVenues: ownerVenues.length,
             totalFields: ownerFields.length,
+            activeFields: activeFields.length,
             totalBookings: ownerBookings.length,
-            todayBookings: todayBookings.length,
             pendingBookings: ownerBookings.filter(b => b.status === 'PENDING').length,
-            avgRating: 4.8,
-            utilizationRate: '84.5%'
+            uniqueCustomers: new Set(periodActiveBookings.map(b => b.userId)).size,
+            peakSlot
           },
           monthlyRevenue,
           dailyRevenue,
+          weekdayStats,
           timeSlotStats,
           fieldStats,
-          recentBookings: ownerBookings.slice(0, 5)
+          paymentMethodStats,
+          statusBreakdown,
+          recentBookings
         }
       });
     } catch {
