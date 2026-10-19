@@ -4,6 +4,7 @@ import { hashPassword, comparePassword } from '../utils/bcrypt.js';
 import { generateAccessToken, generateRefreshToken } from '../utils/jwt.js';
 import { AuthenticatedRequest } from '../middlewares/auth.middleware.js';
 import { IUser, UserRole } from '../types/index.js';
+import { otpManager, sendOtpEmail } from '../services/email.service.js';
 
 export const authController = {
   // POST /api/auth/register
@@ -196,5 +197,257 @@ export const authController = {
         refreshToken
       }
     });
+  },
+
+  // POST /api/auth/register-otp
+  sendRegisterOtp: async (req: Request, res: Response): Promise<void> => {
+    try {
+      const { name, email, password, phone, role = 'USER', city, district, businessName, businessTaxId } = req.body;
+
+      if (!name || !email || !password) {
+        res.status(400).json({ success: false, message: 'Vui lòng điền đầy đủ họ tên, email và mật khẩu' });
+        return;
+      }
+
+      if (password.length < 6) {
+        res.status(400).json({ success: false, message: 'Mật khẩu phải có ít nhất 6 ký tự' });
+        return;
+      }
+
+      const existingUser = db.users.find(u => u.email.toLowerCase() === email.toLowerCase().trim());
+      if (existingUser) {
+        res.status(400).json({ success: false, message: 'Email này đã được đăng ký trong hệ thống' });
+        return;
+      }
+
+      // Check anti-spam cooldown (60 seconds)
+      const cooldownCheck = otpManager.isInCooldown(email, 'REGISTER');
+      if (cooldownCheck.inCooldown) {
+        res.status(429).json({
+          success: false,
+          message: `Vui lòng đợi ${cooldownCheck.remainingSeconds} giây trước khi yêu cầu gửi lại mã OTP mới`,
+          remainingSeconds: cooldownCheck.remainingSeconds
+        });
+        return;
+      }
+
+      const otp = otpManager.generateOtp();
+      otpManager.saveOtp(email, otp, 'REGISTER', {
+        name,
+        email,
+        password,
+        phone,
+        role,
+        city,
+        district,
+        businessName,
+        businessTaxId
+      });
+
+      await sendOtpEmail({
+        to: email,
+        otp,
+        purpose: 'REGISTER',
+        userName: name
+      });
+
+      res.json({
+        success: true,
+        message: 'Mã xác thực OTP đã được gửi về email của bạn. Mã có hiệu lực trong vòng 5 phút.',
+        demoOtp: otp // Giúp kiểm tra thuận tiện trong môi trường dev
+      });
+    } catch (error) {
+      console.error('Send register OTP error:', error);
+      res.status(500).json({ success: false, message: 'Lỗi server khi gửi mã xác thực' });
+    }
+  },
+
+  // POST /api/auth/verify-register-otp
+  verifyRegisterOtp: async (req: Request, res: Response): Promise<void> => {
+    try {
+      const { email, otp } = req.body;
+
+      if (!email || !otp) {
+        res.status(400).json({ success: false, message: 'Vui lòng cung cấp email và mã OTP' });
+        return;
+      }
+
+      const verification = otpManager.verifyOtp(email, otp, 'REGISTER');
+      if (!verification.valid) {
+        res.status(400).json({ success: false, message: verification.message });
+        return;
+      }
+
+      const payload = verification.registrationPayload as Record<string, string> | undefined;
+      if (!payload) {
+        res.status(400).json({ success: false, message: 'Không tìm thấy dữ liệu đăng ký. Vui lòng thử lại từ đầu.' });
+        return;
+      }
+
+      const existingUser = db.users.find(u => u.email.toLowerCase() === email.toLowerCase().trim());
+      if (existingUser) {
+        res.status(400).json({ success: false, message: 'Email này đã tồn tại trong hệ thống' });
+        return;
+      }
+
+      const hashedPassword = await hashPassword(payload.password);
+      const newUser: IUser = {
+        id: db.generateId('user'),
+        name: payload.name.trim(),
+        email: payload.email.toLowerCase().trim(),
+        password: hashedPassword,
+        phone: payload.phone || '',
+        role: (['USER', 'OWNER', 'ADMIN'].includes(payload.role) ? payload.role : 'USER') as UserRole,
+        avatar: `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(payload.name)}`,
+        bio: payload.role === 'OWNER' ? 'Chủ quản lý sân bóng đá' : 'Thành viên bóng đá phong trào',
+        location: {
+          city: payload.city || 'Hà Nội',
+          district: payload.district || 'Cầu Giấy'
+        },
+        skillLevel: 'INTERMEDIATE',
+        preferredFieldType: '7_vs_7',
+        preferredPosition: 'Tiền vệ',
+        businessName: payload.role === 'OWNER' ? payload.businessName : undefined,
+        businessTaxId: payload.role === 'OWNER' ? payload.businessTaxId : undefined,
+        isActive: true,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+
+      db.users.push(newUser);
+
+      // Create welcome notification
+      db.notifications.push({
+        id: db.generateId('notif'),
+        userId: newUser.id,
+        title: 'Chào mừng gia nhập Football Connect!',
+        message: 'Tài khoản của bạn đã được xác thực email thành công. Bắt đầu tìm sân và ghép đối ngay!',
+        type: 'SYSTEM',
+        isRead: false,
+        createdAt: new Date().toISOString()
+      });
+
+      const accessToken = generateAccessToken(newUser);
+      const refreshToken = generateRefreshToken(newUser);
+      const { password: _, ...userSafe } = newUser;
+
+      res.status(201).json({
+        success: true,
+        message: 'Xác thực email và tạo tài khoản thành công!',
+        data: {
+          user: userSafe,
+          accessToken,
+          refreshToken
+        }
+      });
+    } catch (error) {
+      console.error('Verify register OTP error:', error);
+      res.status(500).json({ success: false, message: 'Lỗi server khi xác thực tài khoản' });
+    }
+  },
+
+  // POST /api/auth/forgot-password-otp
+  sendForgotPasswordOtp: async (req: Request, res: Response): Promise<void> => {
+    try {
+      const { email } = req.body;
+
+      if (!email) {
+        res.status(400).json({ success: false, message: 'Vui lòng nhập địa chỉ email của bạn' });
+        return;
+      }
+
+      const user = db.users.find(u => u.email.toLowerCase() === email.toLowerCase().trim());
+      if (!user) {
+        res.status(404).json({ success: false, message: 'Không tìm thấy tài khoản nào liên kết với email này' });
+        return;
+      }
+
+      if (!user.isActive) {
+        res.status(403).json({ success: false, message: 'Tài khoản của bạn đang bị khóa, không thể đặt lại mật khẩu' });
+        return;
+      }
+
+      // Check anti-spam cooldown (60 seconds)
+      const cooldownCheck = otpManager.isInCooldown(email, 'FORGOT_PASSWORD');
+      if (cooldownCheck.inCooldown) {
+        res.status(429).json({
+          success: false,
+          message: `Vui lòng đợi ${cooldownCheck.remainingSeconds} giây trước khi yêu cầu gửi lại mã OTP mới`,
+          remainingSeconds: cooldownCheck.remainingSeconds
+        });
+        return;
+      }
+
+      const otp = otpManager.generateOtp();
+      otpManager.saveOtp(email, otp, 'FORGOT_PASSWORD');
+
+      await sendOtpEmail({
+        to: email,
+        otp,
+        purpose: 'FORGOT_PASSWORD',
+        userName: user.name
+      });
+
+      res.json({
+        success: true,
+        message: 'Mã xác thực đổi mật khẩu đã được gửi đến email của bạn. Mã có hiệu lực trong 5 phút.',
+        demoOtp: otp // Giúp kiểm tra thuận tiện trong môi trường dev
+      });
+    } catch (error) {
+      console.error('Send forgot password OTP error:', error);
+      res.status(500).json({ success: false, message: 'Lỗi server khi gửi mã đặt lại mật khẩu' });
+    }
+  },
+
+  // POST /api/auth/reset-password
+  resetPassword: async (req: Request, res: Response): Promise<void> => {
+    try {
+      const { email, otp, newPassword } = req.body;
+
+      if (!email || !otp || !newPassword) {
+        res.status(400).json({ success: false, message: 'Vui lòng cung cấp đầy đủ email, mã OTP và mật khẩu mới' });
+        return;
+      }
+
+      if (newPassword.length < 6) {
+        res.status(400).json({ success: false, message: 'Mật khẩu mới phải có ít nhất 6 ký tự' });
+        return;
+      }
+
+      const user = db.users.find(u => u.email.toLowerCase() === email.toLowerCase().trim());
+      if (!user) {
+        res.status(404).json({ success: false, message: 'Không tìm thấy tài khoản' });
+        return;
+      }
+
+      const verification = otpManager.verifyOtp(email, otp, 'FORGOT_PASSWORD');
+      if (!verification.valid) {
+        res.status(400).json({ success: false, message: verification.message });
+        return;
+      }
+
+      const hashedPassword = await hashPassword(newPassword);
+      user.password = hashedPassword;
+      user.updatedAt = new Date().toISOString();
+
+      // Notification
+      db.notifications.push({
+        id: db.generateId('notif'),
+        userId: user.id,
+        title: 'Mật khẩu đã được thay đổi',
+        message: 'Mật khẩu tài khoản Football Connect của bạn vừa được cập nhật thành công qua xác thực OTP.',
+        type: 'SYSTEM',
+        isRead: false,
+        createdAt: new Date().toISOString()
+      });
+
+      res.json({
+        success: true,
+        message: 'Đặt lại mật khẩu thành công! Bây giờ bạn có thể đăng nhập bằng mật khẩu mới.'
+      });
+    } catch (error) {
+      console.error('Reset password error:', error);
+      res.status(500).json({ success: false, message: 'Lỗi server khi đổi mật khẩu' });
+    }
   }
 };

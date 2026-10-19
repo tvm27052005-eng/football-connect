@@ -76,41 +76,6 @@ export const Navbar: React.FC = () => {
           </span>
           <span className="hidden sm:inline text-slate-400 text-[11px]">Nền tảng đặt sân & kết nối cộng đồng đá bóng số 1</span>
         </div>
-
-        {/* Demo Switcher Quick Bar */}
-        <div className="flex items-center gap-1.5">
-          <span className="hidden md:inline text-[11px] text-slate-400 font-medium mr-1">Chuyển quyền:</span>
-          <button
-            onClick={() => switchDemoRole('USER')}
-            className={`px-2.5 py-0.5 rounded-md text-[11px] font-semibold transition-all cursor-pointer ${
-              user?.role === 'USER'
-                ? 'bg-emerald-500 text-slate-950 font-bold shadow-xs'
-                : 'bg-slate-800/90 text-slate-300 hover:bg-slate-700'
-            }`}
-          >
-            👤 Cầu thủ
-          </button>
-          <button
-            onClick={() => switchDemoRole('OWNER')}
-            className={`px-2.5 py-0.5 rounded-md text-[11px] font-semibold transition-all cursor-pointer ${
-              user?.role === 'OWNER'
-                ? 'bg-amber-400 text-slate-950 font-bold shadow-xs'
-                : 'bg-slate-800/90 text-slate-300 hover:bg-slate-700'
-            }`}
-          >
-            🏟️ Chủ sân
-          </button>
-          <button
-            onClick={() => switchDemoRole('ADMIN')}
-            className={`px-2.5 py-0.5 rounded-md text-[11px] font-semibold transition-all cursor-pointer ${
-              user?.role === 'ADMIN'
-                ? 'bg-purple-400 text-slate-950 font-bold shadow-xs'
-                : 'bg-slate-800/90 text-slate-300 hover:bg-slate-700'
-            }`}
-          >
-            🛡️ Admin
-          </button>
-        </div>
       </div>
 
       {/* Main Navigation Bar */}
@@ -357,7 +322,7 @@ export const Navbar: React.FC = () => {
                   to="/register"
                   className="px-4 py-2 text-xs font-black bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white rounded-xl shadow-md shadow-emerald-600/20 transition-all active:scale-95 flex items-center gap-1"
                 >
-                  Đăng ký <Zap className="w-3.5 h-3.5 fill-white" />
+                  Đăng ký
                 </Link>
               </div>
             )}

@@ -7,13 +7,15 @@ interface TimeSlotMatrixProps {
   selectedSlot: ITimeSlot | null;
   onSelectSlot: (slot: ITimeSlot) => void;
   isLoading?: boolean;
+  date?: string;
 }
 
 export const TimeSlotMatrix: React.FC<TimeSlotMatrixProps> = ({
   slots,
   selectedSlot,
   onSelectSlot,
-  isLoading = false
+  isLoading = false,
+  date
 }) => {
   if (isLoading) {
     return (
@@ -43,14 +45,21 @@ export const TimeSlotMatrix: React.FC<TimeSlotMatrixProps> = ({
           <span className="w-2.5 h-2.5 rounded-full bg-rose-500" /> Đã có người đặt
         </span>
         <span className="flex items-center gap-1.5">
-          <span className="w-2.5 h-2.5 rounded-full bg-slate-400" /> Tạm khóa
+          <span className="w-2.5 h-2.5 rounded-full bg-slate-400" /> Đã qua giờ / Tạm khóa
         </span>
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2.5">
         {slots.map((slot) => {
           const isSelected = selectedSlot?.startTime === slot.startTime && selectedSlot?.endTime === slot.endTime;
-          const isAvailable = slot.status === 'AVAILABLE';
+
+          const isPast = (() => {
+            if (!date) return false;
+            const slotDateTime = new Date(`${date}T${slot.startTime}:00`);
+            return !isNaN(slotDateTime.getTime()) && slotDateTime <= new Date();
+          })();
+
+          const isAvailable = slot.status === 'AVAILABLE' && !isPast;
 
           return (
             <button
@@ -73,7 +82,7 @@ export const TimeSlotMatrix: React.FC<TimeSlotMatrixProps> = ({
                 {isSelected ? (
                   <Check className="w-4 h-4 text-white stroke-[3]" />
                 ) : !isAvailable ? (
-                  <Ban className="w-3.5 h-3.5 text-rose-500" />
+                  <Ban className="w-3.5 h-3.5 text-slate-400" />
                 ) : (
                   <Clock className="w-3.5 h-3.5 text-slate-400" />
                 )}
@@ -81,7 +90,7 @@ export const TimeSlotMatrix: React.FC<TimeSlotMatrixProps> = ({
 
               <div className="mt-2 flex items-center justify-between text-[11px]">
                 <span className={isSelected ? 'text-emerald-100' : 'text-slate-500'}>
-                  {slot.status === 'AVAILABLE' ? 'Khả dụng' : slot.status === 'BOOKED' ? 'Đã đặt' : 'Đã khóa'}
+                  {isPast ? 'Đã qua giờ' : slot.status === 'AVAILABLE' ? 'Còn trống' : slot.status === 'BOOKED' ? 'Đã đặt' : 'Đã khóa'}
                 </span>
                 <span className={`font-bold ${isSelected ? 'text-white' : 'text-emerald-700'}`}>
                   {slot.price.toLocaleString('vi-VN')} đ

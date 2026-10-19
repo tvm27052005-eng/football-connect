@@ -31,10 +31,11 @@ export const reviewController = {
 
       const { venueId, bookingId, rating, comment, images } = req.body;
 
-      if (!venueId || !rating || !comment) {
-        res.status(400).json({ success: false, message: 'Vui lòng cung cấp số sao đánh giá (1-5) và nhận xét' });
+      if (!venueId || !rating) {
+        res.status(400).json({ success: false, message: 'Vui lòng chọn số sao đánh giá (1-5)' });
         return;
       }
+
 
       const numRating = Number(rating);
       if (numRating < 1 || numRating > 5) {
@@ -58,6 +59,8 @@ export const reviewController = {
       }
 
       const user = db.users.find(u => u.id === req.user?.id);
+      const safeComment = (comment || '').trim();
+
       const newReview: IReview = {
         id: db.generateId('rev'),
         userId: req.user.id,
@@ -66,7 +69,7 @@ export const reviewController = {
         venueId,
         bookingId,
         rating: numRating,
-        comment: comment.trim(),
+        comment: safeComment,
         images: images || [],
         createdAt: new Date().toISOString()
       };
@@ -85,7 +88,9 @@ export const reviewController = {
         id: db.generateId('notif'),
         userId: venue.ownerId,
         title: 'Có đánh giá mới cho sân của bạn',
-        message: `${req.user.name} vừa để lại đánh giá ${numRating}★ cho ${venue.name}: "${comment.substring(0, 60)}..."`,
+        message: safeComment
+          ? `${req.user.name} vừa để lại đánh giá ${numRating}★ cho ${venue.name}: "${safeComment.substring(0, 60)}..."`
+          : `${req.user.name} vừa để lại đánh giá ${numRating}★ cho ${venue.name}.`,
         type: 'NEW_REVIEW',
         link: `/venues/${venue.id}`,
         isRead: false,

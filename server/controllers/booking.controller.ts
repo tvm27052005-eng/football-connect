@@ -67,6 +67,18 @@ export const bookingController = {
         });
       }
 
+      bookings = bookings.map(b => {
+        if (!b.ownerPhone) {
+          const venue = db.venues.find(v => v.id === b.venueId);
+          const owner = db.users.find(u => u.id === venue?.ownerId);
+          return {
+            ...b,
+            ownerPhone: owner?.phone || '0903456789'
+          };
+        }
+        return b;
+      });
+
       res.json({ success: true, count: bookings.length, data: bookings });
     } catch {
       res.status(500).json({ success: false, message: 'Lỗi server' });
@@ -143,6 +155,17 @@ export const bookingController = {
         return;
       }
 
+      // Kiểm tra ngày và thời gian thi đấu không được nhỏ hơn thời điểm hiện tại
+      const bookingStartDateTime = new Date(`${bookingDate}T${startTime}:00`);
+      const now = new Date();
+      if (isNaN(bookingStartDateTime.getTime()) || bookingStartDateTime <= now) {
+        res.status(400).json({
+          success: false,
+          message: 'Không thể đặt sân vì ngày và thời gian thi đấu đã trôi qua rồi!'
+        });
+        return;
+      }
+
       const venue = db.venues.find(v => v.id === venueId);
       const field = db.fields.find(f => f.id === fieldId);
 
@@ -180,11 +203,12 @@ export const bookingController = {
         id: db.generateId('book'),
         userId: req.user.id,
         userName: req.user.name,
-        userPhone: db.users.find(u => u.id === req.user?.id)?.phone || '0912345678',
+        userPhone: db.users.find(u => u.id === req.user?.id)?.phone,
         userEmail: req.user.email,
         venueId: venue.id,
         venueName: venue.name,
         venueAddress: venue.address,
+        ownerPhone: db.users.find(u => u.id === venue.ownerId)?.phone,
         fieldId: field.id,
         fieldName: field.name,
         fieldType: field.fieldType,
@@ -265,10 +289,34 @@ export const bookingController = {
         return;
       }
 
+      // Kiểm tra sát giờ thi đấu (dưới 2 tiếng hoặc đã diễn ra)
+      if (isBooker && !isOwner && !isAdmin) {
+        const matchStart = new Date(`${booking.bookingDate}T${booking.startTime}`);
+        const now = new Date();
+        const hoursUntilMatch = (matchStart.getTime() - now.getTime()) / (1000 * 60 * 60);
+
+        if (hoursUntilMatch <= 2) {
+          res.status(400).json({
+            success: false,
+            message: 'Không thể hủy đặt sân do đã quá sát giờ thi đấu (dưới 2 tiếng).'
+          });
+          return;
+        }
+      }
+
+      const createdAt = booking.createdAt ? new Date(booking.createdAt).getTime() : 0;
+      const minutesSinceBooking = (Date.now() - createdAt) / (1000 * 60);
+      const isWithin1Hour = minutesSinceBooking <= 60;
+
       booking.status = 'CANCELLED';
-      booking.cancellationReason = reason || 'Người dùng hủy theo yêu cầu';
+      booking.cancellationReason = reason || (isWithin1Hour ? 'Người dùng hủy trong vòng 1 giờ cho phép' : 'Người dùng hủy sau 1 giờ (không hoàn tiền sân)');
       if (booking.paymentStatus === 'PAID') {
-        booking.paymentStatus = 'REFUNDED';
+        if (isWithin1Hour) {
+          booking.paymentStatus = 'REFUNDED';
+        } else {
+          // Quá 1 tiếng: không hoàn tiền sân
+          booking.note = (booking.note ? booking.note + ' | ' : '') + 'Đã hủy nhưng không được hoàn tiền sân (quá 1 giờ từ lúc đặt).';
+        }
       }
       booking.updatedAt = new Date().toISOString();
 

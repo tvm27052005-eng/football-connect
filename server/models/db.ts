@@ -264,18 +264,7 @@ export const initialFields: IField[] = [
     createdAt: '2025-01-08T10:00:00.000Z',
     updatedAt: '2025-01-08T10:00:00.000Z'
   },
-  {
-    id: 'field_2_2',
-    venueId: 'venue_2',
-    name: 'Sân Stadium (Sân 11 người FIFA)',
-    fieldType: '11_vs_11',
-    capacity: 22,
-    pricePerHour: 900000,
-    surfaceType: 'NATURAL_GRASS',
-    status: 'ACTIVE',
-    createdAt: '2025-01-08T10:00:00.000Z',
-    updatedAt: '2025-01-08T10:00:00.000Z'
-  },
+ 
   // Fields for venue_3 (Saigon Sport Park)
   {
     id: 'field_3_1',
@@ -706,7 +695,7 @@ export const initialReviews: IReview[] = [
     userAvatar: 'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=150',
     venueId: 'venue_2',
     rating: 5,
-    comment: 'Sân 11 người đạt chuẩn FIFA tuyệt vời! Mặt cỏ mướt bóng lăn rất đầm chân. Phòng thay đồ sạch sẽ.',
+    comment: 'Sân 7 người đạt chuẩn FIFA tuyệt vời! Mặt cỏ mướt bóng lăn rất đầm chân. Phòng thay đồ sạch sẽ.',
     createdAt: '2025-01-25T20:00:00.000Z'
   }
 ];

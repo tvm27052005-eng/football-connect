@@ -78,7 +78,6 @@ export const VenueFilter: React.FC<VenueFilterProps> = ({
             <option value="">Tất cả loại sân</option>
             <option value="5_vs_5">Sân 5 người</option>
             <option value="7_vs_7">Sân 7 người</option>
-            <option value="11_vs_11">Sân 11 người</option>
           </select>
         </div>
 

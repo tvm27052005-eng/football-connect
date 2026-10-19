@@ -3,7 +3,6 @@ import { useSearchParams, useNavigate, Link } from 'react-router-dom';
 import {
   Calendar,
   Clock,
-  MapPin,
   CheckCircle2,
   ShieldCheck,
   CreditCard,
@@ -137,6 +136,13 @@ export const BookingCreatePage: React.FC = () => {
       return;
     }
 
+    const now = new Date();
+    const slotDateTime = new Date(`${bookingDate}T${selectedSlot.startTime}:00`);
+    if (isNaN(slotDateTime.getTime()) || slotDateTime <= now) {
+      setErrorMsg('Không thể đặt sân vì ngày hoặc khung giờ thi đấu này đã trôi qua rồi! Vui lòng chọn khung giờ khác.');
+      return;
+    }
+
     try {
       setIsSubmitting(true);
       setErrorMsg('');
@@ -170,8 +176,8 @@ export const BookingCreatePage: React.FC = () => {
     const transferMemo = `FC ${successBookingId.toUpperCase()}`;
     const qrUrl = selectedSlot
       ? `https://api.vietqr.io/image/970422-0988889999-compact.png?amount=${selectedSlot.price}&addInfo=${encodeURIComponent(
-          transferMemo
-        )}&accountName=FOOTBALL%20CONNECT`
+        transferMemo
+      )}&accountName=FOOTBALL%20CONNECT`
       : '';
 
     return (
@@ -316,11 +322,10 @@ export const BookingCreatePage: React.FC = () => {
                 key={v.id}
                 type="button"
                 onClick={() => setSelectedVenueId(v.id)}
-                className={`p-3.5 rounded-xl border text-left transition-all cursor-pointer ${
-                  selectedVenueId === v.id
-                    ? 'bg-emerald-50 border-emerald-600 ring-2 ring-emerald-500/20'
-                    : 'bg-slate-50 border-slate-200 hover:bg-slate-100 hover:border-slate-300'
-                }`}
+                className={`p-3.5 rounded-xl border text-left transition-all cursor-pointer ${selectedVenueId === v.id
+                  ? 'bg-emerald-50 border-emerald-600 ring-2 ring-emerald-500/20'
+                  : 'bg-slate-50 border-slate-200 hover:bg-slate-100 hover:border-slate-300'
+                  }`}
               >
                 <div className="font-bold text-xs text-slate-900">{v.name}</div>
                 <div className="text-[11px] text-slate-500 mt-0.5 truncate">{v.address}</div>
@@ -349,7 +354,7 @@ export const BookingCreatePage: React.FC = () => {
               >
                 {fields.map((f) => (
                   <option key={f.id} value={f.id}>
-                    {f.name} ({f.fieldType === '5_vs_5' ? 'Sân 5 người' : f.fieldType === '7_vs_7' ? 'Sân 7 người' : 'Sân 11 người'} - {f.pricePerHour.toLocaleString('vi-VN')} đ/h)
+                    {f.name} ({f.fieldType === '5_vs_5' ? 'Sân 5 người' : 'Sân 7 người'} - {f.pricePerHour.toLocaleString('vi-VN')} đ/h)
                   </option>
                 ))}
               </select>
@@ -366,7 +371,15 @@ export const BookingCreatePage: React.FC = () => {
                 type="date"
                 min={todayStr}
                 value={bookingDate}
-                onChange={(e) => setBookingDate(e.target.value)}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  if (val < todayStr) {
+                    setErrorMsg('Không thể chọn ngày trong quá khứ!');
+                    return;
+                  }
+                  setErrorMsg('');
+                  setBookingDate(val);
+                }}
                 className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:outline-none focus:bg-white focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 font-semibold cursor-pointer"
               />
 
@@ -381,12 +394,14 @@ export const BookingCreatePage: React.FC = () => {
                   <button
                     key={item.label}
                     type="button"
-                    onClick={() => setBookingDate(item.val)}
-                    className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all cursor-pointer ${
-                      bookingDate === item.val
-                        ? 'bg-emerald-600 text-white shadow-xs'
-                        : 'bg-slate-100 hover:bg-slate-200 text-slate-600'
-                    }`}
+                    onClick={() => {
+                      setErrorMsg('');
+                      setBookingDate(item.val);
+                    }}
+                    className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all cursor-pointer ${bookingDate === item.val
+                      ? 'bg-emerald-600 text-white shadow-xs'
+                      : 'bg-slate-100 hover:bg-slate-200 text-slate-600'
+                      }`}
                   >
                     {item.label}
                   </button>
@@ -401,7 +416,7 @@ export const BookingCreatePage: React.FC = () => {
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
               <span className="w-5 h-5 rounded-full bg-emerald-600 text-white text-xs flex items-center justify-center font-bold">3</span>
-              Chọn Ca Khung Giờ (90 Phút)
+              Chọn Khung Giờ Thi Đấu
             </h2>
             {selectedSlot && (
               <span className="px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800 text-[11px] font-bold flex items-center gap-1">
@@ -415,6 +430,7 @@ export const BookingCreatePage: React.FC = () => {
             selectedSlot={selectedSlot}
             onSelectSlot={setSelectedSlot}
             isLoading={isLoadingSlots}
+            date={bookingDate}
           />
         </div>
 
@@ -437,11 +453,10 @@ export const BookingCreatePage: React.FC = () => {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             {/* Bank Transfer / VietQR */}
             <label
-              className={`p-3.5 rounded-xl border flex items-center gap-3 cursor-pointer transition-all ${
-                paymentMethod === 'BANK_TRANSFER'
-                  ? 'bg-emerald-50 border-emerald-600 ring-2 ring-emerald-500/20'
-                  : 'bg-slate-50 border-slate-200 hover:bg-slate-100'
-              }`}
+              className={`p-3.5 rounded-xl border flex items-center gap-3 cursor-pointer transition-all ${paymentMethod === 'BANK_TRANSFER'
+                ? 'bg-emerald-50 border-emerald-600 ring-2 ring-emerald-500/20'
+                : 'bg-slate-50 border-slate-200 hover:bg-slate-100'
+                }`}
             >
               <input
                 type="radio"
@@ -458,65 +473,6 @@ export const BookingCreatePage: React.FC = () => {
                 <div className="text-[10px] text-slate-500">Tất cả ngân hàng</div>
               </div>
             </label>
-
-            {/* MoMo */}
-            <label
-              className={`p-3.5 rounded-xl border flex items-center gap-3 cursor-pointer transition-all ${
-                paymentMethod === 'MOMO'
-                  ? 'bg-pink-50 border-pink-600 ring-2 ring-pink-500/20'
-                  : 'bg-slate-50 border-slate-200 hover:bg-slate-100'
-              }`}
-            >
-              <input
-                type="radio"
-                name="payment"
-                checked={paymentMethod === 'MOMO'}
-                onChange={() => setPaymentMethod('MOMO')}
-                className="hidden"
-              />
-              <div className="w-9 h-9 rounded-lg bg-pink-100 text-pink-700 flex items-center justify-center shrink-0">
-                <Smartphone className="w-5 h-5" />
-              </div>
-              <div>
-                <div className="text-xs font-bold text-slate-900">Ví MoMo</div>
-                <div className="text-[10px] text-slate-500">Thanh toán tức thì</div>
-              </div>
-            </label>
-
-            {/* VNPAY */}
-            <label
-              className={`p-3.5 rounded-xl border flex items-center gap-3 cursor-pointer transition-all ${
-                paymentMethod === 'VNPAY'
-                  ? 'bg-sky-50 border-sky-600 ring-2 ring-sky-500/20'
-                  : 'bg-slate-50 border-slate-200 hover:bg-slate-100'
-              }`}
-            >
-              <input
-                type="radio"
-                name="payment"
-                checked={paymentMethod === 'VNPAY'}
-                onChange={() => setPaymentMethod('VNPAY')}
-                className="hidden"
-              />
-              <div className="w-9 h-9 rounded-lg bg-sky-100 text-sky-700 flex items-center justify-center shrink-0">
-                <CreditCard className="w-5 h-5" />
-              </div>
-              <div>
-                <div className="text-xs font-bold text-slate-900">VNPAY / Thẻ ATM</div>
-                <div className="text-[10px] text-slate-500">Thẻ nội địa & quốc tế</div>
-              </div>
-            </label>
-          </div>
-
-          <div>
-            <label className="block text-xs font-bold text-slate-600 mb-1">Ghi chú thêm cho chủ sân</label>
-            <input
-              type="text"
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-              placeholder="VD: Cần thuê thêm 2 bộ áo pitch, 1 quả bóng số 5..."
-              className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:outline-none focus:bg-white focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
-            />
           </div>
         </div>
 
@@ -530,8 +486,7 @@ export const BookingCreatePage: React.FC = () => {
                 </div>
                 <div>
                   <h3 className="font-black text-sm text-slate-900 flex items-center gap-1.5">
-                    Kiểm Tra & Đối Chiếu Lịch Trình Đặt Sân
-                    <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                    Kiểm Tra - Đối Chiếu Lịch Trình Đặt Sân
                   </h3>
                   <p className="text-[11px] text-slate-500">
                     Hãy kiểm tra chính xác ngày và khung giờ bên dưới trước khi hoàn tất đặt sân
@@ -540,35 +495,34 @@ export const BookingCreatePage: React.FC = () => {
               </div>
 
               <span className="px-2.5 py-1 rounded-full bg-emerald-600 text-white text-[11px] font-bold">
-                ✓ Đã chọn khung giờ
+                Đã chọn khung giờ
               </span>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-white/90 backdrop-blur-xs p-4 rounded-xl border border-emerald-200 text-xs">
               <div>
-                <span className="text-slate-400 block text-[10px] uppercase font-bold">Sân & Địa điểm</span>
-                <span className="font-extrabold text-slate-900 block mt-0.5">{selectedVenue.name}</span>
-                <span className="text-emerald-700 font-bold block text-[11px]">{selectedField.name}</span>
-                <span className="text-[10px] text-slate-500 truncate block">{selectedVenue.address}</span>
+                <span className="text-slate-400 block text-[10px] font-bold">Sân - Địa điểm</span>
+                <span className="font-extrabold text-slate-900 block mt-0.5">Tên sân: {selectedVenue.name}</span>
+                <span className="text-emerald-700 font-bold block text-[11px]">Sân: {selectedField.name}</span>
+                <span className="text-[10px] text-slate-500 truncate block">Địa chỉ: {selectedVenue.address}</span>
               </div>
 
               <div className="border-t sm:border-t-0 sm:border-l border-slate-100 sm:pl-3 pt-2 sm:pt-0">
-                <span className="text-slate-400 block text-[10px] uppercase font-bold">Ngày thi đấu</span>
+                <span className="text-slate-400 block text-[10px] font-bold">Ngày thi đấu</span>
                 <span className="font-black text-emerald-800 text-sm block mt-0.5">
                   {formatBookingDate(bookingDate)}
                 </span>
                 <span className="inline-block mt-0.5 px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-100 text-emerald-800">
-                  {bookingDate === todayStr ? '⚡ Trận đấu hôm nay' : 'Lịch thi đấu sắp tới'}
+                  {bookingDate === todayStr ? 'Trận đấu hôm nay' : 'Lịch thi đấu sắp tới'}
                 </span>
               </div>
 
               <div className="border-t sm:border-t-0 sm:border-l border-slate-100 sm:pl-3 pt-2 sm:pt-0">
-                <span className="text-slate-400 block text-[10px] uppercase font-bold">Khung giờ đá</span>
+                <span className="text-slate-400 block text-[10px] font-bold">Thời gian thi đấu</span>
                 <span className="font-black text-emerald-700 text-base flex items-center gap-1 mt-0.5">
                   <Clock className="w-4 h-4 text-emerald-600" />
                   {selectedSlot.startTime} - {selectedSlot.endTime}
                 </span>
-                <span className="text-[10px] text-slate-500 block">Thời lượng: 90 phút thi đấu</span>
               </div>
             </div>
           </div>
@@ -583,7 +537,7 @@ export const BookingCreatePage: React.FC = () => {
             </div>
             {selectedSlot && (
               <div className="text-[11px] text-slate-400">
-                Thanh toán trực tuyến (VietQR / MoMo / VNPAY) - Bảo đảm giữ sân 100%
+                Thanh toán trực tuyến (VietQR) - Bảo đảm giữ sân 100%
               </div>
             )}
           </div>

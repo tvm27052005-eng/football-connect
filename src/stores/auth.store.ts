@@ -14,6 +14,7 @@ interface AuthState {
   fetchCurrentUser: () => Promise<void>;
   updateUser: (userData: Partial<IUser>) => void;
   switchDemoRole: (role: UserRole) => Promise<void>;
+  setAuthSession: (user: IUser, token: string) => void;
 }
 
 const savedUser = localStorage.getItem('fc_user');
@@ -25,6 +26,12 @@ export const useAuthStore = create<AuthState>((set) => ({
   isLoading: false,
   isAuthenticated: !!savedToken,
   error: null,
+
+  setAuthSession: (user, token) => {
+    localStorage.setItem('fc_token', token);
+    localStorage.setItem('fc_user', JSON.stringify(user));
+    set({ user, token, isAuthenticated: true, isLoading: false, error: null });
+  },
 
   login: async (credentials) => {
     set({ isLoading: true, error: null });

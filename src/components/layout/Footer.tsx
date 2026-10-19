@@ -20,15 +20,11 @@ export const Footer: React.FC = () => {
             <p className="text-xs text-slate-400 leading-relaxed">
               Hệ thống công nghệ quản lý sân bóng đá và kết nối ghép đối trực tuyến hàng đầu Việt Nam. Giải quyết triệt để vấn đề tìm sân, chống trùng lịch và thúc đẩy văn hóa bóng đá phong trào lành mạnh.
             </p>
-            <div className="flex items-center gap-2 text-xs text-emerald-400 font-bold bg-emerald-950/60 p-2.5 rounded-xl border border-emerald-800/40">
-              <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0" /> Chống trùng lịch (Zero Double-Booking) 100%
-            </div>
           </div>
 
           {/* Col 2 - For Players */}
           <div className="space-y-3.5">
-            <h4 className="text-xs font-black uppercase tracking-wider text-white flex items-center gap-1.5">
-              <Zap className="w-3.5 h-3.5 text-emerald-400" /> Dành Cho Cầu Thủ
+            <h4 className="text-xs font-black uppercase tracking-wider text-white flex items-center gap-1.5"> Dành Cho Cầu Thủ
             </h4>
             <ul className="space-y-2 text-xs font-medium">
               <li>
@@ -56,8 +52,7 @@ export const Footer: React.FC = () => {
 
           {/* Col 3 - For Owners */}
           <div className="space-y-3.5">
-            <h4 className="text-xs font-black uppercase tracking-wider text-white flex items-center gap-1.5">
-              <Sparkles className="w-3.5 h-3.5 text-amber-400" /> Dành Cho Chủ Sân
+            <h4 className="text-xs font-black uppercase tracking-wider text-white flex items-center gap-1.5"> Dành Cho Chủ Sân
             </h4>
             <ul className="space-y-2 text-xs font-medium">
               <li>
@@ -113,11 +108,9 @@ export const Footer: React.FC = () => {
 
         {/* Bottom Credits */}
         <div className="mt-12 pt-6 border-t border-slate-900 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-500 gap-4">
-          <p>© 2025 - 2026 Football Connect. Nền tảng công nghệ thể thao hàng đầu.</p>
+          <p>©Football Connect - Nền tảng công nghệ thể thao hàng đầu thế giới.</p>
           <div className="flex items-center gap-1.5 text-slate-400 font-medium">
-            <span>Được phát triển với niềm đam mê</span>
-            <Heart className="w-3.5 h-3.5 text-rose-500 fill-rose-500" />
-            <span>cho bóng đá Việt Nam</span>
+            <span>Được phát triển với niềm đam mê cho bóng đá Việt Nam</span>
           </div>
         </div>
       </div>

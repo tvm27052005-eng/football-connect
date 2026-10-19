@@ -87,6 +87,12 @@ export const VenueDetailPage: React.FC = () => {
 
   const handleBookNow = () => {
     if (!venue || !selectedField || !selectedSlot) return;
+    const now = new Date();
+    const slotDateTime = new Date(`${selectedDate}T${selectedSlot.startTime}:00`);
+    if (isNaN(slotDateTime.getTime()) || slotDateTime <= now) {
+      alert('Khung giờ thi đấu này đã trôi qua rồi! Vui lòng chọn khung giờ khác.');
+      return;
+    }
     navigate(
       `/booking/create?venueId=${venue.id}&fieldId=${selectedField.id}&date=${selectedDate}&start=${selectedSlot.startTime}&end=${selectedSlot.endTime}`
     );
@@ -109,10 +115,7 @@ export const VenueDetailPage: React.FC = () => {
 
   const handleSubmitReview = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!reviewComment.trim()) {
-      setReviewError('Vui lòng nhập nhận xét của bạn');
-      return;
-    }
+
     try {
       setIsSubmittingReview(true);
       setReviewError('');
@@ -166,11 +169,10 @@ export const VenueDetailPage: React.FC = () => {
               <button
                 key={idx}
                 onClick={() => setSelectedImage(img)}
-                className={`w-24 h-18 rounded-xl overflow-hidden border-2 shrink-0 transition-all cursor-pointer ${
-                  selectedImage === img
-                    ? 'border-emerald-600 ring-2 ring-emerald-500/30'
-                    : 'border-slate-200 opacity-70 hover:opacity-100'
-                }`}
+                className={`w-24 h-18 rounded-xl overflow-hidden border-2 shrink-0 transition-all cursor-pointer ${selectedImage === img
+                  ? 'border-emerald-600 ring-2 ring-emerald-500/30'
+                  : 'border-slate-200 opacity-70 hover:opacity-100'
+                  }`}
               >
                 <img src={img} alt="thumb" className="w-full h-full object-cover" />
               </button>
@@ -286,15 +288,14 @@ export const VenueDetailPage: React.FC = () => {
               <button
                 key={f.id}
                 onClick={() => setSelectedField(f)}
-                className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
-                  selectedField?.id === f.id
-                    ? 'bg-emerald-600 text-white font-extrabold shadow-xs'
-                    : 'bg-slate-50 border border-slate-200 text-slate-700 hover:bg-slate-100'
-                }`}
+                className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${selectedField?.id === f.id
+                  ? 'bg-emerald-600 text-white font-extrabold shadow-xs'
+                  : 'bg-slate-50 border border-slate-200 text-slate-700 hover:bg-slate-100'
+                  }`}
               >
                 <span>{f.name}</span>
                 <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold ${selectedField?.id === f.id ? 'bg-white/20 text-white' : 'bg-emerald-50 text-emerald-800 border border-emerald-200'}`}>
-                  {f.fieldType === '5_vs_5' ? 'Sân 5' : f.fieldType === '7_vs_7' ? 'Sân 7' : 'Sân 11'}
+                  {f.fieldType === '5_vs_5' ? 'Sân 5' : 'Sân 7'}
                 </span>
                 <span className="text-[11px]">({f.pricePerHour.toLocaleString('vi-VN')} đ/h)</span>
               </button>
@@ -312,7 +313,14 @@ export const VenueDetailPage: React.FC = () => {
               type="date"
               min={new Date().toISOString().split('T')[0]}
               value={selectedDate}
-              onChange={(e) => setSelectedDate(e.target.value)}
+              onChange={(e) => {
+                const today = new Date().toISOString().split('T')[0];
+                if (e.target.value < today) {
+                  alert('Không thể chọn ngày đã qua!');
+                  return;
+                }
+                setSelectedDate(e.target.value);
+              }}
               className="px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:outline-none focus:bg-white focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 font-bold"
             />
             <span className="text-xs text-slate-500 flex items-center gap-1 font-medium">
@@ -332,6 +340,7 @@ export const VenueDetailPage: React.FC = () => {
             selectedSlot={selectedSlot}
             onSelectSlot={setSelectedSlot}
             isLoading={isLoadingSlots}
+            date={selectedDate}
           />
         </div>
 
@@ -458,7 +467,9 @@ export const VenueDetailPage: React.FC = () => {
           </div>
 
           <div>
-            <label className="block text-slate-700 font-bold mb-1">Nhận xét chi tiết</label>
+            <label className="block text-slate-700 font-bold mb-1">
+              Nhận xét chi tiết <span className="text-slate-400 font-normal text-[11px]">(tùy chọn)</span>
+            </label>
             <textarea
               rows={4}
               value={reviewComment}

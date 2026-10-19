@@ -89,14 +89,10 @@ function processCustomerSupportQuery(userMessage: string): string {
     let result = `Dạ em chào anh/chị! ⚽\n\nNếu anh/chị muốn chọn **sân bóng chất lượng cao hàng đầu** để thi đấu hoặc giao hữu quan trọng thì Football Connect xin gợi ý:\n\n`;
 
     if (topRated) {
-      result += `🌟 **${topRated.name}** (Đánh giá cao nhất hệ thống: **${topRated.rating}/5.0⭐**)\n`;
-      result += `📍 **Địa chỉ**: ${topRated.address}, ${topRated.district}\n`;
-      result += `✨ **Điểm nổi bật**: ${topRated.description}\n`;
-      result += `💵 **Giá thuê**: ${topRated.priceRange.min.toLocaleString('vi-VN')}đ - ${topRated.priceRange.max.toLocaleString('vi-VN')}đ/h\n\n`;
-    }
-
-    if (fifaVenue) {
-      result += `🏟️ Đặc biệt, nếu anh/chị cần sân 11 người đạt chuẩn FIFA thi đấu, anh/chị có thể tham khảo **${fifaVenue.name}** ạ!\n\n`;
+      result += ` **${topRated.name}** (Đánh giá cao nhất hệ thống: **${topRated.rating}/5.0⭐**)\n`;
+      result += ` **Địa chỉ**: ${topRated.address}, ${topRated.district}\n`;
+      result += ` **Điểm nổi bật**: ${topRated.description}\n`;
+      result += ` **Giá thuê**: ${topRated.priceRange.min.toLocaleString('vi-VN')}đ - ${topRated.priceRange.max.toLocaleString('vi-VN')}đ/h\n\n`;
     }
 
     result += `Em có thể hỗ trợ anh/chị kiểm tra lịch trống hoặc đặt sân ngay bây giờ ạ!`;
@@ -138,7 +134,7 @@ function processCustomerSupportQuery(userMessage: string): string {
     }
   }
 
-  // 4. FIELD TYPE INTENT (Sân 5, Sân 7, Sân 11)
+  // 4. FIELD TYPE INTENT (Sân 5, Sân 7)
   if (msg.includes('sân 5') || msg.includes('5 người') || msg.includes('futsal')) {
     const fields5 = db.fields.filter(f => f.fieldType === '5_vs_5');
     const venueIds = Array.from(new Set(fields5.map(f => f.venueId)));
@@ -163,20 +159,6 @@ function processCustomerSupportQuery(userMessage: string): string {
       result += `• **${v.name}** (${v.district}): Giá từ ${v.priceRange.min.toLocaleString('vi-VN')}đ - ${v.priceRange.max.toLocaleString('vi-VN')}đ/h (${v.rating}⭐)\n`;
     });
     result += `\nAnh/chị cần đặt sân 7 ở khu vực nào ạ?`;
-    return result;
-  }
-
-  if (msg.includes('sân 11') || msg.includes('11 người')) {
-    const fields11 = db.fields.filter(f => f.fieldType === '11_vs_11');
-    const venueIds = Array.from(new Set(fields11.map(f => f.venueId)));
-    const venues = db.venues.filter(v => venueIds.includes(v.id));
-
-    let result = `Dạ em chào anh/chị! 🏟️\n\nĐối với **Sân 11 người thi đấu lớn**, hiện tại hệ thống có:\n\n`;
-    venues.forEach(v => {
-      const f11 = fields11.find(f => f.venueId === v.id);
-      result += `• **${v.name}** (${v.district}): ${f11?.name} - Giá: ${f11?.pricePerHour.toLocaleString('vi-VN')}đ/h\n`;
-    });
-    result += `\nSân 11 người rất phù hợp cho các giải đấu công ty hoặc trận thi đấu chính thức ạ. Anh/chị có cần em giữ chỗ không ạ?`;
     return result;
   }
 
