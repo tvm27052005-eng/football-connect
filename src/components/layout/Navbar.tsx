@@ -26,6 +26,8 @@ export const Navbar: React.FC = () => {
   const { user, isAuthenticated, logout, switchDemoRole } = useAuthStore();
   const { notifications, unreadCount, fetchNotifications, markAllAsRead } = useNotificationStore();
 
+  const isAdminRoute = location.pathname.startsWith('/admin');
+
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showNotifMenu, setShowNotifMenu] = useState(false);
 
@@ -38,7 +40,6 @@ export const Navbar: React.FC = () => {
     }
   }, [isAuthenticated, fetchNotifications]);
 
-  // Close dropdowns on click outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (notifRef.current && !notifRef.current.contains(event.target as Node)) {
@@ -62,8 +63,8 @@ export const Navbar: React.FC = () => {
     { name: 'Tìm sân bóng', path: '/venues', icon: Search },
     { name: 'Cáp kèo & Đối thủ', path: '/matches', icon: Users, badge: 'HOT' },
     { name: 'Đặt lịch sân', path: '/booking/create', icon: Calendar },
-    ...(isAuthenticated ? [{ name: 'Lịch của tôi', path: '/bookings' }] : []),
-    ...(isAuthenticated ? [{ name: 'Phòng chat', path: '/chat', icon: MessageSquare }] : [])
+    ...(isAuthenticated && user?.role !== 'ADMIN' ? [{ name: 'Lịch của tôi', path: '/bookings' }] : []),
+    ...(isAuthenticated && user?.role !== 'ADMIN' ? [{ name: 'Phòng chat', path: '/chat', icon: MessageSquare }] : [])
   ];
 
   return (
@@ -75,41 +76,6 @@ export const Navbar: React.FC = () => {
             <Zap className="w-3 h-3 mr-1 text-emerald-400 fill-emerald-400" /> FOOTBALL CONNECT
           </span>
           <span className="hidden sm:inline text-slate-400 text-[11px]">Nền tảng đặt sân & kết nối cộng đồng đá bóng số 1</span>
-        </div>
-
-        {/* Demo Switcher Quick Bar */}
-        <div className="flex items-center gap-1.5">
-          <span className="hidden md:inline text-[11px] text-slate-400 font-medium mr-1">Chuyển quyền:</span>
-          <button
-            onClick={() => switchDemoRole('USER')}
-            className={`px-2.5 py-0.5 rounded-md text-[11px] font-semibold transition-all cursor-pointer ${
-              user?.role === 'USER'
-                ? 'bg-emerald-500 text-slate-950 font-bold shadow-xs'
-                : 'bg-slate-800/90 text-slate-300 hover:bg-slate-700'
-            }`}
-          >
-            👤 Cầu thủ
-          </button>
-          <button
-            onClick={() => switchDemoRole('OWNER')}
-            className={`px-2.5 py-0.5 rounded-md text-[11px] font-semibold transition-all cursor-pointer ${
-              user?.role === 'OWNER'
-                ? 'bg-amber-400 text-slate-950 font-bold shadow-xs'
-                : 'bg-slate-800/90 text-slate-300 hover:bg-slate-700'
-            }`}
-          >
-            🏟️ Chủ sân
-          </button>
-          <button
-            onClick={() => switchDemoRole('ADMIN')}
-            className={`px-2.5 py-0.5 rounded-md text-[11px] font-semibold transition-all cursor-pointer ${
-              user?.role === 'ADMIN'
-                ? 'bg-purple-400 text-slate-950 font-bold shadow-xs'
-                : 'bg-slate-800/90 text-slate-300 hover:bg-slate-700'
-            }`}
-          >
-            🛡️ Admin
-          </button>
         </div>
       </div>
 
@@ -137,31 +103,33 @@ export const Navbar: React.FC = () => {
           </Link>
 
           {/* Desktop Nav Links */}
-          <nav className="hidden lg:flex items-center gap-1.5 bg-slate-100/70 p-1 rounded-2xl border border-slate-200/60">
-            {navLinks.map((link) => {
-              const isActive = location.pathname === link.path;
-              return (
-                <Link
-                  key={link.path}
-                  to={link.path}
-                  className={`relative px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all flex items-center gap-2 ${
-                    isActive
-                      ? 'text-emerald-900 bg-white font-extrabold shadow-sm border border-slate-200/80'
-                      : 'text-slate-600 hover:text-slate-950 hover:bg-white/60'
-                  }`}
-                >
-                  {link.icon && <link.icon className={`w-4 h-4 ${isActive ? 'text-emerald-600' : 'text-slate-400'}`} />}
-                  {link.name}
-                  {link.badge && (
-                    <span className="px-1.5 py-0.5 text-[9px] font-black uppercase bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-full shadow-xs flex items-center gap-0.5">
-                      <Flame className="w-2.5 h-2.5 fill-white" />
-                      {link.badge}
-                    </span>
-                  )}
-                </Link>
-              );
-            })}
-          </nav>
+          {!isAdminRoute && (
+            <nav className="hidden lg:flex items-center gap-1.5 bg-slate-100/70 p-1 rounded-2xl border border-slate-200/60">
+              {navLinks.map((link) => {
+                const isActive = location.pathname === link.path;
+                return (
+                  <Link
+                    key={link.path}
+                    to={link.path}
+                    className={`relative px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all flex items-center gap-2 ${
+                      isActive
+                        ? 'text-emerald-900 bg-white font-extrabold shadow-sm border border-slate-200/80'
+                        : 'text-slate-600 hover:text-slate-950 hover:bg-white/60'
+                    }`}
+                  >
+                    {link.icon && <link.icon className={`w-4 h-4 ${isActive ? 'text-emerald-600' : 'text-slate-400'}`} />}
+                    {link.name}
+                    {link.badge && (
+                      <span className="px-1.5 py-0.5 text-[9px] font-black uppercase bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-full shadow-xs flex items-center gap-0.5">
+                        <Flame className="w-2.5 h-2.5 fill-white" />
+                        {link.badge}
+                      </span>
+                    )}
+                  </Link>
+                );
+              })}
+            </nav>
+          )}
 
           {/* Right Action Menu */}
           <div className="flex items-center gap-2.5">
@@ -265,80 +233,41 @@ export const Navbar: React.FC = () => {
                 <div className="relative" ref={userRef}>
                   <button
                     onClick={() => setShowUserMenu(!showUserMenu)}
-                    className="flex items-center gap-2 p-1.5 pr-2.5 rounded-2xl hover:bg-slate-100/80 border border-slate-200 transition-all cursor-pointer"
+                    className="flex items-center gap-2 px-2.5 py-2 rounded-2xl bg-slate-100 border border-slate-200 hover:bg-slate-200/80 transition-all cursor-pointer"
                   >
-                    <img
-                      src={user?.avatar || 'https://api.dicebear.com/7.x/bottts/svg?seed=user'}
-                      alt={user?.name}
-                      className="w-8 h-8 rounded-xl object-cover bg-slate-100 border border-slate-200 shadow-xs"
-                    />
-                    <div className="hidden md:block text-left">
-                      <div className="text-xs font-extrabold text-slate-900 truncate max-w-[110px]">{user?.name}</div>
-                      <div className="text-[10px] text-emerald-700 font-bold uppercase">{user?.role}</div>
+                    <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 text-white flex items-center justify-center font-bold text-xs shadow-sm">
+                      {user?.name?.charAt(0).toUpperCase() || 'U'}
                     </div>
-                    <ChevronDown className="w-3.5 h-3.5 text-slate-400 ml-0.5" />
+                    <div className="hidden sm:flex flex-col items-start leading-tight">
+                      <span className="text-[11px] font-bold text-slate-900">{user?.name}</span>
+                      <span className="text-[10px] text-slate-500 uppercase">{user?.role}</span>
+                    </div>
+                    <ChevronDown className="w-4 h-4 text-slate-500" />
                   </button>
 
                   {showUserMenu && (
-                    <div className="absolute right-0 mt-3 w-60 bg-white border border-slate-200 rounded-3xl shadow-2xl py-2 z-50 divide-y divide-slate-100 text-slate-800 animate-in fade-in zoom-in-95 duration-200">
-                      <div className="px-4 py-3 bg-gradient-to-br from-slate-50 to-white">
-                        <p className="text-xs font-black text-slate-900 truncate">{user?.name}</p>
-                        <p className="text-[11px] text-slate-500 truncate">{user?.email}</p>
-                        <span className="inline-block mt-1.5 px-2.5 py-0.5 rounded-md text-[10px] font-black uppercase bg-emerald-50 text-emerald-700 border border-emerald-200">
-                          {user?.role === 'USER' ? 'Cầu Thủ' : user?.role === 'OWNER' ? 'Chủ Cụm Sân' : 'Quản Trị Viên'}
-                        </span>
+                    <div className="absolute right-0 mt-3 w-60 bg-white border border-slate-200 rounded-2xl shadow-2xl z-50 overflow-hidden">
+                      <div className="p-3.5 border-b border-slate-100 bg-slate-50">
+                        <div className="text-xs font-bold text-slate-900">{user?.name}</div>
+                        <div className="text-[11px] text-slate-500 mt-0.5">{user?.email}</div>
                       </div>
 
-                      <div className="py-1.5">
+                      <div className="py-2">
                         <Link
                           to="/profile"
                           onClick={() => setShowUserMenu(false)}
-                          className="flex items-center gap-2.5 px-4 py-2 text-xs font-semibold text-slate-700 hover:text-emerald-700 hover:bg-emerald-50/50 transition-colors"
+                          className="flex items-center gap-2 px-3.5 py-2.5 text-xs text-slate-700 hover:bg-slate-50 transition-colors"
                         >
-                          <User className="w-4 h-4 text-slate-400" /> Hồ sơ cầu thủ
+                          <User className="w-4 h-4 text-slate-500" /> Hồ sơ cá nhân
                         </Link>
-                        <Link
-                          to="/bookings"
-                          onClick={() => setShowUserMenu(false)}
-                          className="flex items-center gap-2.5 px-4 py-2 text-xs font-semibold text-slate-700 hover:text-emerald-700 hover:bg-emerald-50/50 transition-colors"
-                        >
-                          <Calendar className="w-4 h-4 text-slate-400" /> Lịch đặt sân của tôi
-                        </Link>
-                        <Link
-                          to="/chat"
-                          onClick={() => setShowUserMenu(false)}
-                          className="flex items-center gap-2.5 px-4 py-2 text-xs font-semibold text-slate-700 hover:text-emerald-700 hover:bg-emerald-50/50 transition-colors"
-                        >
-                          <MessageSquare className="w-4 h-4 text-slate-400" /> Tin nhắn & Phòng chat
-                        </Link>
-
-                        {user?.role === 'OWNER' && (
-                          <Link
-                            to="/owner/dashboard"
-                            onClick={() => setShowUserMenu(false)}
-                            className="flex items-center gap-2.5 px-4 py-2 text-xs font-bold text-amber-800 hover:bg-amber-50 transition-colors"
-                          >
-                            <Briefcase className="w-4 h-4 text-amber-600" /> Quản lý Sân bóng
-                          </Link>
-                        )}
-
-                        {user?.role === 'ADMIN' && (
-                          <Link
-                            to="/admin/dashboard"
-                            onClick={() => setShowUserMenu(false)}
-                            className="flex items-center gap-2.5 px-4 py-2 text-xs font-bold text-purple-800 hover:bg-purple-50 transition-colors"
-                          >
-                            <Shield className="w-4 h-4 text-purple-600" /> Quản trị Hệ thống
-                          </Link>
-                        )}
-                      </div>
-
-                      <div className="py-1">
                         <button
-                          onClick={handleLogout}
-                          className="w-full flex items-center gap-2.5 px-4 py-2 text-xs font-bold text-rose-600 hover:bg-rose-50 text-left cursor-pointer transition-colors"
+                          onClick={() => {
+                            setShowUserMenu(false);
+                            handleLogout();
+                          }}
+                          className="w-full flex items-center gap-2 px-3.5 py-2.5 text-xs text-rose-700 hover:bg-rose-50 transition-colors cursor-pointer"
                         >
-                          <LogOut className="w-4 h-4 text-rose-500" /> Đăng xuất tài khoản
+                          <LogOut className="w-4 h-4" /> Đăng xuất
                         </button>
                       </div>
                     </div>
@@ -349,15 +278,15 @@ export const Navbar: React.FC = () => {
               <div className="flex items-center gap-2">
                 <Link
                   to="/login"
-                  className="px-4 py-2 text-xs font-bold text-slate-700 hover:text-slate-900 hover:bg-slate-100 rounded-xl transition-colors border border-slate-200"
+                  className="px-4 py-2 rounded-xl border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 text-xs font-bold transition-all"
                 >
                   Đăng nhập
                 </Link>
                 <Link
                   to="/register"
-                  className="px-4 py-2 text-xs font-black bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white rounded-xl shadow-md shadow-emerald-600/20 transition-all active:scale-95 flex items-center gap-1"
+                  className="px-4 py-2 rounded-xl bg-emerald-600 text-white hover:bg-emerald-700 text-xs font-bold shadow-xs transition-all"
                 >
-                  Đăng ký <Zap className="w-3.5 h-3.5 fill-white" />
+                  Đăng ký
                 </Link>
               </div>
             )}

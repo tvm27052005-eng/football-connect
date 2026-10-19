@@ -18,7 +18,11 @@ export const LoginPage: React.FC = () => {
     e.preventDefault();
     setLocalError('');
     try {
-      await login({ email, password });
+      const user = await login({ email, password });
+      if (user.role === 'ADMIN') {
+        navigate('/admin', { replace: true });
+        return;
+      }
       navigate(from, { replace: true });
     } catch (err: unknown) {
       setLocalError((err as Error).message || 'Đăng nhập thất bại');
@@ -28,7 +32,7 @@ export const LoginPage: React.FC = () => {
   const handleQuickDemo = async (role: 'USER' | 'OWNER' | 'ADMIN') => {
     await switchDemoRole(role);
     if (role === 'OWNER') navigate('/owner/dashboard');
-    else if (role === 'ADMIN') navigate('/admin/dashboard');
+    else if (role === 'ADMIN') navigate('/admin');
     else navigate('/');
   };
 

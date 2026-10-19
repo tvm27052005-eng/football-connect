@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { User, Phone, MapPin, Trophy, Shield, Save, CheckCircle2, AlertCircle } from 'lucide-react';
+import { User, Phone, MapPin, Shield, Save, CheckCircle2, AlertCircle } from 'lucide-react';
 import { useAuthStore } from '../stores/auth.store.js';
 import { api } from '../services/api.js';
 
@@ -11,9 +11,6 @@ export const ProfilePage: React.FC = () => {
     phone: user?.phone || '',
     city: user?.location?.city || 'Hà Nội',
     district: user?.location?.district || 'Cầu Giấy',
-    skillLevel: user?.skillLevel || 'INTERMEDIATE',
-    preferredFieldType: user?.preferredFieldType || '7_vs_7',
-    preferredPosition: user?.preferredPosition || 'Tiền vệ (MF)',
     bio: user?.bio || '',
     avatar: user?.avatar || ''
   });
@@ -29,9 +26,6 @@ export const ProfilePage: React.FC = () => {
         phone: user.phone || '',
         city: user.location?.city || 'Hà Nội',
         district: user.location?.district || 'Cầu Giấy',
-        skillLevel: user.skillLevel || 'INTERMEDIATE',
-        preferredFieldType: user.preferredFieldType || '7_vs_7',
-        preferredPosition: user.preferredPosition || 'Tiền vệ (MF)',
         bio: user.bio || '',
         avatar: user.avatar || ''
       });
@@ -52,9 +46,6 @@ export const ProfilePage: React.FC = () => {
           city: formData.city,
           district: formData.district
         },
-        skillLevel: formData.skillLevel,
-        preferredFieldType: formData.preferredFieldType,
-        preferredPosition: formData.preferredPosition,
         bio: formData.bio,
         avatar: formData.avatar
       });
@@ -76,7 +67,7 @@ export const ProfilePage: React.FC = () => {
           Hồ Sơ Cầu Thủ & Cài Đặt
         </h1>
         <p className="text-xs text-slate-500 mt-1">
-          Cập nhật kỹ năng, vị trí thi đấu và khu vực để nhận gợi ý ghép kèo chuẩn xác nhất.
+          Cập nhật thông tin cơ bản để quản lý tài khoản và liên hệ chính xác nhất.
         </p>
       </div>
 
@@ -95,7 +86,6 @@ export const ProfilePage: React.FC = () => {
       )}
 
       <form onSubmit={handleSubmit} className="space-y-6 text-xs">
-        {/* User Card */}
         <div className="bg-white border border-slate-200/90 rounded-3xl p-6 flex flex-col sm:flex-row items-center gap-6 shadow-xs">
           <img
             src={formData.avatar || 'https://api.dicebear.com/7.x/bottts/svg?seed=' + user?.id}
@@ -111,7 +101,6 @@ export const ProfilePage: React.FC = () => {
           </div>
         </div>
 
-        {/* Basic Info */}
         <div className="bg-white border border-slate-200/90 rounded-3xl p-6 space-y-4 shadow-xs">
           <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
             <User className="w-4 h-4 text-emerald-600" /> Thông Tin Cơ Bản
@@ -164,70 +153,19 @@ export const ProfilePage: React.FC = () => {
               />
             </div>
           </div>
-        </div>
-
-        {/* Football Specs */}
-        <div className="bg-white border border-slate-200/90 rounded-3xl p-6 space-y-4 shadow-xs">
-          <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
-            <Trophy className="w-4 h-4 text-emerald-600" /> Kỹ Năng & Sở Thích Bóng Đá
-          </h3>
-
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div>
-              <label className="block text-slate-700 font-bold mb-1">Trình độ kỹ năng</label>
-              <select
-                value={formData.skillLevel}
-                onChange={(e) => setFormData({ ...formData, skillLevel: e.target.value as any })}
-                className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:bg-white focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 font-semibold"
-              >
-                <option value="BEGINNER">Tập sự / Mới tập</option>
-                <option value="INTERMEDIATE">Trung bình / Khá</option>
-                <option value="ADVANCED">Nâng cao / Chuyên nghiệp</option>
-                <option value="PRO">Bán chuyên / Chuyên</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-slate-700 font-bold mb-1">Loại sân ưa thích</label>
-              <select
-                value={formData.preferredFieldType}
-                onChange={(e) => setFormData({ ...formData, preferredFieldType: e.target.value as any })}
-                className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:bg-white focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 font-semibold"
-              >
-                <option value="5_vs_5">Sân 5 người</option>
-                <option value="7_vs_7">Sân 7 người</option>
-                <option value="11_vs_11">Sân 11 người</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-slate-700 font-bold mb-1">Vị trí sở trường</label>
-              <select
-                value={formData.preferredPosition}
-                onChange={(e) => setFormData({ ...formData, preferredPosition: e.target.value })}
-                className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:bg-white focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 font-semibold"
-              >
-                <option value="Tiền đạo (ST/FW)">Tiền đạo (ST/FW)</option>
-                <option value="Tiền vệ (MF)">Tiền vệ (MF)</option>
-                <option value="Hậu vệ (DF/CB)">Hậu vệ (DF/CB)</option>
-                <option value="Thủ môn (GK)">Thủ môn (GK)</option>
-              </select>
-            </div>
-          </div>
 
           <div>
-            <label className="block text-slate-700 font-bold mb-1">Tiểu sử / Phong cách đá</label>
+            <label className="block text-slate-700 font-bold mb-1">Giới thiệu ngắn</label>
             <textarea
               rows={3}
               value={formData.bio}
               onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
-              placeholder="Chia sẻ về lối đá, thể lực hoặc đội bóng yêu thích..."
+              placeholder="Thông tin ngắn hoặc tóm tắt vai trò quản trị..."
               className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:bg-white focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
             />
           </div>
         </div>
 
-        {/* Submit */}
         <div className="flex justify-end">
           <button
             type="submit"
