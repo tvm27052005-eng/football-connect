@@ -35,11 +35,14 @@ import { AdminDashboardPage } from './pages/admin/AdminDashboardPage.js';
 import { AdminUsersPage } from './pages/admin/AdminUsersPage.js';
 import { AdminVenuesPage } from './pages/admin/AdminVenuesPage.js';
 import { AdminBookingsPage } from './pages/admin/AdminBookingsPage.js';
+import { AdminMatchesPage } from './pages/admin/AdminMatchesPage.js';
 
 // Layout wrapper to control Navbar & Footer visibility
 const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const location = useLocation();
+  const { user } = useAuthStore();
   const isPortal = location.pathname.startsWith('/owner') || location.pathname.startsWith('/admin');
+  const isAdmin = user?.role === 'ADMIN';
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] text-slate-900 flex flex-col font-sans selection:bg-emerald-600 selection:text-white pb-16 lg:pb-0">
@@ -47,7 +50,7 @@ const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       <main className="flex-1">{children}</main>
       {!isPortal && <Footer />}
       {!isPortal && <BottomNav />}
-      <AIChatWidget />
+      {!isAdmin && <AIChatWidget />}
     </div>
   );
 };
@@ -152,6 +155,14 @@ export default function App() {
 
           {/* Admin Portal Routes */}
           <Route
+            path="/admin"
+            element={
+              <RoleRoute allowedRoles={['ADMIN']}>
+                <AdminDashboardPage />
+              </RoleRoute>
+            }
+          />
+          <Route
             path="/admin/dashboard"
             element={
               <RoleRoute allowedRoles={['ADMIN']}>
@@ -180,6 +191,14 @@ export default function App() {
             element={
               <RoleRoute allowedRoles={['ADMIN']}>
                 <AdminBookingsPage />
+              </RoleRoute>
+            }
+          />
+          <Route
+            path="/admin/matches"
+            element={
+              <RoleRoute allowedRoles={['ADMIN']}>
+                <AdminMatchesPage />
               </RoleRoute>
             }
           />

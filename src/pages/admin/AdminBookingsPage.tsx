@@ -1,10 +1,23 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar, User, Building, Clock, DollarSign, Search, Filter } from 'lucide-react';
+import { Calendar, Search } from 'lucide-react';
 import { api } from '../../services/api.js';
 import { IBooking } from '../../types/index.js';
 import { AdminSidebar } from '../../components/layout/AdminSidebar.js';
 import { Badge } from '../../components/common/Badge.js';
 import { LoadingSkeleton, EmptyState } from '../../components/common/LoadingSkeleton.js';
+
+const bookingStatusLabel: Record<string, string> = {
+  CONFIRMED: 'Đã xác nhận',
+  PENDING: 'Chờ duyệt',
+  COMPLETED: 'Đã hoàn thành',
+  CANCELLED: 'Đã hủy'
+};
+
+const paymentStatusLabel: Record<string, string> = {
+  PAID: 'Đã thanh toán',
+  UNPAID: 'Chưa thanh toán',
+  REFUNDED: 'Hoàn trả'
+};
 
 export const AdminBookingsPage: React.FC = () => {
   const [bookings, setBookings] = useState<IBooking[]>([]);
@@ -75,10 +88,10 @@ export const AdminBookingsPage: React.FC = () => {
               className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:outline-none focus:bg-white focus:border-purple-600 focus:ring-2 focus:ring-purple-600/20 font-medium"
             >
               <option value="ALL">Tất cả trạng thái</option>
-              <option value="CONFIRMED">Đã xác nhận (CONFIRMED)</option>
-              <option value="PENDING">Chờ duyệt (PENDING)</option>
-              <option value="COMPLETED">Đã hoàn thành (COMPLETED)</option>
-              <option value="CANCELLED">Đã hủy (CANCELLED)</option>
+              <option value="CONFIRMED">Đã xác nhận</option>
+              <option value="PENDING">Chờ duyệt</option>
+              <option value="COMPLETED">Đã hoàn thành</option>
+              <option value="CANCELLED">Đã hủy</option>
             </select>
           </div>
         </div>
@@ -108,9 +121,7 @@ export const AdminBookingsPage: React.FC = () => {
                 <tbody className="divide-y divide-slate-200">
                   {filteredBookings.map((b) => (
                     <tr key={b.id} className="hover:bg-slate-50/75 transition-colors">
-                      <td className="p-4 font-mono font-bold text-purple-700">
-                        #{b.id}
-                      </td>
+                      <td className="p-4 font-mono font-bold text-purple-700">#{b.id}</td>
                       <td className="p-4">
                         <div className="font-bold text-slate-900">{b.userName}</div>
                         <div className="text-[10px] text-slate-500">{b.userPhone}</div>
@@ -125,7 +136,7 @@ export const AdminBookingsPage: React.FC = () => {
                       </td>
                       <td className="p-4">
                         <div className="font-black text-slate-900">{(b.totalPrice || 0).toLocaleString('vi-VN')} đ</div>
-                        <span className="text-[10px] text-slate-500 uppercase">{b.paymentMethod}</span>
+                        <span className="text-[10px] text-slate-500 uppercase">{paymentStatusLabel[b.paymentStatus] || b.paymentStatus}</span>
                       </td>
                       <td className="p-4 text-right">
                         <Badge
@@ -140,7 +151,7 @@ export const AdminBookingsPage: React.FC = () => {
                           }
                           size="sm"
                         >
-                          {b.status}
+                          {bookingStatusLabel[b.status] || b.status}
                         </Badge>
                       </td>
                     </tr>
