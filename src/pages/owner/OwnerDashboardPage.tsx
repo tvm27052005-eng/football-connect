@@ -61,7 +61,7 @@ export const OwnerDashboardPage: React.FC = () => {
             </p>
           </div>
           <span className="px-3 py-1 rounded-full bg-amber-50 text-amber-800 border border-amber-200 text-xs font-bold">
-            ⚡ Trạng thái: 100% Hoạt Động
+            ⚡ Trạng thái: {stats?.summary?.totalVenues || 0} cụm sân
           </span>
         </div>
 
@@ -80,7 +80,8 @@ export const OwnerDashboardPage: React.FC = () => {
                   {(stats?.summary?.totalRevenue || 0).toLocaleString('vi-VN')} đ
                 </div>
                 <div className="text-[11px] text-emerald-700 font-medium">
-                  +18.5% so với tháng trước
+                  {stats?.summary?.revenueChangePercent > 0 ? '+' : ''}
+                  {stats?.summary?.revenueChangePercent || 0}% so với tháng trước
                 </div>
               </div>
 
@@ -103,10 +104,12 @@ export const OwnerDashboardPage: React.FC = () => {
                   <Clock className="w-4 h-4 text-sky-600" />
                 </div>
                 <div className="text-2xl font-black text-sky-600">
-                  {stats?.summary?.utilizationRate || '84.5%'}
+                  {stats?.summary?.utilizationRate || '0%'}
                 </div>
                 <div className="text-[11px] text-slate-500">
-                  Cao điểm 17:30 - 20:30
+                  {stats?.summary?.peakSlot === 'Chưa có dữ liệu'
+                    ? 'Chưa có dữ liệu đặt sân'
+                    : `Khung giờ nhiều khách nhất: ${stats?.summary?.peakSlot}`}
                 </div>
               </div>
 
@@ -153,10 +156,10 @@ export const OwnerDashboardPage: React.FC = () => {
                 </div>
               </div>
 
-              {/* Daily Revenue (This Week) */}
+              {/* Daily Bookings (Last 7 Days) */}
               <div className="bg-white border border-slate-200/90 rounded-3xl p-6 space-y-4 shadow-xs">
                 <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider">
-                  Lượt Khách Đặt Sân Theo Ngày Trong Tuần
+                  Lượt Khách Đặt Sân 7 Ngày Gần Nhất
                 </h3>
                 <div className="h-64">
                   <ResponsiveContainer width="100%" height="100%">

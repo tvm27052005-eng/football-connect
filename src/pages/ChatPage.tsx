@@ -10,11 +10,15 @@ import {
   Shield,
   Clock,
   Sparkles
+  ,Paperclip, Image as ImageIcon, X, FileText
 } from 'lucide-react';
 import { useChatStore } from '../stores/chat.store.js';
 import { useAuthStore } from '../stores/auth.store.js';
 import { useSocket } from '../hooks/useSocket.js';
 import { LoadingSkeleton } from '../components/common/LoadingSkeleton.js';
+import { uploadApi } from '../services/upload.api.js';
+import { OwnerSidebar } from '../components/layout/OwnerSidebar.js';
+import { AdminSidebar } from '../components/layout/AdminSidebar.js';
 
 export const ChatPage: React.FC = () => {
   const [searchParams] = useSearchParams();
@@ -27,6 +31,7 @@ export const ChatPage: React.FC = () => {
     messages,
     isLoadingConversations,
     isLoadingMessages,
+    error,
     fetchConversations,
     selectConversation,
     sendMessage,
@@ -37,7 +42,10 @@ export const ChatPage: React.FC = () => {
 
   const [inputMessage, setInputMessage] = useState('');
   const [searchFilter, setSearchFilter] = useState('');
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [isUploadingFile, setIsUploadingFile] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
@@ -63,14 +71,20 @@ export const ChatPage: React.FC = () => {
   }, [activeConversation?.id]);
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    const container = messagesContainerRef.current;
+    if (!container) return;
+
+    container.scrollTo({
+      top: container.scrollHeight,
+      behavior: 'smooth'
+    });
   }, [messages]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setInputMessage(e.target.value);
     if (!activeConversation || !user) return;
 
-    emitTyping(activeConversation.id, user.name);
+    emitTyping(activeConversation.id);
 
     if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
     typingTimeoutRef.current = setTimeout(() => {
@@ -80,12 +94,37 @@ export const ChatPage: React.FC = () => {
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!inputMessage.trim() || !activeConversation) return;
+    if ((!inputMessage.trim() && !selectedFile) || !activeConversation || isUploadingFile) return;
 
     emitStopTyping(activeConversation.id);
     const text = inputMessage;
     setInputMessage('');
-    await sendMessage(text);
+    let attachment;
+    try {
+      if (selectedFile) {
+        setIsUploadingFile(true);
+        attachment = await uploadApi.uploadChatFile(selectedFile);
+      }
+      setSelectedFile(null);
+      await sendMessage(text, attachment);
+    } catch (uploadError) {
+      console.error('Failed to send attachment:', uploadError);
+      setInputMessage(text);
+    } finally {
+      setIsUploadingFile(false);
+    }
+  };
+
+  const handleFileSelected = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    if (file.size > 10 * 1024 * 1024) {
+      alert('Tệp không được vượt quá 10MB');
+      event.target.value = '';
+      return;
+    }
+    setSelectedFile(file);
+    event.target.value = '';
   };
 
   const filteredConversations = conversations.filter((c) => {
@@ -93,11 +132,24 @@ export const ChatPage: React.FC = () => {
     return title.toLowerCase().includes(searchFilter.toLowerCase());
   });
 
+  const portalSidebar = user?.role === 'OWNER'
+    ? <OwnerSidebar />
+    : user?.role === 'ADMIN'
+      ? <AdminSidebar />
+      : null;
+
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-      <div className="bg-white border border-slate-200/90 rounded-3xl overflow-hidden shadow-xs h-[calc(100vh-10rem)] grid grid-cols-1 md:grid-cols-12">
+    <div className={`flex min-h-[calc(100vh-4rem)] ${portalSidebar ? 'flex-col md:flex-row' : ''}`}>
+      {portalSidebar}
+      <div className="flex-1 min-w-0 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-6">
+      {error && (
+        <div className="mb-3 rounded-xl border border-red-200 bg-red-50 px-4 py-2 text-xs text-red-700">
+          {error}
+        </div>
+      )}
+      <div className="bg-white border border-slate-200/90 rounded-3xl overflow-hidden shadow-xs h-[calc(100vh-10rem)] grid grid-cols-1 md:grid-cols-12 min-h-0">
         {/* Left: Conversations List */}
-        <div className="md:col-span-4 lg:col-span-4 border-r border-slate-200 flex flex-col bg-slate-50">
+        <div className="md:col-span-4 lg:col-span-4 border-r border-slate-200 flex flex-col bg-slate-50 min-h-0">
           <div className="p-4 border-b border-slate-200 space-y-3">
             <div className="flex items-center justify-between">
               <h2 className="text-base font-extrabold text-slate-900 flex items-center gap-2">
@@ -184,7 +236,7 @@ export const ChatPage: React.FC = () => {
         </div>
 
         {/* Right: Messages Viewport */}
-        <div className="md:col-span-8 lg:col-span-8 flex flex-col bg-white">
+        <div className="md:col-span-8 lg:col-span-8 flex flex-col bg-white min-h-0">
           {activeConversation ? (
             <>
               {/* Chat Header */}
@@ -208,7 +260,7 @@ export const ChatPage: React.FC = () => {
               </div>
 
               {/* Messages Body */}
-              <div className="flex-1 p-4 overflow-y-auto space-y-3">
+              <div ref={messagesContainerRef} className="flex-1 min-h-0 p-4 overflow-y-auto space-y-3">
                 {isLoadingMessages ? (
                   <div className="space-y-2">
                     <div className="h-10 bg-slate-100 rounded-xl w-1/3 animate-pulse" />
@@ -249,7 +301,32 @@ export const ChatPage: React.FC = () => {
                               {msg.senderName}
                             </div>
                           )}
-                          <div className="leading-relaxed break-words">{msg.content}</div>
+                          {msg.content && !(msg.attachment && (msg.content === 'Đã gửi ảnh' || msg.content === 'Đã gửi tệp')) && (
+                            <div className="leading-relaxed break-words">{msg.content}</div>
+                          )}
+                          {msg.attachment && (
+                            msg.attachment.mimeType.startsWith('image/') ? (
+                              <a href={msg.attachment.url} target="_blank" rel="noreferrer" className="block mt-2">
+                                <img
+                                  src={msg.attachment.url}
+                                  alt={msg.attachment.filename}
+                                  className="max-w-full max-h-48 rounded-lg object-contain bg-black/5"
+                                />
+                              </a>
+                            ) : (
+                              <a
+                                href={msg.attachment.url}
+                                target="_blank"
+                                rel="noreferrer"
+                                className={`mt-2 flex items-center gap-2 rounded-lg px-2.5 py-2 underline ${
+                                  isMe ? 'bg-emerald-700/60 text-white' : 'bg-white text-emerald-700'
+                                }`}
+                              >
+                                <FileText className="w-4 h-4 shrink-0" />
+                                <span className="truncate">{msg.attachment.filename}</span>
+                              </a>
+                            )
+                          )}
                           <div
                             className={`text-[9px] mt-1 text-right ${
                               isMe ? 'text-emerald-100 font-medium' : 'text-slate-400'
@@ -270,11 +347,22 @@ export const ChatPage: React.FC = () => {
                     <span>{typingUsers[activeConversation.id]} đang soạn tin nhắn...</span>
                   </div>
                 )}
-                <div ref={messagesEndRef} />
               </div>
 
               {/* Chat Input */}
-              <form onSubmit={handleSendMessage} className="p-3.5 border-t border-slate-200 bg-slate-50 flex items-center gap-2">
+              <form onSubmit={handleSendMessage} className="p-3.5 border-t border-slate-200 bg-slate-50 space-y-2">
+                {selectedFile && (
+                  <div className="flex items-center justify-between rounded-lg bg-emerald-50 border border-emerald-200 px-3 py-2 text-xs text-emerald-800">
+                    <span className="flex items-center gap-2 truncate">
+                      {selectedFile.type.startsWith('image/') ? <ImageIcon className="w-4 h-4" /> : <FileText className="w-4 h-4" />}
+                      <span className="truncate">{selectedFile.name}</span>
+                    </span>
+                    <button type="button" onClick={() => setSelectedFile(null)} className="p-1 hover:text-red-600" aria-label="Bỏ tệp đính kèm">
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                )}
+                <div className="flex items-center gap-2">
                 <input
                   type="text"
                   value={inputMessage}
@@ -282,13 +370,31 @@ export const ChatPage: React.FC = () => {
                   placeholder="Nhập tin nhắn trao đổi về sân bóng, kèo đấu..."
                   className="flex-1 px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
                 />
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.zip,.rar"
+                  onChange={handleFileSelected}
+                  className="hidden"
+                />
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isUploadingFile}
+                  className="p-2.5 rounded-xl text-slate-500 hover:text-emerald-700 hover:bg-emerald-50 disabled:opacity-40"
+                  aria-label="Đính kèm tệp hoặc hình ảnh"
+                  title="Đính kèm tệp hoặc hình ảnh (tối đa 10MB)"
+                >
+                  <Paperclip className="w-4 h-4" />
+                </button>
                 <button
                   type="submit"
-                  disabled={!inputMessage.trim()}
+                  disabled={(!inputMessage.trim() && !selectedFile) || isUploadingFile}
                   className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-40 text-white font-bold transition-all shadow-xs flex items-center gap-1 cursor-pointer"
                 >
                   <Send className="w-4 h-4" />
                 </button>
+                </div>
               </form>
             </>
           ) : (
@@ -303,6 +409,7 @@ export const ChatPage: React.FC = () => {
             </div>
           )}
         </div>
+      </div>
       </div>
     </div>
   );

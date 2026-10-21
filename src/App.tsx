@@ -41,7 +41,9 @@ import { AdminMatchesPage } from './pages/admin/AdminMatchesPage.js';
 const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const location = useLocation();
   const { user } = useAuthStore();
-  const isPortal = location.pathname.startsWith('/owner') || location.pathname.startsWith('/admin');
+  const isOwnerChat = location.pathname === '/chat' && user?.role === 'OWNER';
+  const isAdminChat = location.pathname === '/chat' && user?.role === 'ADMIN';
+  const isPortal = location.pathname.startsWith('/owner') || location.pathname.startsWith('/admin') || isOwnerChat || isAdminChat;
   const isAdmin = user?.role === 'ADMIN';
 
   return (

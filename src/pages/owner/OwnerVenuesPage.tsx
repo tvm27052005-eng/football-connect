@@ -10,7 +10,8 @@ import {
   Image as ImageIcon,
   X,
   Loader2,
-  Link2
+  Link2,
+  LocateFixed
 } from 'lucide-react';
 import { api } from '../../services/api.js';
 import { uploadApi } from '../../services/upload.api.js';
@@ -19,6 +20,7 @@ import { OwnerSidebar } from '../../components/layout/OwnerSidebar.js';
 import { Modal } from '../../components/common/Modal.js';
 import { Badge } from '../../components/common/Badge.js';
 import { LoadingSkeleton } from '../../components/common/LoadingSkeleton.js';
+import { VenueLocationPicker } from '../../components/common/VenueLocationPicker.js';
 
 export const OwnerVenuesPage: React.FC = () => {
   const [venues, setVenues] = useState<IVenue[]>([]);
@@ -42,7 +44,17 @@ export const OwnerVenuesPage: React.FC = () => {
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [location, setLocation] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [isLocationConfirmed, setIsLocationConfirmed] = useState(false);
+  const [isFindingLocation, setIsFindingLocation] = useState(false);
+  const [locationError, setLocationError] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const cityCoordinates: Record<string, { latitude: number; longitude: number }> = {
+    'Hà Nội': { latitude: 21.0285, longitude: 105.8542 },
+    'TP. Hồ Chí Minh': { latitude: 10.8231, longitude: 106.6297 },
+    'Đà Nẵng': { latitude: 16.0544, longitude: 108.2022 }
+  };
 
   const fetchOwnerVenues = async () => {
     try {
@@ -75,6 +87,9 @@ export const OwnerVenuesPage: React.FC = () => {
     });
     setUrlInput('');
     setUploadError('');
+    setLocationError('');
+    setLocation(null);
+    setIsLocationConfirmed(false);
     setShowModal(true);
   };
 
@@ -93,7 +108,59 @@ export const OwnerVenuesPage: React.FC = () => {
     });
     setUrlInput('');
     setUploadError('');
+    setLocationError('');
+    setLocation(
+      Number.isFinite(v.latitude) && Number.isFinite(v.longitude)
+        ? { latitude: v.latitude, longitude: v.longitude }
+        : null
+    );
+    setIsLocationConfirmed(Number.isFinite(v.latitude) && Number.isFinite(v.longitude));
     setShowModal(true);
+  };
+
+  const findVenueLocation = async () => {
+    if (!form.address.trim() || !form.district.trim() || !form.city.trim()) {
+      setLocationError('Vui lòng nhập đầy đủ địa chỉ, quận/huyện và thành phố trước khi tìm vị trí.');
+      return;
+    }
+    try {
+      setIsFindingLocation(true);
+      setLocationError('');
+      setUploadError('');
+      const response = await api.get('/venues/geocode', {
+        params: {
+          address: form.address.trim(),
+          district: form.district.trim(),
+          city: form.city.trim()
+        },
+        timeout: 20000
+      });
+      const { latitude, longitude } = response.data.data;
+      if (!Number.isFinite(Number(latitude)) || !Number.isFinite(Number(longitude))) {
+        throw new Error('Dịch vụ bản đồ chưa trả về tọa độ hợp lệ.');
+      }
+      setLocation({ latitude, longitude });
+      setIsLocationConfirmed(false);
+    } catch (error: unknown) {
+      const fallback = cityCoordinates[form.city];
+      if (fallback) {
+        setLocation(fallback);
+        setIsLocationConfirmed(false);
+        setLocationError('Chưa tìm được đúng số nhà. Bản đồ đã mở theo khu vực thành phố; hãy kéo ghim đến sân rồi xác nhận.');
+      } else {
+        setLocationError(
+          (error as { response?: { data?: { message?: string } } })?.response?.data?.message ||
+          'Không thể tìm vị trí. Vui lòng kiểm tra lại địa chỉ và thử lại.'
+        );
+      }
+    } finally {
+      setIsFindingLocation(false);
+    }
+  };
+
+  const handleMapLocationChange = (latitude: number, longitude: number) => {
+    setLocation({ latitude, longitude });
+    setIsLocationConfirmed(false);
   };
 
   const handleFileUpload = async (files: FileList | File[]) => {
@@ -200,6 +267,9 @@ export const OwnerVenuesPage: React.FC = () => {
           ? form.images
           : ['https://images.unsplash.com/photo-1529900748604-07564a03e7a6?w=800'];
 
+      if (!location || !isLocationConfirmed) {
+        throw new Error('Vui lòng tìm và xác nhận vị trí trên bản đồ trước khi lưu cụm sân.');
+      }
       const payload = {
         name: form.name,
         address: form.address,
@@ -209,7 +279,9 @@ export const OwnerVenuesPage: React.FC = () => {
         closeTime: form.closeTime,
         description: form.description,
         amenities: form.amenities.split(',').map((s) => s.trim()).filter(Boolean),
-        images: finalImages
+        images: finalImages,
+        latitude: location.latitude,
+        longitude: location.longitude
       };
 
       if (editingVenue) {
@@ -222,6 +294,7 @@ export const OwnerVenuesPage: React.FC = () => {
       fetchOwnerVenues();
     } catch (err: unknown) {
       const msg =
+        err instanceof Error ? err.message :
         (err as { response?: { data?: { message?: string } } })?.response?.data?.message ||
         'Lỗi khi lưu thông tin cụm sân';
       alert(msg);
@@ -280,6 +353,12 @@ export const OwnerVenuesPage: React.FC = () => {
 
                   <div className="p-5 space-y-3">
                     <h3 className="font-bold text-base text-slate-900">{v.name}</h3>
+                    <Badge
+                      variant={v.status === 'ACTIVE' ? 'emerald' : v.status === 'PENDING_APPROVAL' ? 'amber' : 'rose'}
+                      size="sm"
+                    >
+                      {v.status === 'ACTIVE' ? 'Đã được duyệt' : v.status === 'PENDING_APPROVAL' ? 'Chờ admin duyệt' : 'Chưa được phép hoạt động'}
+                    </Badge>
                     <p className="text-xs text-slate-500 flex items-center gap-1">
                       <MapPin className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
                       <span>
@@ -352,7 +431,10 @@ export const OwnerVenuesPage: React.FC = () => {
                 <label className="block text-slate-700 font-bold mb-1">Thành phố</label>
                 <select
                   value={form.city}
-                  onChange={(e) => setForm({ ...form, city: e.target.value })}
+                  onChange={(e) => {
+                    setForm({ ...form, city: e.target.value });
+                    setIsLocationConfirmed(false);
+                  }}
                   className="w-full px-3.5 py-2 bg-white border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-600/20 font-medium"
                 >
                   <option value="Hà Nội">Hà Nội</option>
@@ -367,7 +449,10 @@ export const OwnerVenuesPage: React.FC = () => {
                   type="text"
                   required
                   value={form.district}
-                  onChange={(e) => setForm({ ...form, district: e.target.value })}
+                  onChange={(e) => {
+                    setForm({ ...form, district: e.target.value });
+                    setIsLocationConfirmed(false);
+                  }}
                   placeholder="VD: Cầu Giấy"
                   className="w-full px-3.5 py-2 bg-white border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-600/20"
                 />
@@ -380,10 +465,58 @@ export const OwnerVenuesPage: React.FC = () => {
                 type="text"
                 required
                 value={form.address}
-                onChange={(e) => setForm({ ...form, address: e.target.value })}
+                onChange={(e) => {
+                  setForm({ ...form, address: e.target.value });
+                  setIsLocationConfirmed(false);
+                }}
                 placeholder="Số 88 Lê Đức Thọ, Mỹ Đình"
                 className="w-full px-3.5 py-2 bg-white border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-600/20"
               />
+            </div>
+
+            <div className="rounded-xl border border-emerald-200 bg-emerald-50/60 p-3 space-y-3">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <label className="block text-slate-800 font-bold">Xác nhận vị trí trên bản đồ *</label>
+                  <p className="text-[11px] text-slate-600 mt-0.5">
+                    Tìm theo địa chỉ rồi kéo ghim đến đúng lối vào sân nếu cần.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={findVenueLocation}
+                  disabled={isFindingLocation}
+                  className="shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white text-[11px] font-bold"
+                >
+                  {isFindingLocation ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <LocateFixed className="w-3.5 h-3.5" />}
+                  {isFindingLocation ? 'Đang tìm...' : 'Tìm vị trí'}
+                </button>
+              </div>
+              {locationError && (
+                <div className="p-2.5 rounded-lg bg-red-50 border border-red-200 text-red-600 text-[11px]">
+                  {locationError}
+                </div>
+              )}
+              {location && (
+                <>
+                  <VenueLocationPicker
+                    latitude={location.latitude}
+                    longitude={location.longitude}
+                    onChange={handleMapLocationChange}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setIsLocationConfirmed(true)}
+                    className={`w-full py-2 rounded-lg text-xs font-bold border ${
+                      isLocationConfirmed
+                        ? 'bg-emerald-600 text-white border-emerald-600'
+                        : 'bg-white text-emerald-700 border-emerald-300 hover:bg-emerald-100'
+                    }`}
+                  >
+                    {isLocationConfirmed ? 'Đã xác nhận vị trí' : 'Xác nhận vị trí này'}
+                  </button>
+                </>
+              )}
             </div>
 
             <div className="grid grid-cols-2 gap-3">

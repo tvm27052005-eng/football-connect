@@ -6,6 +6,7 @@ import {
   Building2,
   CalendarCheck,
   Swords,
+  MessageSquare,
   ArrowLeft
 } from 'lucide-react';
 
@@ -17,16 +18,19 @@ export const AdminSidebar: React.FC = () => {
     { name: 'Quản lý Người Dùng', path: '/admin/users', icon: Users },
     { name: 'Phê Duyệt Cụm Sân', path: '/admin/venues', icon: Building2 },
     { name: 'Sổ Cái Đặt Sân', path: '/admin/bookings', icon: CalendarCheck },
-    { name: 'Quản lý Bài Đăng Kèo', path: '/admin/matches', icon: Swords }
+    { name: 'Quản lý Bài Đăng Kèo', path: '/admin/matches', icon: Swords },
+    { name: 'Phòng chat', path: '/chat', icon: MessageSquare }
   ];
 
   return (
     <aside className="w-64 bg-white border-r border-slate-200 flex flex-col shrink-0 min-h-[calc(100vh-4rem)]">
       <div className="p-4 border-b border-slate-100 bg-slate-50/75">
         <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-xl bg-purple-100 text-purple-700 border border-purple-200 flex items-center justify-center font-bold text-sm">
-            🛡️
-          </div>
+          <img
+            src="/images/football-connect-logo.png"
+            alt="Football Connect"
+            className="w-10 h-10 rounded-xl object-cover border border-purple-200"
+          />
           <div>
             <h3 className="text-xs font-bold text-slate-900">Quản Trị Hệ Thống</h3>
             <p className="text-[11px] text-purple-700 font-semibold">Toàn quyền ADMIN</p>

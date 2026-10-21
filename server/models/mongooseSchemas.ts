@@ -205,7 +205,7 @@ export interface IMatchDocument extends Document {
   maxPlayers: number;
   currentPlayers: number;
   description: string;
-  status: 'OPEN' | 'FULL' | 'STARTED' | 'COMPLETED' | 'CANCELLED';
+  status: 'PENDING_APPROVAL' | 'OPEN' | 'FULL' | 'STARTED' | 'COMPLETED' | 'CANCELLED';
   costPerPerson: number;
   teamAName?: string;
   teamBName?: string;
@@ -226,7 +226,7 @@ export const MatchSchema = new Schema<IMatchDocument>({
   maxPlayers: { type: Number, default: 14 },
   currentPlayers: { type: Number, default: 1 },
   description: { type: String },
-  status: { type: String, enum: ['OPEN', 'FULL', 'STARTED', 'COMPLETED', 'CANCELLED'], default: 'OPEN', index: true },
+  status: { type: String, enum: ['PENDING_APPROVAL', 'OPEN', 'FULL', 'STARTED', 'COMPLETED', 'CANCELLED'], default: 'PENDING_APPROVAL', index: true },
   costPerPerson: { type: Number, default: 50000 },
   teamAName: { type: String, default: 'Đội Nhà (Team A)' },
   teamBName: { type: String, default: 'Đội Khách (Team B)' }

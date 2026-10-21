@@ -175,6 +175,11 @@ export const bookingController = {
         return;
       }
 
+      if (venue.status !== 'ACTIVE') {
+        res.status(400).json({ success: false, message: 'Cụm sân này chưa được quản trị viên phê duyệt để hoạt động' });
+        return;
+      }
+
       if (field.status !== 'ACTIVE') {
         res.status(400).json({ success: false, message: 'Sân con này hiện đang bảo trì hoặc tạm ngưng' });
         return;

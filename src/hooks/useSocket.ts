@@ -61,8 +61,8 @@ export function useSocket() {
     socketRef.current?.emit('leave_conversation', conversationId);
   };
 
-  const emitTyping = (conversationId: string, userName: string) => {
-    socketRef.current?.emit('typing', { conversationId, userName });
+  const emitTyping = (conversationId: string) => {
+    socketRef.current?.emit('typing', { conversationId });
   };
 
   const emitStopTyping = (conversationId: string) => {

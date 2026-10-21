@@ -59,9 +59,14 @@ export const useNotificationStore = create<NotificationState>((set) => ({
   },
 
   addRealtimeNotification: (notif: INotification) => {
-    set((state) => ({
-      notifications: [notif, ...state.notifications],
-      unreadCount: state.unreadCount + 1
-    }));
+    set((state) => {
+      if (state.notifications.some((item) => item.id === notif.id)) {
+        return state;
+      }
+      return {
+        notifications: [notif, ...state.notifications],
+        unreadCount: state.unreadCount + (notif.isRead ? 0 : 1)
+      };
+    });
   }
 }));

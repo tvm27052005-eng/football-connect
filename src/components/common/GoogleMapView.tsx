@@ -30,15 +30,19 @@ export const GoogleMapView: React.FC<GoogleMapViewProps> = ({
 
   const currentVenue = venue || venues.find((v) => v.id === activeVenueId) || venues[0];
 
-  const currentLat = currentVenue?.latitude || latitude || 21.0285;
-  const currentLng = currentVenue?.longitude || longitude || 105.7854;
+  const currentLat = currentVenue?.latitude ?? latitude;
+  const currentLng = currentVenue?.longitude ?? longitude;
   const currentAddress = currentVenue
     ? `${currentVenue.name}, ${currentVenue.address}, ${currentVenue.district}, ${currentVenue.city}`
     : address || 'Hà Nội';
 
-  // Construct iframe search query (uses exact lat,lng for accuracy)
-  const mapEmbedUrl = `https://maps.google.com/maps?q=${currentLat},${currentLng}&z=15&output=embed`;
-  const directMapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${currentLat},${currentLng}`;
+  const hasCoordinates = Number.isFinite(currentLat) && Number.isFinite(currentLng);
+  const mapEmbedUrl = hasCoordinates
+    ? `https://www.google.com/maps?q=loc:${currentLat},${currentLng}&z=17&output=embed`
+    : '';
+  const directMapsUrl = hasCoordinates
+    ? `https://www.google.com/maps/dir/?api=1&destination=${currentLat},${currentLng}`
+    : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(currentAddress)}`;
 
   return (
     <div className="bg-white border border-slate-200/90 rounded-3xl overflow-hidden shadow-xs space-y-0">
@@ -101,14 +105,20 @@ export const GoogleMapView: React.FC<GoogleMapViewProps> = ({
 
       {/* Main Map Container */}
       <div className={`relative w-full ${height} bg-slate-100`}>
-        <iframe
-          title="Google Map Location"
-          src={mapEmbedUrl}
-          className="w-full h-full border-0"
-          loading="lazy"
-          allowFullScreen
-          referrerPolicy="no-referrer-when-downgrade"
-        />
+        {hasCoordinates ? (
+          <iframe
+            title="Google Map Location"
+            src={mapEmbedUrl}
+            className="w-full h-full border-0"
+            loading="lazy"
+            allowFullScreen
+            referrerPolicy="no-referrer-when-downgrade"
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center p-6 text-center text-sm text-slate-500">
+            Chưa có tọa độ được chủ sân xác nhận trên bản đồ.
+          </div>
+        )}
 
         {/* Selected Venue Floating Quick Info Card */}
         {currentVenue && (

@@ -74,7 +74,7 @@ export interface ICumSanBong {
   gia_den: number;
   gio_mo_cua: string;
   gio_dong_cua: string;
-  trang_thai: 'DANG_HOAT_DONG' | 'BAO_TRI' | 'DONG_CUA';
+  trang_thai: 'DANG_HOAT_DONG' | 'CHO_DUYET' | 'BAO_TRI' | 'DONG_CUA';
 }
 
 const CumSanBongSchema = new Schema<ICumSanBong>({
@@ -96,7 +96,7 @@ const CumSanBongSchema = new Schema<ICumSanBong>({
   gia_den: { type: Number, default: 800000 },
   gio_mo_cua: { type: String, default: '06:00' },
   gio_dong_cua: { type: String, default: '23:00' },
-  trang_thai: { type: String, enum: ['DANG_HOAT_DONG', 'BAO_TRI', 'DONG_CUA'], default: 'DANG_HOAT_DONG', index: true }
+  trang_thai: { type: String, enum: ['DANG_HOAT_DONG', 'CHO_DUYET', 'BAO_TRI', 'DONG_CUA'], default: 'CHO_DUYET', index: true }
 }, {
   collection: 'cum_san_bong',
   timestamps: { createdAt: 'ngay_tao', updatedAt: 'ngay_cap_nhat' }
@@ -219,7 +219,7 @@ export interface IKeoGiaoHuu {
   so_nguoi_toi_da: number;
   so_nguoi_hien_tai: number;
   mo_ta?: string;
-  trang_thai_keo: 'DANG_TIM_DOI' | 'DA_DU_DOI' | 'HOAN_THANH' | 'DA_HUY';
+  trang_thai_keo: 'CHO_DUYET' | 'DANG_TIM_DOI' | 'DA_DU_DOI' | 'HOAN_THANH' | 'DA_HUY';
   tien_san_moi_nguoi: number;
   tong_tien_san?: number;
   hinh_thuc_chia_tien: 'CHIA_DOI_50_50' | 'THUA_TRA' | 'BAO_SAN';
@@ -252,7 +252,7 @@ const KeoGiaoHuuSchema = new Schema<IKeoGiaoHuu>({
   so_nguoi_toi_da: { type: Number, default: 14 },
   so_nguoi_hien_tai: { type: Number, default: 1 },
   mo_ta: { type: String },
-  trang_thai_keo: { type: String, enum: ['DANG_TIM_DOI', 'DA_DU_DOI', 'HOAN_THANH', 'DA_HUY'], default: 'DANG_TIM_DOI', index: true },
+  trang_thai_keo: { type: String, enum: ['CHO_DUYET', 'DANG_TIM_DOI', 'DA_DU_DOI', 'HOAN_THANH', 'DA_HUY'], default: 'CHO_DUYET', index: true },
   tien_san_moi_nguoi: { type: Number, default: 0 },
   tong_tien_san: { type: Number },
   hinh_thuc_chia_tien: { type: String, enum: ['CHIA_DOI_50_50', 'THUA_TRA', 'BAO_SAN'], default: 'CHIA_DOI_50_50' },
@@ -408,6 +408,12 @@ export interface ITinNhan {
   anh_nguoi_gui?: string;
   noi_dung: string;
   loai_tin_nhan: 'VAN_BAN' | 'HE_THONG';
+  tep_dinh_kem?: {
+    url: string;
+    ten_tep: string;
+    loai_mime: string;
+    kich_thuoc: number;
+  };
   da_xem?: string[];
 }
 
@@ -419,6 +425,12 @@ const TinNhanSchema = new Schema<ITinNhan>({
   anh_nguoi_gui: { type: String },
   noi_dung: { type: String, required: true },
   loai_tin_nhan: { type: String, enum: ['VAN_BAN', 'HE_THONG'], default: 'VAN_BAN' },
+  tep_dinh_kem: {
+    url: { type: String },
+    ten_tep: { type: String },
+    loai_mime: { type: String },
+    kich_thuoc: { type: Number }
+  },
   da_xem: [{ type: String }]
 }, {
   collection: 'tin_nhan',

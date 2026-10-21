@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import {
-  Trophy,
   Mail,
   Lock,
   ArrowRight,
@@ -70,8 +69,13 @@ export const LoginPage: React.FC = () => {
     setLocalError('');
     setLoginSuccessMsg('');
     try {
-      await login({ email, password });
-      navigate(from, { replace: true });
+      const loggedInUser = await login({ email, password });
+      const destination = loggedInUser.role === 'OWNER'
+        ? '/owner/venues'
+        : loggedInUser.role === 'ADMIN'
+          ? '/admin/dashboard'
+          : from;
+      navigate(destination, { replace: true });
     } catch (err: unknown) {
       setLocalError((err as Error).message || 'Đăng nhập thất bại');
     }
@@ -203,7 +207,7 @@ export const LoginPage: React.FC = () => {
 
           <div className="relative z-10">
             <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/20 border border-emerald-400/40 backdrop-blur-md text-emerald-300 text-[11px] font-black uppercase">
-              <Trophy className="w-3.5 h-3.5" /> Football Connect
+              <img src="/images/football-connect-logo.png" alt="" className="w-6 h-6 rounded-md object-cover" /> Football Connect
             </div>
           </div>
 

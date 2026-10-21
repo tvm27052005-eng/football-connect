@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Grid3X3, DollarSign, Edit, Clock3, Save, Wrench, CheckCircle2, AlertTriangle } from 'lucide-react';
+import { Plus, Grid3X3, DollarSign, Edit, Clock3, Save, Wrench, CheckCircle2, AlertTriangle, Trash2 } from 'lucide-react';
 import { api } from '../../services/api.js';
 import { IField, IFieldTimeSlot, IVenue } from '../../types/index.js';
 import { OwnerSidebar } from '../../components/layout/OwnerSidebar.js';
@@ -128,6 +128,23 @@ export const OwnerFieldsPage: React.FC = () => {
       setIsSubmitting(false);
     }
   };
+
+  const handleDeleteField = async (field: IField) => {
+    if (!window.confirm(`Bạn có chắc chắn muốn xóa "${field.name}" không?`)) {
+      return;
+    }
+
+    try {
+      await api.delete(`/fields/${field.id}`);
+      setFields((currentFields) => currentFields.filter((currentField) => currentField.id !== field.id));
+    } catch (err: unknown) {
+      const msg =
+        (err as { response?: { data?: { message?: string } } })?.response?.data?.message ||
+        'Lỗi khi xóa sân con';
+      alert(msg);
+    }
+  };
+
 // Cập nhật thông tin của một khung giờ
   const updateTimeSlot = (index: number, changes: Partial<IFieldTimeSlot>) => {
     setForm({ ...form, timeSlots: form.timeSlots.map((slot, slotIndex) => slotIndex === index ? { ...slot, ...changes } : slot) });
@@ -222,6 +239,13 @@ export const OwnerFieldsPage: React.FC = () => {
                     className="px-3 py-1.5 rounded-lg bg-slate-50 border border-slate-200 hover:bg-slate-100 text-slate-700 text-xs font-semibold flex items-center gap-1 cursor-pointer transition-colors shadow-xs"
                   >
                     <Edit className="w-3.5 h-3.5 text-emerald-600" /> Sửa sân & bảng giá
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteField(f)}
+                    className="px-3 py-1.5 rounded-lg bg-rose-50 border border-rose-200 hover:bg-rose-100 text-rose-700 text-xs font-semibold flex items-center gap-1 cursor-pointer transition-colors shadow-xs"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" /> Xóa sân
                   </button>
                 </div>
               </div>

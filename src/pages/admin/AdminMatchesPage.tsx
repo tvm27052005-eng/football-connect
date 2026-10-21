@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Swords, Search, ShieldCheck, CalendarRange, Clock3, Users, MapPin, Ban } from 'lucide-react';
+import { Swords, Search, ShieldCheck, CalendarRange, Clock3, Users, MapPin, Ban, CheckCircle2 } from 'lucide-react';
 import { api } from '../../services/api.js';
 import { IMatch } from '../../types/index.js';
 import { AdminSidebar } from '../../components/layout/AdminSidebar.js';
@@ -7,6 +7,7 @@ import { Badge } from '../../components/common/Badge.js';
 import { LoadingSkeleton, EmptyState } from '../../components/common/LoadingSkeleton.js';
 
 const statusLabel: Record<string, string> = {
+  PENDING_APPROVAL: 'Chờ duyệt',
   OPEN: 'Mở kèo',
   FULL: 'Đã đủ 2 đội',
   STARTED: 'Đang diễn ra',
@@ -17,18 +18,24 @@ const statusLabel: Record<string, string> = {
 export const AdminMatchesPage: React.FC = () => {
   const [matches, setMatches] = useState<IMatch[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
 
   const fetchMatches = async () => {
     try {
       setIsLoading(true);
-      const res = await api.get('/matches');
+      setLoadError('');
+      const res = await api.get('/matches/admin/all');
       const list = Array.isArray(res.data?.data) ? res.data.data : [];
       setMatches(list);
     } catch (error) {
       console.error(error);
       setMatches([]);
+      setLoadError(
+        (error as { response?: { data?: { message?: string } } })?.response?.data?.message ||
+        'Không thể tải danh sách kèo. Vui lòng đăng nhập lại bằng tài khoản Admin.'
+      );
     } finally {
       setIsLoading(false);
     }
@@ -48,7 +55,18 @@ export const AdminMatchesPage: React.FC = () => {
     }
   };
 
-  const filteredMatches = matches.filter((m) => {
+  const handleApproveMatch = async (matchId: string) => {
+    try {
+      await api.put(`/matches/${matchId}/approve`);
+      fetchMatches();
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Không thể duyệt kèo';
+      alert(msg);
+    }
+  };
+
+  const filteredMatches = matches
+    .filter((m) => {
     if (statusFilter !== 'ALL' && m.status !== statusFilter) return false;
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
@@ -58,7 +76,14 @@ export const AdminMatchesPage: React.FC = () => {
       if (!matchTitle && !matchCreator && !matchVenue) return false;
     }
     return true;
-  });
+    })
+    .sort((a, b) => {
+      if (a.status === 'PENDING_APPROVAL' && b.status !== 'PENDING_APPROVAL') return -1;
+      if (a.status !== 'PENDING_APPROVAL' && b.status === 'PENDING_APPROVAL') return 1;
+      return 0;
+    });
+
+  const pendingCount = matches.filter((match) => match.status === 'PENDING_APPROVAL').length;
 
   return (
     <div className="flex flex-col md:flex-row min-h-[calc(100vh-4rem)]">
@@ -69,6 +94,33 @@ export const AdminMatchesPage: React.FC = () => {
           <div>
             <h1 className="text-2xl font-black text-slate-900 tracking-tight">Quản Lý Bài Đăng Tìm Kèo</h1>
             <p className="text-xs text-slate-500 mt-1">Giám sát các bài đăng kèo, kiểm duyệt trạng thái và xử lý bài đăng vi phạm.</p>
+          </div>
+          <button
+            type="button"
+            onClick={fetchMatches}
+            className="px-3.5 py-2 rounded-xl bg-white border border-slate-200 text-xs font-bold text-slate-700 hover:bg-slate-50 transition-colors"
+          >
+            Làm mới danh sách
+          </button>
+        </div>
+
+        {loadError && (
+          <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-xs font-medium text-rose-700">
+            {loadError}
+          </div>
+        )}
+
+        <div className={`rounded-2xl border p-4 ${pendingCount > 0 ? 'border-amber-200 bg-amber-50' : 'border-slate-200 bg-white'}`}>
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <div className="text-xs font-black uppercase tracking-wide text-slate-700">Kèo cần kiểm duyệt</div>
+              <div className="text-xs text-slate-500 mt-1">
+                {pendingCount > 0 ? 'Các kèo này chưa hoạt động trên website.' : 'Hiện không có kèo nào đang chờ duyệt.'}
+              </div>
+            </div>
+            <span className={`text-xl font-black ${pendingCount > 0 ? 'text-amber-700' : 'text-slate-500'}`}>
+              {pendingCount}
+            </span>
           </div>
         </div>
 
@@ -91,6 +143,7 @@ export const AdminMatchesPage: React.FC = () => {
               className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:outline-none focus:bg-white focus:border-purple-600 focus:ring-2 focus:ring-purple-600/20 font-medium"
             >
               <option value="ALL">Tất cả trạng thái</option>
+              <option value="PENDING_APPROVAL">Chờ duyệt</option>
               <option value="OPEN">Mở kèo</option>
               <option value="FULL">Đã đủ 2 đội</option>
               <option value="STARTED">Đang diễn ra</option>
@@ -151,7 +204,9 @@ export const AdminMatchesPage: React.FC = () => {
                       <td className="p-4">
                         <Badge
                           variant={
-                            m.status === 'OPEN'
+                            m.status === 'PENDING_APPROVAL'
+                              ? 'purple'
+                              : m.status === 'OPEN'
                               ? 'amber'
                               : m.status === 'FULL'
                               ? 'emerald'
@@ -167,7 +222,15 @@ export const AdminMatchesPage: React.FC = () => {
                         </Badge>
                       </td>
                       <td className="p-4 text-right">
-                        {m.status !== 'CANCELLED' && (
+                        {m.status === 'PENDING_APPROVAL' && (
+                          <button
+                            onClick={() => handleApproveMatch(m.id)}
+                            className="px-2.5 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 font-bold transition-all cursor-pointer inline-flex items-center gap-1.5 mr-2"
+                          >
+                            <CheckCircle2 className="w-3.5 h-3.5" /> Duyệt kèo
+                          </button>
+                        )}
+                        {m.status !== 'CANCELLED' && m.status !== 'PENDING_APPROVAL' && (
                           <button
                             onClick={() => handleCancelMatch(m.id)}
                             className="px-2.5 py-1.5 rounded-lg bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200 font-bold transition-all cursor-pointer inline-flex items-center gap-1.5"

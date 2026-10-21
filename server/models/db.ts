@@ -27,6 +27,8 @@ import {
   BaoCaoModel
 } from './mongoose.models.js';
 
+const ADMIN_PASSWORD_HASH = '$2b$10$ZERM7hJv2Pqkcj/I5my42uUn0lLqTX3MLd1WWzQFaSDb3OuGAba42';
+
 // Pre-seeded Users with passwords (all pass: "123456" for ease of testing)
 export const initialUsers: IUser[] = [
   {
@@ -99,7 +101,7 @@ export const initialUsers: IUser[] = [
     id: 'admin_1',
     name: 'Quản Trị Viên Hệ Thống',
     email: 'admin@footballconnect.vn',
-    password: '$2a$10$wNq1cZpvh48p/1P3GgQY6eS6q4h6m8dG.oWcMqvW345eF8Bkm4Y.G', // "123456"
+    password: ADMIN_PASSWORD_HASH, // "123456"
     phone: '0999888999',
     role: 'ADMIN',
     avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150',
@@ -796,7 +798,7 @@ export const mappers = {
     gia_den: v.priceRange?.max || 800000,
     gio_mo_cua: v.openTime || '06:00',
     gio_dong_cua: v.closeTime || '23:00',
-    trang_thai: v.status === 'ACTIVE' ? 'DANG_HOAT_DONG' : v.status === 'MAINTENANCE' ? 'BAO_TRI' : 'DONG_CUA'
+    trang_thai: v.status === 'ACTIVE' ? 'DANG_HOAT_DONG' : v.status === 'PENDING_APPROVAL' ? 'CHO_DUYET' : v.status === 'MAINTENANCE' ? 'BAO_TRI' : 'DONG_CUA'
   }),
   mongoToVenue: (doc: any): IVenue => ({
     id: doc.ma_cum_san,
@@ -816,7 +818,7 @@ export const mappers = {
     priceRange: { min: doc.gia_tu || 200000, max: doc.gia_den || 800000 },
     openTime: doc.gio_mo_cua || '06:00',
     closeTime: doc.gio_dong_cua || '23:00',
-    status: (doc.trang_thai === 'DANG_HOAT_DONG' ? 'ACTIVE' : doc.trang_thai === 'BAO_TRI' ? 'MAINTENANCE' : 'CLOSED') as any,
+    status: (doc.trang_thai === 'DANG_HOAT_DONG' ? 'ACTIVE' : doc.trang_thai === 'CHO_DUYET' ? 'PENDING_APPROVAL' : doc.trang_thai === 'BAO_TRI' ? 'MAINTENANCE' : 'CLOSED') as any,
     createdAt: doc.ngay_tao ? new Date(doc.ngay_tao).toISOString() : new Date().toISOString(),
     updatedAt: doc.ngay_cap_nhat ? new Date(doc.ngay_cap_nhat).toISOString() : new Date().toISOString()
   }),
@@ -915,7 +917,7 @@ export const mappers = {
     so_nguoi_toi_da: m.maxPlayers,
     so_nguoi_hien_tai: m.currentPlayers,
     mo_ta: m.description,
-    trang_thai_keo: m.status === 'OPEN' ? 'DANG_TIM_DOI' : m.status === 'FULL' ? 'DA_DU_DOI' : m.status === 'CANCELLED' ? 'DA_HUY' : 'HOAN_THANH',
+    trang_thai_keo: m.status === 'PENDING_APPROVAL' ? 'CHO_DUYET' : m.status === 'OPEN' ? 'DANG_TIM_DOI' : m.status === 'FULL' ? 'DA_DU_DOI' : m.status === 'CANCELLED' ? 'DA_HUY' : 'HOAN_THANH',
     tien_san_moi_nguoi: m.costPerPerson,
     tong_tien_san: m.totalFieldFee,
     hinh_thuc_chia_tien: m.costSharing === '50_50' ? 'CHIA_DOI_50_50' : m.costSharing === 'LOOSER_PAYS' ? 'THUA_TRA' : 'BAO_SAN',
@@ -947,7 +949,7 @@ export const mappers = {
     maxPlayers: doc.so_nguoi_toi_da,
     currentPlayers: doc.so_nguoi_hien_tai,
     description: doc.mo_ta || '',
-    status: (doc.trang_thai_keo === 'DANG_TIM_DOI' ? 'OPEN' : doc.trang_thai_keo === 'DA_DU_DOI' ? 'FULL' : doc.trang_thai_keo === 'DA_HUY' ? 'CANCELLED' : 'COMPLETED') as any,
+    status: (doc.trang_thai_keo === 'CHO_DUYET' ? 'PENDING_APPROVAL' : doc.trang_thai_keo === 'DANG_TIM_DOI' ? 'OPEN' : doc.trang_thai_keo === 'DA_DU_DOI' ? 'FULL' : doc.trang_thai_keo === 'DA_HUY' ? 'CANCELLED' : 'COMPLETED') as any,
     costPerPerson: doc.tien_san_moi_nguoi,
     totalFieldFee: doc.tong_tien_san,
     costSharing: (doc.hinh_thuc_chia_tien === 'CHIA_DOI_50_50' ? '50_50' : doc.hinh_thuc_chia_tien === 'THUA_TRA' ? 'LOOSER_PAYS' : 'HOME_PAYS') as any,
@@ -1058,6 +1060,12 @@ export const mappers = {
     anh_nguoi_gui: msg.senderAvatar,
     noi_dung: msg.content,
     loai_tin_nhan: msg.type === 'TEXT' ? 'VAN_BAN' : 'HE_THONG',
+    tep_dinh_kem: msg.attachment ? {
+      url: msg.attachment.url,
+      ten_tep: msg.attachment.filename,
+      loai_mime: msg.attachment.mimeType,
+      kich_thuoc: msg.attachment.size
+    } : undefined,
     da_xem: msg.readBy || []
   }),
   mongoToMessage: (doc: any): IMessage => ({
@@ -1068,6 +1076,12 @@ export const mappers = {
     senderAvatar: doc.anh_nguoi_gui,
     content: doc.noi_dung,
     type: (doc.loai_tin_nhan === 'VAN_BAN' ? 'TEXT' : 'SYSTEM') as any,
+    attachment: doc.tep_dinh_kem ? {
+      url: doc.tep_dinh_kem.url,
+      filename: doc.tep_dinh_kem.ten_tep,
+      mimeType: doc.tep_dinh_kem.loai_mime,
+      size: doc.tep_dinh_kem.kich_thuoc
+    } : undefined,
     readBy: doc.da_xem || [],
     createdAt: doc.ngay_tao ? new Date(doc.ngay_tao).toISOString() : new Date().toISOString()
   }),
@@ -1159,6 +1173,12 @@ class DatabaseStore {
     return `${prefix}_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
   }
 
+  private ensureMongoConnected(operation: string): void {
+    if (!this.isMongoConnected) {
+      throw new Error(`MongoDB chưa kết nối, không thể ${operation}. Hãy kiểm tra MongoDB và MONGODB_URI.`);
+    }
+  }
+
   // Atomic conflict check for Double Booking prevention
   checkBookingConflict(fieldId: string, bookingDate: string, startTime: string, endTime: string, excludeBookingId?: string): boolean {
     const existing = this.bookings.find(b => {
@@ -1177,7 +1197,6 @@ class DatabaseStore {
   // Initialize and load all records from MongoDB into memory
   async initFromMongoDB(): Promise<void> {
     try {
-      this.isMongoConnected = true;
       const [
         usersDocs, venuesDocs, fieldsDocs, bookingsDocs,
         matchesDocs, participantsDocs, reviewsDocs,
@@ -1197,7 +1216,22 @@ class DatabaseStore {
         ThanhToanModel.find().lean()
       ]);
 
-      if (usersDocs.length > 0) {
+      const hasMongoData = [
+        usersDocs,
+        venuesDocs,
+        fieldsDocs,
+        bookingsDocs,
+        matchesDocs,
+        participantsDocs,
+        reviewsDocs,
+        conversationsDocs,
+        messagesDocs,
+        notificationsDocs,
+        reportsDocs,
+        paymentsDocs
+      ].some(docs => docs.length > 0);
+
+      if (hasMongoData) {
         this.users = usersDocs.map(mappers.mongoToUser);
         this.venues = venuesDocs.map(mappers.mongoToVenue);
         this.fields = fieldsDocs.map(mappers.mongoToField);
@@ -1210,6 +1244,17 @@ class DatabaseStore {
         this.notifications = notificationsDocs.map(mappers.mongoToNotif);
         this.reports = reportsDocs.map(mappers.mongoToReport);
         this.payments = paymentsDocs.map(mappers.mongoToPayment);
+
+        const admin = this.users.find(user => user.email.toLowerCase() === 'admin@footballconnect.vn');
+        if (admin && admin.password !== ADMIN_PASSWORD_HASH) {
+          admin.password = ADMIN_PASSWORD_HASH;
+          await NguoiDungModel.updateOne(
+            { ma_nguoi_dung: admin.id },
+            { $set: { mat_khau: ADMIN_PASSWORD_HASH } }
+          );
+          console.log('🔐 Đã cập nhật mật khẩu admin mặc định thành 123456.');
+        }
+
         console.log(`📦 Đồng bộ thành công từ MongoDB: ${this.users.length} người dùng, ${this.venues.length} cụm sân, ${this.fields.length} sân con, ${this.bookings.length} đơn đặt sân, ${this.matches.length} kèo đấu.`);
       } else {
         console.log('🌱 MongoDB chưa có dữ liệu, tiến hành nạp dữ liệu khởi tạo mẫu...');
@@ -1228,289 +1273,297 @@ class DatabaseStore {
         ]);
         console.log('✅ Đã nạp dữ liệu mẫu vào MongoDB thành công!');
       }
+      this.isMongoConnected = true;
     } catch (err: any) {
+      this.isMongoConnected = false;
       console.error('⚠️ Lỗi khi đồng bộ từ MongoDB:', err.message || err);
+      throw err;
     }
   }
 
   // Real-time synchronization methods with MongoDB:
   async syncUser(user: IUser): Promise<void> {
-    const idx = this.users.findIndex(u => u.id === user.id);
-    if (idx >= 0) { this.users[idx] = user; } else { this.users.push(user); }
-    if (this.isMongoConnected) {
-      try {
-        await (NguoiDungModel as any).findOneAndUpdate(
-          { ma_nguoi_dung: user.id },
-          mappers.userToMongo(user),
-          { upsert: true, new: true }
-        );
-      } catch (err) {
-        console.error('MongoDB syncUser error:', err);
-      }
+    if (!this.isMongoConnected) {
+      throw new Error('MongoDB chưa kết nối, không thể lưu người dùng');
+    }
+
+    try {
+      await (NguoiDungModel as any).findOneAndUpdate(
+        { ma_nguoi_dung: user.id },
+        mappers.userToMongo(user),
+        { upsert: true, returnDocument: 'after', runValidators: true }
+      );
+      const idx = this.users.findIndex(u => u.id === user.id);
+      if (idx >= 0) { this.users[idx] = user; } else { this.users.push(user); }
+    } catch (err) {
+      console.error('MongoDB syncUser error:', err);
+      throw err;
     }
   }
 
   async deleteUser(userId: string): Promise<void> {
-    this.users = this.users.filter(u => u.id !== userId);
-    if (this.isMongoConnected) {
-      try {
-        await (NguoiDungModel as any).deleteOne({ ma_nguoi_dung: userId });
-      } catch (err) {
-        console.error('MongoDB deleteUser error:', err);
-      }
+    this.ensureMongoConnected('xóa người dùng');
+    try {
+      await (NguoiDungModel as any).deleteOne({ ma_nguoi_dung: userId });
+      this.users = this.users.filter(u => u.id !== userId);
+    } catch (err) {
+      console.error('MongoDB deleteUser error:', err);
+      throw err;
     }
   }
 
   async syncVenue(venue: IVenue): Promise<void> {
-    const idx = this.venues.findIndex(v => v.id === venue.id);
-    if (idx >= 0) { this.venues[idx] = venue; } else { this.venues.push(venue); }
-    if (this.isMongoConnected) {
-      try {
-        await (CumSanBongModel as any).findOneAndUpdate(
-          { ma_cum_san: venue.id },
-          mappers.venueToMongo(venue),
-          { upsert: true, new: true }
-        );
-      } catch (err) {
-        console.error('MongoDB syncVenue error:', err);
-      }
+    this.ensureMongoConnected('lưu cụm sân');
+
+    try {
+      await (CumSanBongModel as any).findOneAndUpdate(
+        { ma_cum_san: venue.id },
+        mappers.venueToMongo(venue),
+        { upsert: true, returnDocument: 'after', runValidators: true }
+      );
+      const idx = this.venues.findIndex(v => v.id === venue.id);
+      if (idx >= 0) { this.venues[idx] = venue; } else { this.venues.push(venue); }
+    } catch (err) {
+      console.error('MongoDB syncVenue error:', err);
+      throw err;
     }
   }
 
   async deleteVenue(venueId: string): Promise<void> {
-    this.venues = this.venues.filter(v => v.id !== venueId);
-    this.fields = this.fields.filter(f => f.venueId !== venueId);
-    if (this.isMongoConnected) {
-      try {
-        await Promise.all([
-          (CumSanBongModel as any).deleteOne({ ma_cum_san: venueId }),
-          (SanChiTietModel as any).deleteMany({ ma_cum_san: venueId })
-        ]);
-      } catch (err) {
-        console.error('MongoDB deleteVenue error:', err);
-      }
+    this.ensureMongoConnected('xóa cụm sân');
+    try {
+      await Promise.all([
+        (CumSanBongModel as any).deleteOne({ ma_cum_san: venueId }),
+        (SanChiTietModel as any).deleteMany({ ma_cum_san: venueId })
+      ]);
+      this.venues = this.venues.filter(v => v.id !== venueId);
+      this.fields = this.fields.filter(f => f.venueId !== venueId);
+    } catch (err) {
+      console.error('MongoDB deleteVenue error:', err);
+      throw err;
     }
   }
 
   async syncField(field: IField): Promise<void> {
-    const idx = this.fields.findIndex(f => f.id === field.id);
-    if (idx >= 0) { this.fields[idx] = field; } else { this.fields.push(field); }
-    if (this.isMongoConnected) {
-      try {
-        await (SanChiTietModel as any).findOneAndUpdate(
-          { ma_san_con: field.id },
-          mappers.fieldToMongo(field),
-          { upsert: true, new: true }
-        );
-      } catch (err) {
-        console.error('MongoDB syncField error:', err);
-      }
+    this.ensureMongoConnected('lưu sân con');
+
+    try {
+      await (SanChiTietModel as any).findOneAndUpdate(
+        { ma_san_con: field.id },
+        mappers.fieldToMongo(field),
+        { upsert: true, returnDocument: 'after', runValidators: true }
+      );
+      const idx = this.fields.findIndex(f => f.id === field.id);
+      if (idx >= 0) { this.fields[idx] = field; } else { this.fields.push(field); }
+    } catch (err) {
+      console.error('MongoDB syncField error:', err);
+      throw err;
     }
   }
 
   async deleteField(fieldId: string): Promise<void> {
-    this.fields = this.fields.filter(f => f.id !== fieldId);
-    if (this.isMongoConnected) {
-      try {
-        await (SanChiTietModel as any).deleteOne({ ma_san_con: fieldId });
-      } catch (err) {
-        console.error('MongoDB deleteField error:', err);
-      }
+    this.ensureMongoConnected('xóa sân con');
+    try {
+      await (SanChiTietModel as any).deleteOne({ ma_san_con: fieldId });
+      this.fields = this.fields.filter(f => f.id !== fieldId);
+    } catch (err) {
+      console.error('MongoDB deleteField error:', err);
+      throw err;
     }
   }
 
   async syncBooking(booking: IBooking): Promise<void> {
-    const idx = this.bookings.findIndex(b => b.id === booking.id);
-    if (idx >= 0) { this.bookings[idx] = booking; } else { this.bookings.push(booking); }
-    if (this.isMongoConnected) {
-      try {
-        await (DonDatSanModel as any).findOneAndUpdate(
-          { ma_don_dat: booking.id },
-          mappers.bookingToMongo(booking),
-          { upsert: true, new: true }
-        );
-      } catch (err) {
-        console.error('MongoDB syncBooking error:', err);
-      }
+    this.ensureMongoConnected('lưu đơn đặt sân');
+    try {
+      await (DonDatSanModel as any).findOneAndUpdate(
+        { ma_don_dat: booking.id },
+        mappers.bookingToMongo(booking),
+        { upsert: true, returnDocument: 'after', runValidators: true }
+      );
+      const idx = this.bookings.findIndex(b => b.id === booking.id);
+      if (idx >= 0) { this.bookings[idx] = booking; } else { this.bookings.push(booking); }
+    } catch (err) {
+      console.error('MongoDB syncBooking error:', err);
+      throw err;
     }
   }
 
   async deleteBooking(bookingId: string): Promise<void> {
-    this.bookings = this.bookings.filter(b => b.id !== bookingId);
-    if (this.isMongoConnected) {
-      try {
-        await (DonDatSanModel as any).deleteOne({ ma_don_dat: bookingId });
-      } catch (err) {
-        console.error('MongoDB deleteBooking error:', err);
-      }
+    this.ensureMongoConnected('xóa đơn đặt sân');
+    try {
+      await (DonDatSanModel as any).deleteOne({ ma_don_dat: bookingId });
+      this.bookings = this.bookings.filter(b => b.id !== bookingId);
+    } catch (err) {
+      console.error('MongoDB deleteBooking error:', err);
+      throw err;
     }
   }
 
   async syncMatch(match: IMatch): Promise<void> {
-    const idx = this.matches.findIndex(m => m.id === match.id);
-    if (idx >= 0) { this.matches[idx] = match; } else { this.matches.push(match); }
-    if (this.isMongoConnected) {
-      try {
-        await (KeoGiaoHuuModel as any).findOneAndUpdate(
-          { ma_keo_dau: match.id },
-          mappers.matchToMongo(match),
-          { upsert: true, new: true }
-        );
-      } catch (err) {
-        console.error('MongoDB syncMatch error:', err);
-      }
+    this.ensureMongoConnected('lưu kèo đấu');
+    try {
+      await (KeoGiaoHuuModel as any).findOneAndUpdate(
+        { ma_keo_dau: match.id },
+        mappers.matchToMongo(match),
+        { upsert: true, returnDocument: 'after', runValidators: true }
+      );
+      const idx = this.matches.findIndex(m => m.id === match.id);
+      if (idx >= 0) { this.matches[idx] = match; } else { this.matches.push(match); }
+    } catch (err) {
+      console.error('MongoDB syncMatch error:', err);
+      throw err;
     }
   }
 
   async deleteMatch(matchId: string): Promise<void> {
-    this.matches = this.matches.filter(m => m.id !== matchId);
-    this.matchParticipants = this.matchParticipants.filter(p => p.matchId !== matchId);
-    if (this.isMongoConnected) {
-      try {
-        await Promise.all([
-          (KeoGiaoHuuModel as any).deleteOne({ ma_keo_dau: matchId }),
-          (ThanhVienKeoModel as any).deleteMany({ ma_keo_dau: matchId })
-        ]);
-      } catch (err) {
-        console.error('MongoDB deleteMatch error:', err);
-      }
+    this.ensureMongoConnected('xóa kèo đấu');
+    try {
+      await Promise.all([
+        (KeoGiaoHuuModel as any).deleteOne({ ma_keo_dau: matchId }),
+        (ThanhVienKeoModel as any).deleteMany({ ma_keo_dau: matchId })
+      ]);
+      this.matches = this.matches.filter(m => m.id !== matchId);
+      this.matchParticipants = this.matchParticipants.filter(p => p.matchId !== matchId);
+    } catch (err) {
+      console.error('MongoDB deleteMatch error:', err);
+      throw err;
     }
   }
 
   async syncMatchParticipant(participant: IMatchParticipant): Promise<void> {
-    const idx = this.matchParticipants.findIndex(p => p.id === participant.id);
-    if (idx >= 0) { this.matchParticipants[idx] = participant; } else { this.matchParticipants.push(participant); }
-    if (this.isMongoConnected) {
-      try {
-        await (ThanhVienKeoModel as any).findOneAndUpdate(
-          { ma_tham_gia: participant.id },
-          mappers.participantToMongo(participant),
-          { upsert: true, new: true }
-        );
-      } catch (err) {
-        console.error('MongoDB syncMatchParticipant error:', err);
-      }
+    this.ensureMongoConnected('lưu thành viên kèo đấu');
+    try {
+      await (ThanhVienKeoModel as any).findOneAndUpdate(
+        { ma_tham_gia: participant.id },
+        mappers.participantToMongo(participant),
+        { upsert: true, returnDocument: 'after', runValidators: true }
+      );
+      const idx = this.matchParticipants.findIndex(p => p.id === participant.id);
+      if (idx >= 0) { this.matchParticipants[idx] = participant; } else { this.matchParticipants.push(participant); }
+    } catch (err) {
+      console.error('MongoDB syncMatchParticipant error:', err);
+      throw err;
     }
   }
 
   async deleteMatchParticipant(participantId: string): Promise<void> {
-    this.matchParticipants = this.matchParticipants.filter(p => p.id !== participantId);
-    if (this.isMongoConnected) {
-      try {
-        await (ThanhVienKeoModel as any).deleteOne({ ma_tham_gia: participantId });
-      } catch (err) {
-        console.error('MongoDB deleteMatchParticipant error:', err);
-      }
+    this.ensureMongoConnected('xóa thành viên kèo đấu');
+    try {
+      await (ThanhVienKeoModel as any).deleteOne({ ma_tham_gia: participantId });
+      this.matchParticipants = this.matchParticipants.filter(p => p.id !== participantId);
+    } catch (err) {
+      console.error('MongoDB deleteMatchParticipant error:', err);
+      throw err;
     }
   }
 
   async syncReview(review: IReview): Promise<void> {
-    const idx = this.reviews.findIndex(r => r.id === review.id);
-    if (idx >= 0) { this.reviews[idx] = review; } else { this.reviews.push(review); }
-    if (this.isMongoConnected) {
-      try {
-        await (DanhGiaModel as any).findOneAndUpdate(
-          { ma_danh_gia: review.id },
-          mappers.reviewToMongo(review),
-          { upsert: true, new: true }
-        );
-      } catch (err) {
-        console.error('MongoDB syncReview error:', err);
-      }
+    this.ensureMongoConnected('lưu đánh giá');
+    try {
+      await (DanhGiaModel as any).findOneAndUpdate(
+        { ma_danh_gia: review.id },
+        mappers.reviewToMongo(review),
+        { upsert: true, returnDocument: 'after', runValidators: true }
+      );
+      const idx = this.reviews.findIndex(r => r.id === review.id);
+      if (idx >= 0) { this.reviews[idx] = review; } else { this.reviews.push(review); }
+    } catch (err) {
+      console.error('MongoDB syncReview error:', err);
+      throw err;
     }
   }
 
   async deleteReview(reviewId: string): Promise<void> {
-    this.reviews = this.reviews.filter(r => r.id !== reviewId);
-    if (this.isMongoConnected) {
-      try {
-        await (DanhGiaModel as any).deleteOne({ ma_danh_gia: reviewId });
-      } catch (err) {
-        console.error('MongoDB deleteReview error:', err);
-      }
+    this.ensureMongoConnected('xóa đánh giá');
+    try {
+      await (DanhGiaModel as any).deleteOne({ ma_danh_gia: reviewId });
+      this.reviews = this.reviews.filter(r => r.id !== reviewId);
+    } catch (err) {
+      console.error('MongoDB deleteReview error:', err);
+      throw err;
     }
   }
 
   async syncConversation(conv: IConversation): Promise<void> {
-    const idx = this.conversations.findIndex(c => c.id === conv.id);
-    if (idx >= 0) { this.conversations[idx] = conv; } else { this.conversations.push(conv); }
-    if (this.isMongoConnected) {
-      try {
-        await (HoiThoaiModel as any).findOneAndUpdate(
-          { ma_hoi_thoai: conv.id },
-          mappers.conversationToMongo(conv),
-          { upsert: true, new: true }
-        );
-      } catch (err) {
-        console.error('MongoDB syncConversation error:', err);
-      }
+    this.ensureMongoConnected('lưu hội thoại');
+    try {
+      await (HoiThoaiModel as any).findOneAndUpdate(
+        { ma_hoi_thoai: conv.id },
+        mappers.conversationToMongo(conv),
+        { upsert: true, returnDocument: 'after', runValidators: true }
+      );
+      const idx = this.conversations.findIndex(c => c.id === conv.id);
+      if (idx >= 0) { this.conversations[idx] = conv; } else { this.conversations.push(conv); }
+    } catch (err) {
+      console.error('MongoDB syncConversation error:', err);
+      throw err;
     }
   }
 
   async syncMessage(msg: IMessage): Promise<void> {
-    const idx = this.messages.findIndex(m => m.id === msg.id);
-    if (idx >= 0) { this.messages[idx] = msg; } else { this.messages.push(msg); }
-    if (this.isMongoConnected) {
-      try {
-        await (TinNhanModel as any).findOneAndUpdate(
-          { ma_tin_nhan: msg.id },
-          mappers.messageToMongo(msg),
-          { upsert: true, new: true }
-        );
-      } catch (err) {
-        console.error('MongoDB syncMessage error:', err);
-      }
+    this.ensureMongoConnected('lưu tin nhắn');
+    try {
+      await (TinNhanModel as any).findOneAndUpdate(
+        { ma_tin_nhan: msg.id },
+        mappers.messageToMongo(msg),
+        { upsert: true, returnDocument: 'after', runValidators: true }
+      );
+      const idx = this.messages.findIndex(m => m.id === msg.id);
+      if (idx >= 0) { this.messages[idx] = msg; } else { this.messages.push(msg); }
+    } catch (err) {
+      console.error('MongoDB syncMessage error:', err);
+      throw err;
     }
   }
 
   async syncNotification(notif: INotification): Promise<void> {
-    const idx = this.notifications.findIndex(n => n.id === notif.id);
-    if (idx >= 0) { this.notifications[idx] = notif; } else { this.notifications.push(notif); }
-    if (this.isMongoConnected) {
-      try {
-        await (ThongBaoModel as any).findOneAndUpdate(
-          { ma_thong_bao: notif.id },
-          mappers.notifToMongo(notif),
-          { upsert: true, new: true }
-        );
-      } catch (err) {
-        console.error('MongoDB syncNotification error:', err);
-      }
+    this.ensureMongoConnected('lưu thông báo');
+
+    try {
+      await (ThongBaoModel as any).findOneAndUpdate(
+        { ma_thong_bao: notif.id },
+        mappers.notifToMongo(notif),
+        { upsert: true, returnDocument: 'after', runValidators: true }
+      );
+      const idx = this.notifications.findIndex(n => n.id === notif.id);
+      if (idx >= 0) { this.notifications[idx] = notif; } else { this.notifications.push(notif); }
+    } catch (err) {
+      console.error('MongoDB syncNotification error:', err);
+      throw err;
     }
   }
 
   async syncReport(report: IReport): Promise<void> {
-    const idx = this.reports.findIndex(r => r.id === report.id);
-    if (idx >= 0) { this.reports[idx] = report; } else { this.reports.push(report); }
-    if (this.isMongoConnected) {
-      try {
-        await (BaoCaoModel as any).findOneAndUpdate(
-          { ma_bao_cao: report.id },
-          mappers.reportToMongo(report),
-          { upsert: true, new: true }
-        );
-      } catch (err) {
-        console.error('MongoDB syncReport error:', err);
-      }
+    this.ensureMongoConnected('lưu báo cáo');
+    try {
+      await (BaoCaoModel as any).findOneAndUpdate(
+        { ma_bao_cao: report.id },
+        mappers.reportToMongo(report),
+        { upsert: true, returnDocument: 'after', runValidators: true }
+      );
+      const idx = this.reports.findIndex(r => r.id === report.id);
+      if (idx >= 0) { this.reports[idx] = report; } else { this.reports.push(report); }
+    } catch (err) {
+      console.error('MongoDB syncReport error:', err);
+      throw err;
     }
   }
 
   async syncPayment(payment: IPayment): Promise<void> {
-    const idx = this.payments.findIndex(p => p.id === payment.id);
-    if (idx >= 0) { this.payments[idx] = payment; } else { this.payments.push(payment); }
-    if (this.isMongoConnected) {
-      try {
-        await (ThanhToanModel as any).findOneAndUpdate(
-          { ma_thanh_toan: payment.id },
-          mappers.paymentToMongo(payment),
-          { upsert: true, new: true }
-        );
-      } catch (err) {
-        console.error('MongoDB syncPayment error:', err);
-      }
+    this.ensureMongoConnected('lưu thanh toán');
+    try {
+      await (ThanhToanModel as any).findOneAndUpdate(
+        { ma_thanh_toan: payment.id },
+        mappers.paymentToMongo(payment),
+        { upsert: true, returnDocument: 'after', runValidators: true }
+      );
+      const idx = this.payments.findIndex(p => p.id === payment.id);
+      if (idx >= 0) { this.payments[idx] = payment; } else { this.payments.push(payment); }
+    } catch (err) {
+      console.error('MongoDB syncPayment error:', err);
+      throw err;
     }
   }
 }
 
 export const db = new DatabaseStore();
-

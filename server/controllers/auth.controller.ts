@@ -314,10 +314,9 @@ export const authController = {
         updatedAt: new Date().toISOString()
       };
 
-      db.users.push(newUser);
-
       // Create welcome notification
-      db.notifications.push({
+      await db.syncUser(newUser);
+      await db.syncNotification({
         id: db.generateId('notif'),
         userId: newUser.id,
         title: 'Chào mừng gia nhập Football Connect!',

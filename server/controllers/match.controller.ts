@@ -22,11 +22,17 @@ export const matchController = {
       let matches = [...db.matches];
 
       // Status filter
-      if (status && typeof status === 'string' && status !== 'ALL') {
-        matches = matches.filter(m => m.status === status);
+      const authenticatedReq = req as AuthenticatedRequest;
+      if (authenticatedReq.user?.role === 'ADMIN') {
+        if (status && typeof status === 'string' && status !== 'ALL') {
+          matches = matches.filter(m => m.status === status);
+        }
       } else {
         // By default show OPEN and FULL matches
         matches = matches.filter(m => m.status === 'OPEN' || m.status === 'FULL');
+        if (status && typeof status === 'string' && status !== 'ALL') {
+          matches = matches.filter(m => m.status === status);
+        }
       }
 
       if (fieldType && typeof fieldType === 'string' && fieldType !== 'ALL') {
@@ -87,6 +93,33 @@ export const matchController = {
       res.json({ success: true, count: enriched.length, data: enriched });
     } catch {
       res.status(500).json({ success: false, message: 'Lỗi server' });
+    }
+  },
+
+  // GET /api/matches/mine
+  getMyMatches: async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+    try {
+      if (!req.user) {
+        res.status(401).json({ success: false, message: 'Chưa đăng nhập' });
+        return;
+      }
+
+      const matches = db.matches
+        .filter(match => match.creatorId === req.user?.id)
+        .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+        .map(match => ({
+          ...match,
+          currentPlayers: db.matchParticipants.filter(
+            participant => participant.matchId === match.id && participant.status === 'CONFIRMED'
+          ).length,
+          participants: db.matchParticipants.filter(
+            participant => participant.matchId === match.id && participant.status === 'CONFIRMED'
+          )
+        }));
+
+      res.json({ success: true, count: matches.length, data: matches });
+    } catch {
+      res.status(500).json({ success: false, message: 'Lỗi server khi tải kèo của bạn' });
     }
   },
 
@@ -186,6 +219,11 @@ export const matchController = {
         return;
       }
 
+      if (venue.status !== 'ACTIVE') {
+        res.status(400).json({ success: false, message: 'Cụm sân này chưa được quản trị viên phê duyệt để hoạt động' });
+        return;
+      }
+
       const field = fieldId ? db.fields.find(f => f.id === fieldId) : undefined;
       const user = db.users.find(u => u.id === req.user?.id);
 
@@ -214,7 +252,7 @@ export const matchController = {
         maxPlayers: fieldType === '5_vs_5' ? 10 : fieldType === '7_vs_7' ? 14 : 22,
         currentPlayers: 7,
         description: description || '',
-        status: 'OPEN',
+        status: 'PENDING_APPROVAL',
         costPerPerson,
         totalFieldFee: fee,
         costSharing,
@@ -265,7 +303,7 @@ export const matchController = {
 
       res.status(201).json({
         success: true,
-        message: 'Đã tạo kèo tìm đối thủ cho đội bóng thành công!',
+        message: 'Đã tạo kèo thành công và đang chờ Admin duyệt!',
         data: {
           ...newMatch,
           conversationId: matchConversation.id
@@ -273,6 +311,40 @@ export const matchController = {
       });
     } catch {
       res.status(500).json({ success: false, message: 'Lỗi server khi tạo kèo' });
+    }
+  },
+
+  // PUT /api/matches/:id/approve (Admin duyệt kèo)
+  approveMatch: async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+    try {
+      const match = db.matches.find(m => m.id === req.params.id);
+      if (!match) {
+        res.status(404).json({ success: false, message: 'Trận đấu không tồn tại' });
+        return;
+      }
+
+      if (match.status !== 'PENDING_APPROVAL') {
+        res.status(400).json({ success: false, message: 'Kèo này không ở trạng thái chờ duyệt' });
+        return;
+      }
+
+      match.status = 'OPEN';
+      match.updatedAt = new Date().toISOString();
+      await db.syncMatch(match);
+      await db.syncNotification({
+        id: db.generateId('notif'),
+        userId: match.creatorId,
+        title: 'Kèo đã được Admin duyệt',
+        message: `Kèo "${match.title}" đã được duyệt và hiện đã hoạt động.`,
+        type: 'SYSTEM',
+        link: `/matches/${match.id}`,
+        isRead: false,
+        createdAt: new Date().toISOString()
+      });
+
+      res.json({ success: true, message: 'Đã duyệt kèo và đưa vào hoạt động', data: match });
+    } catch {
+      res.status(500).json({ success: false, message: 'Lỗi server khi duyệt kèo' });
     }
   },
 
@@ -290,6 +362,11 @@ export const matchController = {
 
       if (!match) {
         res.status(404).json({ success: false, message: 'Trận đấu không tồn tại' });
+        return;
+      }
+
+      if (match.status === 'PENDING_APPROVAL') {
+        res.status(400).json({ success: false, message: 'Kèo đang chờ Admin duyệt, chưa thể nhận bắt kèo' });
         return;
       }
 

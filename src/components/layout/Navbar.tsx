@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import {
-  Trophy,
   Calendar,
   Users,
   Search,
@@ -25,6 +24,11 @@ export const Navbar: React.FC = () => {
   const location = useLocation();
   const { user, isAuthenticated, logout, switchDemoRole } = useAuthStore();
   const { notifications, unreadCount, fetchNotifications, markAllAsRead } = useNotificationStore();
+  const { markAsRead } = useNotificationStore();
+  const isOwnerPortal = user?.role === 'OWNER' &&
+    (location.pathname.startsWith('/owner') || location.pathname === '/chat');
+  const isAdminPortal = user?.role === 'ADMIN' &&
+    (location.pathname.startsWith('/admin') || location.pathname === '/chat');
 
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showNotifMenu, setShowNotifMenu] = useState(false);
@@ -57,14 +61,33 @@ export const Navbar: React.FC = () => {
     navigate('/login');
   };
 
-  const navLinks = [
-    { name: 'Trang chủ', path: '/' },
-    { name: 'Tìm sân bóng', path: '/venues', icon: Search },
-    { name: 'Cáp kèo & Đối thủ', path: '/matches', icon: Users, badge: 'HOT' },
-    { name: 'Đặt lịch sân', path: '/booking/create', icon: Calendar },
-    ...(isAuthenticated ? [{ name: 'Lịch của tôi', path: '/bookings' }] : []),
-    ...(isAuthenticated ? [{ name: 'Phòng chat', path: '/chat', icon: MessageSquare }] : [])
-  ];
+  const formatNotificationTime = (createdAt: string): string => {
+    const createdTime = new Date(createdAt).getTime();
+    const minutesAgo = Math.max(0, Math.floor((Date.now() - createdTime) / 60000));
+    if (minutesAgo < 1) return 'Vừa xong';
+    if (minutesAgo < 60) return `${minutesAgo} phút trước`;
+    if (minutesAgo < 1440) return `${Math.floor(minutesAgo / 60)} giờ trước`;
+    if (minutesAgo < 10080) return `${Math.floor(minutesAgo / 1440)} ngày trước`;
+    return new Date(createdAt).toLocaleDateString('vi-VN');
+  };
+
+  const getNotificationLink = (link?: string): string => {
+    if (link && link !== '/bookings') return link;
+    if (user?.role === 'OWNER') return '/owner/bookings';
+    if (user?.role === 'ADMIN') return '/admin/bookings';
+    return '/bookings';
+  };
+
+  const navLinks = isOwnerPortal || isAdminPortal
+    ? []
+    : [
+        { name: 'Trang chủ', path: '/' },
+        { name: 'Tìm sân bóng', path: '/venues', icon: Search },
+        { name: 'Cáp kèo & Đối thủ', path: '/matches', icon: Users, badge: 'HOT' },
+        { name: 'Đặt lịch sân', path: '/booking/create', icon: Calendar },
+        ...(isAuthenticated ? [{ name: 'Lịch của tôi', path: '/bookings' }] : []),
+        ...(isAuthenticated ? [{ name: 'Phòng chat', path: '/chat', icon: MessageSquare }] : [])
+      ];
 
   return (
     <header className="sticky top-0 z-50 bg-white/90 backdrop-blur-md border-b border-slate-200/90 text-slate-800 transition-all shadow-xs">
@@ -83,9 +106,11 @@ export const Navbar: React.FC = () => {
         <div className="flex items-center justify-between h-16 sm:h-18">
           {/* Brand Logo */}
           <Link to="/" className="flex items-center gap-3 group">
-            <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-gradient-to-tr from-emerald-700 via-emerald-600 to-teal-500 flex items-center justify-center shadow-md shadow-emerald-500/20 text-white group-hover:scale-105 transition-all duration-300">
-              <Trophy className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
-            </div>
+            <img
+              src="/images/football-connect-logo.png"
+              alt="Football Connect"
+              className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl object-cover shadow-md shadow-emerald-500/20 group-hover:scale-105 transition-all duration-300"
+            />
             <div>
               <div className="flex items-center gap-1">
                 <span className="font-black text-xl sm:text-2xl tracking-tight text-slate-900 group-hover:text-emerald-700 transition-colors">
@@ -132,6 +157,21 @@ export const Navbar: React.FC = () => {
           <div className="flex items-center gap-2.5">
             {isAuthenticated ? (
               <>
+                {(isOwnerPortal || isAdminPortal) && (
+                  <Link
+                    to="/chat"
+                    className={`hidden sm:inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition-all ${
+                      location.pathname === '/chat'
+                        ? user?.role === 'ADMIN'
+                          ? 'bg-purple-50 text-purple-900 border border-purple-200'
+                          : 'bg-amber-50 text-amber-900 border border-amber-200'
+                        : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100 border border-slate-200'
+                    }`}
+                  >
+                    <MessageSquare className={`w-3.5 h-3.5 ${user?.role === 'ADMIN' ? 'text-purple-600' : ''}`} />
+                    Phòng chat
+                  </Link>
+                )}
                 {/* Notification Dropdown */}
                 <div className="relative" ref={notifRef}>
                   <button
@@ -154,7 +194,12 @@ export const Navbar: React.FC = () => {
                           <div className="p-1.5 rounded-lg bg-emerald-100 text-emerald-700">
                             <Bell className="w-4 h-4" />
                           </div>
-                          <span className="font-bold text-sm text-slate-900">Thông báo mới</span>
+                          <div>
+                            <span className="font-bold text-sm text-slate-900">Thông báo</span>
+                            <span className="block text-[10px] text-slate-500 font-medium">
+                              {unreadCount > 0 ? `${unreadCount} chưa đọc` : 'Bạn đã đọc tất cả'}
+                            </span>
+                          </div>
                         </div>
                         {unreadCount > 0 && (
                           <button
@@ -170,14 +215,19 @@ export const Navbar: React.FC = () => {
                         {notifications.length === 0 ? (
                           <div className="p-8 text-center text-slate-400 text-xs">
                             <Sparkles className="w-8 h-8 text-slate-300 mx-auto mb-2" />
-                            Bạn chưa có thông báo mới nào
+                            Bạn chưa có thông báo nào
                           </div>
                         ) : (
                           notifications.slice(0, 8).map((n) => (
                             <Link
                               key={n.id}
-                              to={n.link || '/bookings'}
-                              onClick={() => setShowNotifMenu(false)}
+                              to={getNotificationLink(n.link)}
+                              onClick={() => {
+                                if (!n.isRead) {
+                                  void markAsRead(n.id);
+                                }
+                                setShowNotifMenu(false);
+                              }}
                               className={`p-3.5 block hover:bg-slate-50 transition-colors ${
                                 !n.isRead ? 'bg-emerald-50/40' : ''
                               }`}
@@ -192,8 +242,7 @@ export const Navbar: React.FC = () => {
                                   <h4 className="text-xs font-bold text-slate-900">{n.title}</h4>
                                   <p className="text-xs text-slate-600 line-clamp-2 mt-0.5">{n.message}</p>
                                   <span className="text-[10px] text-slate-400 mt-1 block">
-                                    {new Date(n.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })},{' '}
-                                    {new Date(n.createdAt).toLocaleDateString()}
+                                    {formatNotificationTime(n.createdAt)}
                                   </span>
                                 </div>
                               </div>
@@ -201,6 +250,11 @@ export const Navbar: React.FC = () => {
                           ))
                         )}
                       </div>
+                      {notifications.length > 8 && (
+                        <div className="border-t border-slate-100 px-4 py-2 text-center text-[11px] text-slate-500">
+                          Hiển thị 8 thông báo mới nhất
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>

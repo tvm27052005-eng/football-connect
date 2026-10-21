@@ -59,5 +59,27 @@ export const uploadApi = {
     });
 
     return res.data.data.map(item => item.url);
+  },
+
+  async uploadChatFile(file: File): Promise<{
+    url: string;
+    filename: string;
+    mimeType: string;
+    size: number;
+  }> {
+    const formData = new FormData();
+    formData.append('file', file);
+    const res = await api.post<{
+      success: boolean;
+      data: {
+        url: string;
+        filename: string;
+        mimeType: string;
+        size: number;
+      };
+    }>('/upload/chat', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+    return res.data.data;
   }
 };

@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Trophy, Phone, Mail, MapPin, ShieldCheck, Heart, Zap, Sparkles } from 'lucide-react';
+import { Phone, Mail, MapPin, ShieldCheck, Heart, Zap, Sparkles } from 'lucide-react';
 
 export const Footer: React.FC = () => {
   return (
@@ -10,9 +10,11 @@ export const Footer: React.FC = () => {
           {/* Col 1 - Brand & Mission */}
           <div className="space-y-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-emerald-600 to-teal-500 flex items-center justify-center text-white shadow-md shadow-emerald-500/20">
-                <Trophy className="w-5 h-5 text-white" />
-              </div>
+              <img
+                src="/images/football-connect-logo.png"
+                alt="Football Connect"
+                className="w-12 h-12 rounded-xl object-cover shadow-md shadow-emerald-500/20"
+              />
               <span className="font-black text-xl text-white tracking-tight">
                 FOOTBALL <span className="text-emerald-500">CONNECT</span>
               </span>

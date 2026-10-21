@@ -7,7 +7,8 @@ import {
   Search,
   MapPin,
   Calendar,
-  Clock
+  Clock,
+  ClipboardList
 } from 'lucide-react';
 import { api } from '../services/api.js';
 import { IMatch, IMatchRecommendation, IVenue } from '../types/index.js';
@@ -20,6 +21,8 @@ export const MatchesPage: React.FC = () => {
   const { user, isAuthenticated } = useAuthStore();
 
   const [matches, setMatches] = useState<IMatch[]>([]);
+  const [myMatches, setMyMatches] = useState<IMatch[]>([]);
+  const [showMyMatches, setShowMyMatches] = useState(false);
   const [recommendations, setRecommendations] = useState<IMatchRecommendation[]>([]);
   const [venues, setVenues] = useState<IVenue[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -48,6 +51,7 @@ export const MatchesPage: React.FC = () => {
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [createError, setCreateError] = useState('');
+  const [createSuccess, setCreateSuccess] = useState('');
 
   const fetchMatches = async () => {
     try {
@@ -71,6 +75,20 @@ export const MatchesPage: React.FC = () => {
     }
   };
 
+  const fetchMyMatches = async () => {
+    if (!isAuthenticated) {
+      setMyMatches([]);
+      return;
+    }
+
+    try {
+      const res = await api.get('/matches/mine');
+      setMyMatches(Array.isArray(res.data?.data) ? res.data.data : []);
+    } catch (error) {
+      console.error('Failed to load my matches:', error);
+    }
+  };
+
   const fetchVenues = async () => {
     try {
       const res = await api.get('/venues');
@@ -86,26 +104,52 @@ export const MatchesPage: React.FC = () => {
   useEffect(() => {
     fetchMatches();
     fetchRecommendations();
+    fetchMyMatches();
     fetchVenues();
   }, [isAuthenticated]);
 
   const handleCreateMatch = async (e: React.FormEvent) => {
     e.preventDefault();
+    setCreateError('');
+    setCreateSuccess('');
+
     if (!isAuthenticated) {
-      alert('Vui lòng đăng nhập để tạo kèo tìm đối');
+      setCreateError('Vui lòng đăng nhập để tạo kèo tìm đối');
       return;
     }
-    if (!createForm.title.trim() || !createForm.venueId) {
-      setCreateError('Vui lòng điền đầy đủ tiêu đề và chọn sân bóng');
+
+    if (!createForm.teamAName.trim() || !createForm.teamAPhone.trim() || !createForm.title.trim()) {
+      setCreateError('Vui lòng điền tên đội, số điện thoại đội trưởng và tiêu đề kèo');
+      return;
+    }
+
+    if (!createForm.venueId || venues.length === 0) {
+      setCreateError('Chưa có cụm sân đang hoạt động để đăng kèo');
+      return;
+    }
+
+    if (!createForm.matchDate || !createForm.startTime || !createForm.endTime) {
+      setCreateError('Vui lòng chọn ngày và nhập đầy đủ giờ thi đấu');
       return;
     }
 
     try {
       setIsSubmitting(true);
-      setCreateError('');
-      await api.post('/matches', createForm);
+      const response = await api.post<{ data?: IMatch }>('/matches', createForm);
       setShowCreateModal(false);
+      setShowMyMatches(true);
+      setCreateSuccess('Đã gửi kèo thành công. Kèo đang chờ Admin duyệt và được hiển thị trong mục Kèo của tôi.');
       fetchMatches();
+      await fetchMyMatches();
+      const createdMatch = response.data.data;
+      if (createdMatch) {
+        setMyMatches((currentMatches) => {
+          if (currentMatches.some((match) => match.id === createdMatch.id)) {
+            return currentMatches;
+          }
+          return [createdMatch, ...currentMatches];
+        });
+      }
       fetchRecommendations();
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Không thể tạo kèo đá';
@@ -157,12 +201,27 @@ export const MatchesPage: React.FC = () => {
 
           <div className="flex items-center gap-3">
             {isAuthenticated && (
-              <button
-                onClick={() => setShowSmartModal(true)}
-                className="px-4 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs transition-all shadow-md flex items-center gap-1.5 cursor-pointer active:scale-95"
-              >
-                <Sparkles className="w-4 h-4" /> Kèo Phù Hợp ({recommendations.length})
-              </button>
+              <>
+                <button
+                  onClick={() => {
+                    setCreateSuccess('');
+                    setShowMyMatches((current) => !current);
+                  }}
+                  className={`px-4 py-2.5 rounded-xl font-bold text-xs transition-all shadow-md flex items-center gap-1.5 cursor-pointer active:scale-95 ${
+                    showMyMatches
+                      ? 'bg-amber-300 text-amber-950'
+                      : 'bg-white/10 hover:bg-white/20 text-white border border-white/20'
+                  }`}
+                >
+                  <ClipboardList className="w-4 h-4" /> Kèo của tôi ({myMatches.length})
+                </button>
+                <button
+                  onClick={() => setShowSmartModal(true)}
+                  className="px-4 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs transition-all shadow-md flex items-center gap-1.5 cursor-pointer active:scale-95"
+                >
+                  <Sparkles className="w-4 h-4" /> Kèo Phù Hợp ({recommendations.length})
+                </button>
+              </>
             )}
 
             <button
@@ -180,6 +239,40 @@ export const MatchesPage: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {isAuthenticated && showMyMatches && (
+        <section className="bg-white border border-amber-200 rounded-2xl p-5 shadow-xs space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div>
+              <h2 className="text-lg font-black text-slate-900">Kèo của tôi</h2>
+              <p className="text-xs text-slate-500 mt-1">
+                Theo dõi các kèo bạn đã đăng và trạng thái kiểm duyệt của Admin.
+              </p>
+            </div>
+            <span className="text-xs font-bold text-amber-800 bg-amber-50 border border-amber-200 rounded-full px-3 py-1">
+              {myMatches.length} kèo
+            </span>
+          </div>
+
+          {myMatches.length === 0 ? (
+            <div className="py-5 text-center text-xs text-slate-500">
+              Bạn chưa đăng kèo nào.
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+              {myMatches.map((match) => (
+                <MatchCard key={match.id} match={match} />
+              ))}
+            </div>
+          )}
+
+          {createSuccess && (
+            <div className="fixed right-4 bottom-20 lg:bottom-6 z-40 max-w-sm rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-xs font-semibold text-emerald-800 shadow-lg">
+              {createSuccess}
+            </div>
+          )}
+        </section>
+      )}
 
       {/* Filter Row */}
       <div className="bg-white border border-slate-200/90 rounded-2xl p-4 shadow-xs grid grid-cols-1 sm:grid-cols-12 gap-3">
@@ -374,6 +467,7 @@ export const MatchesPage: React.FC = () => {
             <div>
               <label className="block text-slate-700 font-bold mb-1">Cụm Sân Thi Đấu *</label>
               <select
+                required
                 value={createForm.venueId}
                 onChange={(e) => setCreateForm({ ...createForm, venueId: e.target.value })}
                 className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 font-medium focus:outline-none focus:bg-white focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
@@ -404,6 +498,7 @@ export const MatchesPage: React.FC = () => {
               <label className="block text-slate-700 font-bold mb-1">Ngày Thi Đấu</label>
               <input
                 type="date"
+                required
                 min={new Date().toISOString().split('T')[0]}
                 value={createForm.matchDate}
                 onChange={(e) => setCreateForm({ ...createForm, matchDate: e.target.value })}
@@ -415,6 +510,7 @@ export const MatchesPage: React.FC = () => {
               <label className="block text-slate-700 font-bold mb-1">Giờ bắt đầu</label>
               <input
                 type="text"
+                required
                 value={createForm.startTime}
                 onChange={(e) => setCreateForm({ ...createForm, startTime: e.target.value })}
                 placeholder="19:00"
@@ -426,6 +522,7 @@ export const MatchesPage: React.FC = () => {
               <label className="block text-slate-700 font-bold mb-1">Giờ kết thúc</label>
               <input
                 type="text"
+                required
                 value={createForm.endTime}
                 onChange={(e) => setCreateForm({ ...createForm, endTime: e.target.value })}
                 placeholder="20:30"

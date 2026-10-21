@@ -27,59 +27,114 @@ export const statsController = {
       const ownerFields = db.fields.filter(f => ownerVenueIds.has(f.venueId));
       const ownerBookings = db.bookings.filter(b => ownerVenueIds.has(b.venueId));
 
-      const todayStr = new Date().toISOString().split('T')[0];
+      const now = new Date();
+      const toDateString = (date: Date): string => {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+      };
+      const todayStr = toDateString(now);
+      const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const isRevenueBooking = (booking: typeof db.bookings[number]): boolean =>
+        booking.status === 'CONFIRMED' || booking.status === 'COMPLETED';
+      const confirmedOwnerBookings = ownerBookings.filter(isRevenueBooking);
 
       const todayBookings = ownerBookings.filter(b => b.bookingDate === todayStr);
-      const confirmedBookings = ownerBookings.filter(b => b.status === 'CONFIRMED' || b.status === 'COMPLETED');
-      const totalRevenue = confirmedBookings.reduce((sum, b) => sum + b.totalPrice, 0);
+      const totalRevenue = confirmedOwnerBookings.reduce((sum, b) => sum + b.totalPrice, 0);
 
       const todayRevenue = todayBookings
-        .filter(b => b.status === 'CONFIRMED' || b.status === 'COMPLETED')
+        .filter(isRevenueBooking)
         .reduce((sum, b) => sum + b.totalPrice, 0);
 
       // Revenue by month (Last 6 months)
-      const monthlyRevenue = [
-        { month: 'T09', revenue: 14500000, bookings: 32 },
-        { month: 'T10', revenue: 19800000, bookings: 44 },
-        { month: 'T11', revenue: 24200000, bookings: 53 },
-        { month: 'T12', revenue: 31000000, bookings: 68 },
-        { month: 'T01', revenue: 28500000, bookings: 61 },
-        { month: 'T02 (Hiện tại)', revenue: totalRevenue + 12000000, bookings: ownerBookings.length + 20 }
-      ];
+      const monthlyRevenue = Array.from({ length: 6 }, (_, index) => {
+        const monthDate = new Date(now.getFullYear(), now.getMonth() - (5 - index), 1);
+        const month = monthDate.getMonth();
+        const year = monthDate.getFullYear();
+        const monthBookings = confirmedOwnerBookings.filter((booking) => {
+          const bookingDate = new Date(`${booking.bookingDate}T00:00:00`);
+          return bookingDate.getFullYear() === year && bookingDate.getMonth() === month;
+        });
+
+        return {
+          month: `T${String(month + 1).padStart(2, '0')}`,
+          revenue: monthBookings.reduce((sum, booking) => sum + booking.totalPrice, 0),
+          bookings: monthBookings.length
+        };
+      });
 
       // Daily revenue for the last 7 days
-      const days = ['Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7', 'Chủ Nhật'];
-      const dailyRevenue = days.map((day, idx) => ({
-        day,
-        revenue: Math.round(1800000 + idx * 450000 + (idx >= 5 ? 1200000 : 0)),
-        bookings: 4 + idx + (idx >= 5 ? 3 : 0)
-      }));
+      const dailyRevenue = Array.from({ length: 7 }, (_, index) => {
+        const date = new Date(startOfToday);
+        date.setDate(startOfToday.getDate() - (6 - index));
+        const dateString = toDateString(date);
+        const dateBookings = confirmedOwnerBookings.filter((booking) => booking.bookingDate === dateString);
+        return {
+          day: date.toLocaleDateString('vi-VN', { weekday: 'short', day: '2-digit', month: '2-digit' }),
+          revenue: dateBookings.reduce((sum, booking) => sum + booking.totalPrice, 0),
+          bookings: dateBookings.length
+        };
+      });
 
       // Popular time slot utilization
-      const timeSlotStats = [
-        { slot: '06:00-07:30', bookings: 12, rate: '45%' },
-        { slot: '07:30-09:00', bookings: 18, rate: '60%' },
-        { slot: '16:00-17:30', bookings: 25, rate: '78%' },
-        { slot: '17:30-19:00', bookings: 42, rate: '96%' }, // Peak
-        { slot: '19:00-20:30', bookings: 48, rate: '99%' }, // Peak
-        { slot: '20:30-22:00', bookings: 36, rate: '85%' }
-      ];
+      const slots = ['06:00-07:30', '07:30-09:00', '09:00-10:30', '14:30-16:00', '16:00-17:30', '17:30-19:00', '19:00-20:30', '20:30-22:00', '22:00-23:30'];
+      const periodStart = new Date(startOfToday);
+      periodStart.setDate(periodStart.getDate() - 29);
+      const periodStartString = toDateString(periodStart);
+      const periodBookings = confirmedOwnerBookings.filter((booking) =>
+        booking.bookingDate >= periodStartString && booking.bookingDate <= todayStr
+      );
+      const activeFieldCount = ownerFields.filter((field) => field.status === 'ACTIVE').length;
+      const timeSlotStats = slots.map((slot) => {
+        const [startTime, endTime] = slot.split('-');
+        const slotBookings = periodBookings.filter((booking) =>
+          booking.startTime === startTime && booking.endTime === endTime
+        );
+        const possibleBookings = activeFieldCount * 30;
+        const rate = possibleBookings > 0
+          ? Math.min(100, Math.round((slotBookings.length / possibleBookings) * 100))
+          : 0;
+        return { slot, bookings: slotBookings.length, rate: `${rate}%` };
+      });
+      const peakSlot = [...timeSlotStats].sort((a, b) => b.bookings - a.bookings)[0];
 
       // Field performance
       const fieldStats = ownerFields.map(f => {
         const fieldBookings = ownerBookings.filter(b => b.fieldId === f.id);
         const fRevenue = fieldBookings
-          .filter(b => b.status === 'CONFIRMED' || b.status === 'COMPLETED')
+          .filter(isRevenueBooking)
           .reduce((s, b) => s + b.totalPrice, 0);
+        const fieldPeriodBookings = fieldBookings.filter((booking) =>
+          isRevenueBooking(booking) &&
+          booking.bookingDate >= periodStartString &&
+          booking.bookingDate <= todayStr
+        );
+        const utilization = activeFieldCount > 0
+          ? Math.min(100, Math.round((fieldPeriodBookings.length / (30 * slots.length)) * 100))
+          : 0;
         return {
           id: f.id,
           name: f.name,
           fieldType: f.fieldType,
           totalBookings: fieldBookings.length,
           revenue: fRevenue,
-          utilization: `${Math.min(95, 60 + fieldBookings.length * 5)}%`
+          utilization: `${utilization}%`
         };
       });
+
+      const ownerReviews = db.reviews.filter((review) => ownerVenueIds.has(review.venueId));
+      const avgRating = ownerReviews.length > 0
+        ? Number((ownerReviews.reduce((sum, review) => sum + review.rating, 0) / ownerReviews.length).toFixed(1))
+        : 0;
+      const currentMonthRevenue = monthlyRevenue[monthlyRevenue.length - 1].revenue;
+      const previousMonthRevenue = monthlyRevenue[monthlyRevenue.length - 2].revenue;
+      const revenueChangePercent = previousMonthRevenue > 0
+        ? Math.round(((currentMonthRevenue - previousMonthRevenue) / previousMonthRevenue) * 100)
+        : currentMonthRevenue > 0 ? 100 : 0;
+      const recentBookings = [...ownerBookings]
+        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+        .slice(0, 5);
 
       res.json({
         success: true,
@@ -92,14 +147,19 @@ export const statsController = {
             totalBookings: ownerBookings.length,
             todayBookings: todayBookings.length,
             pendingBookings: ownerBookings.filter(b => b.status === 'PENDING').length,
-            avgRating: 4.8,
-            utilizationRate: '84.5%'
+            avgRating,
+            reviewCount: ownerReviews.length,
+            utilizationRate: `${activeFieldCount > 0
+              ? Math.min(100, Math.round((periodBookings.length / (activeFieldCount * 30 * slots.length)) * 100))
+              : 0}%`,
+            revenueChangePercent,
+            peakSlot: peakSlot?.slot || 'Chưa có dữ liệu'
           },
           monthlyRevenue,
           dailyRevenue,
           timeSlotStats,
           fieldStats,
-          recentBookings: ownerBookings.slice(0, 5)
+          recentBookings
         }
       });
     } catch {
@@ -129,23 +189,40 @@ export const statsController = {
       const grossMerchandiseValue = confirmedBookings.reduce((s, b) => s + b.totalPrice, 0);
       const platformFee = Math.round(grossMerchandiseValue * 0.05); // 5% platform take rate
 
-      const userGrowth = [
-        { month: 'T09', users: 120, matches: 30, bookings: 80 },
-        { month: 'T10', users: 240, matches: 65, bookings: 160 },
-        { month: 'T11', users: 410, matches: 110, bookings: 290 },
-        { month: 'T12', users: 650, matches: 180, bookings: 460 },
-        { month: 'T01', users: 890, matches: 260, bookings: 680 },
-        { month: 'T02', users: 1250, matches: 390, bookings: 940 }
-      ];
+      const now = new Date();
+      const getMonthLabel = (date: Date): string =>
+        `T${String(date.getMonth() + 1).padStart(2, '0')}/${date.getFullYear()}`;
+      const isSameMonth = (value: string, date: Date): boolean => {
+        const parsed = new Date(value);
+        return !Number.isNaN(parsed.getTime()) &&
+          parsed.getFullYear() === date.getFullYear() &&
+          parsed.getMonth() === date.getMonth();
+      };
+      const recentMonths = Array.from({ length: 6 }, (_, index) =>
+        new Date(now.getFullYear(), now.getMonth() - (5 - index), 1)
+      );
 
-      const revenueTrend = [
-        { month: 'T09', gmv: 45000000 },
-        { month: 'T10', gmv: 68000000 },
-        { month: 'T11', gmv: 92000000 },
-        { month: 'T12', gmv: 125000000 },
-        { month: 'T01', gmv: 180000000 },
-        { month: 'T02', gmv: grossMerchandiseValue + 210000000 }
-      ];
+      const userGrowth = recentMonths.map((month) => ({
+        month: getMonthLabel(month),
+        users: db.users.filter((user) => user.role === 'USER' && isSameMonth(user.createdAt, month)).length,
+        owners: db.users.filter((user) => user.role === 'OWNER' && isSameMonth(user.createdAt, month)).length
+      }));
+
+      const revenueTrend = recentMonths.map((month) => ({
+        month: getMonthLabel(month),
+        gmv: db.bookings
+          .filter((booking) =>
+            (booking.status === 'CONFIRMED' || booking.status === 'COMPLETED') &&
+            isSameMonth(booking.bookingDate, month)
+          )
+          .reduce((sum, booking) => sum + booking.totalPrice, 0)
+      }));
+      const completedOrConfirmedCount = db.bookings.filter(
+        (booking) => booking.status === 'CONFIRMED' || booking.status === 'COMPLETED'
+      ).length;
+      const completionRate = totalBookings > 0
+        ? Math.round((completedOrConfirmedCount / totalBookings) * 1000) / 10
+        : 0;
 
       res.json({
         success: true,
@@ -159,7 +236,8 @@ export const statsController = {
             totalMatches,
             totalPlatformGMV: grossMerchandiseValue,
             platformFee,
-            pendingReports
+            pendingReports,
+            completionRate
           },
           metrics: {
             totalUsers,
@@ -173,8 +251,8 @@ export const statsController = {
             pendingReports,
             grossMerchandiseValue,
             platformFee,
-            systemHealth: '100% HOẠT ĐỘNG TỐT',
-            activeSockets: 48
+            systemHealth: 'Đang hoạt động',
+            activeSockets: null
           },
           userGrowth,
           revenueTrend,

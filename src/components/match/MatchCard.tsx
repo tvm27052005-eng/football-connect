@@ -45,12 +45,17 @@ export const MatchCard: React.FC<MatchCardProps> = ({ match }) => {
             </Badge>
           </div>
           <span
-            className={`text-[11px] font-extrabold px-3 py-1 rounded-full flex items-center gap-1 ${match.status === 'OPEN'
-              ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
-              : 'bg-slate-100 text-slate-600 border border-slate-200'
-              }`}
+            className={`text-[11px] font-extrabold px-3 py-1 rounded-full flex items-center gap-1 ${
+              match.status === 'PENDING_APPROVAL'
+                ? 'bg-amber-50 text-amber-800 border border-amber-200'
+                : match.status === 'OPEN'
+                  ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+                  : 'bg-slate-100 text-slate-600 border border-slate-200'
+            }`}
           >
-            {match.status === 'OPEN' ? (
+            {match.status === 'PENDING_APPROVAL' ? (
+              '🟡 Chờ Admin duyệt'
+            ) : match.status === 'OPEN' ? (
               <>
                 <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
                 Đang Tìm Đối Thủ

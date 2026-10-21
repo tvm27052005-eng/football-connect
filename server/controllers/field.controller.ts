@@ -184,8 +184,10 @@ export const fieldController = {
         message: 'Tạo sân con thành công',
         data: newField
       });
-    } catch {
-      res.status(500).json({ success: false, message: 'Lỗi server' });
+    } catch (error) {
+      console.error('Lỗi khi tạo sân con:', error);
+      const message = error instanceof Error ? error.message : 'Lỗi server';
+      res.status(500).json({ success: false, message });
     }
   },
 
@@ -232,8 +234,10 @@ export const fieldController = {
         message: 'Cập nhật sân con thành công',
         data: updatedField
       });
-    } catch {
-      res.status(500).json({ success: false, message: 'Lỗi server' });
+    } catch (error) {
+      console.error('Lỗi khi cập nhật sân con:', error);
+      const message = error instanceof Error ? error.message : 'Lỗi server';
+      res.status(500).json({ success: false, message });
     }
   },
 

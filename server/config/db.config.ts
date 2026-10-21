@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import mongoose from 'mongoose';
 import { db } from '../models/db.js';
 import { seedInitialData } from '../utils/seed.js';
@@ -22,6 +23,7 @@ export async function connectDB(): Promise<boolean> {
 
     return true;
   } catch (error: any) {
+    db.isMongoConnected = false;
     console.warn(`⚠️ Could not connect to MongoDB (${error.message || error}).`);
     console.warn(`💡 Running with fallback in-memory store. To use a real MongoDB database, please set MONGODB_URI in your .env file or start MongoDB locally.`);
     return false;

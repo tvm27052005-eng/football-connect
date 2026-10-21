@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
-  Trophy,
   Mail,
   Lock,
   User,
@@ -34,7 +33,6 @@ export const RegisterPage: React.FC = () => {
   const [role, setRole] = useState<'USER' | 'OWNER'>('USER');
   const [city, setCity] = useState('Hà Nội');
   const [district, setDistrict] = useState('Cầu Giấy');
-  const [businessName, setBusinessName] = useState('');
 
   // OTP State
   const [otp, setOtp] = useState('');
@@ -84,7 +82,6 @@ export const RegisterPage: React.FC = () => {
         password,
         phone,
         role,
-        businessName: role === 'OWNER' ? businessName : undefined,
         city,
         district
       });
@@ -121,7 +118,6 @@ export const RegisterPage: React.FC = () => {
         password,
         phone,
         role,
-        businessName: role === 'OWNER' ? businessName : undefined,
         city,
         district
       });
@@ -167,7 +163,7 @@ export const RegisterPage: React.FC = () => {
       const { user, accessToken } = res.data.data;
       setAuthSession(user, accessToken);
 
-      if (role === 'OWNER') navigate('/owner/dashboard');
+      if (role === 'OWNER') navigate('/owner/venues');
       else navigate('/');
     } catch (err: unknown) {
       const msg =
@@ -195,7 +191,7 @@ export const RegisterPage: React.FC = () => {
 
           <div className="relative z-10">
             <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/20 border border-amber-400/40 backdrop-blur-md text-amber-300 text-[11px] font-black uppercase">
-              <Trophy className="w-3.5 h-3.5" /> Tinh thần thể thao đẹp
+              <img src="/images/football-connect-logo.png" alt="" className="w-6 h-6 rounded-md object-cover" /> Tinh thần thể thao đẹp
             </div>
           </div>
 
@@ -270,20 +266,6 @@ export const RegisterPage: React.FC = () => {
                     />
                   </div>
                 </div>
-
-                {role === 'OWNER' && (
-                  <div>
-                    <label className="block text-slate-700 font-bold mb-1">Tên Cụm Sân / Doanh nghiệp *</label>
-                    <input
-                      type="text"
-                      required
-                      value={businessName}
-                      onChange={(e) => setBusinessName(e.target.value)}
-                      placeholder="VD: Cụm Sân Bóng Thượng Đình"
-                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:bg-white focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
-                    />
-                  </div>
-                )}
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>

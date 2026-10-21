@@ -1,9 +1,31 @@
 import { Server as SocketIOServer, Socket } from 'socket.io';
 import { verifyToken } from '../utils/jwt.js';
-import { db } from '../models/db.js';
 import { IMessage } from '../types/index.js';
+import { db } from '../models/db.js';
+
+let socketServer: SocketIOServer | null = null;
+
+export function emitConversationMessage(message: IMessage, participantIds: string[]): void {
+  if (!socketServer) return;
+
+  socketServer.to(`conv:${message.conversationId}`).emit('receive_message', message);
+  participantIds
+    .filter((participantId) => participantId !== message.senderId)
+    .forEach((participantId) => {
+      socketServer?.to(`user:${participantId}`).emit('notification_received', {
+        id: `notif_${message.id}`,
+        userId: participantId,
+        title: `Tin nhắn mới từ ${message.senderName}`,
+        message: message.content.substring(0, 50),
+        type: 'NEW_MESSAGE',
+        link: `/chat?id=${message.conversationId}`,
+        createdAt: message.createdAt
+      });
+    });
+}
 
 export function initSocketService(io: SocketIOServer): void {
+  socketServer = io;
   // Middleware for socket auth
   io.use((socket: Socket, next) => {
     const token = socket.handshake.auth.token || socket.handshake.query.token;
@@ -28,6 +50,11 @@ export function initSocketService(io: SocketIOServer): void {
 
     // Join conversation room
     socket.on('join_conversation', (conversationId: string) => {
+      if (!socketUser || !db.conversations.some((conversation) =>
+        conversation.id === conversationId && conversation.participantIds.includes(socketUser.id)
+      )) {
+        return;
+      }
       socket.join(`conv:${conversationId}`);
     });
 
@@ -37,67 +64,25 @@ export function initSocketService(io: SocketIOServer): void {
     });
 
     // Typing indicators
-    socket.on('typing', ({ conversationId, userName }: { conversationId: string; userName: string }) => {
-      socket.to(`conv:${conversationId}`).emit('user_typing', { conversationId, userName });
+    socket.on('typing', ({ conversationId }: { conversationId: string }) => {
+      if (!socketUser || !db.conversations.some((conversation) =>
+        conversation.id === conversationId && conversation.participantIds.includes(socketUser.id)
+      )) {
+        return;
+      }
+      socket.to(`conv:${conversationId}`).emit('user_typing', {
+        conversationId,
+        userName: socketUser.name
+      });
     });
 
     socket.on('stop_typing', ({ conversationId }: { conversationId: string }) => {
+      if (!socketUser || !db.conversations.some((conversation) =>
+        conversation.id === conversationId && conversation.participantIds.includes(socketUser.id)
+      )) {
+        return;
+      }
       socket.to(`conv:${conversationId}`).emit('user_stop_typing', { conversationId });
-    });
-
-    // Realtime message event
-    socket.on('send_message', (data: {
-      conversationId: string;
-      senderId: string;
-      senderName: string;
-      senderAvatar?: string;
-      content: string;
-    }) => {
-      const { conversationId, senderId, senderName, senderAvatar, content } = data;
-      if (!conversationId || !content || !content.trim()) return;
-
-      const conversation = db.conversations.find(c => c.id === conversationId);
-      if (!conversation) return;
-
-      const newMessage: IMessage = {
-        id: db.generateId('msg'),
-        conversationId,
-        senderId,
-        senderName,
-        senderAvatar,
-        content: content.trim(),
-        type: 'TEXT',
-        readBy: [senderId],
-        createdAt: new Date().toISOString()
-      };
-
-      db.messages.push(newMessage);
-
-      conversation.lastMessage = {
-        content: newMessage.content,
-        senderId: newMessage.senderId,
-        senderName: newMessage.senderName,
-        createdAt: newMessage.createdAt
-      };
-      conversation.updatedAt = newMessage.createdAt;
-
-      // Broadcast to room
-      io.to(`conv:${conversationId}`).emit('receive_message', newMessage);
-
-      // Notify other participants if not in the room
-      conversation.participantIds.forEach(pId => {
-        if (pId !== senderId) {
-          io.to(`user:${pId}`).emit('notification_received', {
-            id: db.generateId('notif'),
-            userId: pId,
-            title: `Tin nhắn mới từ ${senderName}`,
-            message: content.substring(0, 50),
-            type: 'NEW_MESSAGE',
-            link: `/chat`,
-            createdAt: new Date().toISOString()
-          });
-        }
-      });
     });
 
     socket.on('disconnect', () => {

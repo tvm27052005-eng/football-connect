@@ -13,6 +13,7 @@ router.put('/admin/:id/status', authenticateToken, requireRole('ADMIN'), venueCo
 
 router.get('/', venueController.getAllVenues);
 router.get('/owner/my-venues', authenticateToken, requireRole('OWNER', 'ADMIN'), venueController.getMyVenues);
+router.get('/geocode', authenticateToken, requireRole('OWNER', 'ADMIN'), venueController.geocodeVenueAddress);
 router.get('/:id', venueController.getVenueById);
 
 // Owner / Admin operations
