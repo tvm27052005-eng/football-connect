@@ -248,5 +248,6 @@ export async function seedInitialData() {
     }
   } catch (error) {
     console.error('⚠️ Loi khi nap du lieu tieng Viet vao MongoDB:', error);
+    throw error;
   }
 }

@@ -23,6 +23,10 @@ export function createApp(): Express {
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization']
   }));
+  app.use('/api/ai', express.json({ limit: '32kb' }), (error: any, _req: express.Request, res: express.Response, next: express.NextFunction) => {
+    if (error) { res.status(error.status === 413 ? 413 : 400).json({ code: 'INVALID_BODY', error: 'Dữ liệu chat không hợp lệ hoặc quá lớn.' }); return; }
+    next();
+  });
   app.use(express.json({ limit: '10mb' }));
   app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 

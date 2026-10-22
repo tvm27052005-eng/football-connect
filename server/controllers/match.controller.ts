@@ -22,11 +22,17 @@ export const matchController = {
       let matches = [...db.matches];
 
       // Status filter
-      if (status && typeof status === 'string' && status !== 'ALL') {
-        matches = matches.filter(m => m.status === status);
+      const authenticatedReq = req as AuthenticatedRequest;
+      if (authenticatedReq.user?.role === 'ADMIN') {
+        if (status && typeof status === 'string' && status !== 'ALL') {
+          matches = matches.filter(m => m.status === status);
+        }
       } else {
         // By default show OPEN and FULL matches
         matches = matches.filter(m => m.status === 'OPEN' || m.status === 'FULL');
+        if (status && typeof status === 'string' && status !== 'ALL') {
+          matches = matches.filter(m => m.status === status);
+        }
       }
 
       if (fieldType && typeof fieldType === 'string' && fieldType !== 'ALL') {
@@ -87,6 +93,33 @@ export const matchController = {
       res.json({ success: true, count: enriched.length, data: enriched });
     } catch {
       res.status(500).json({ success: false, message: 'Lỗi server' });
+    }
+  },
+
+  // GET /api/matches/mine
+  getMyMatches: async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+    try {
+      if (!req.user) {
+        res.status(401).json({ success: false, message: 'Chưa đăng nhập' });
+        return;
+      }
+
+      const matches = db.matches
+        .filter(match => match.creatorId === req.user?.id)
+        .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+        .map(match => ({
+          ...match,
+          currentPlayers: db.matchParticipants.filter(
+            participant => participant.matchId === match.id && participant.status === 'CONFIRMED'
+          ).length,
+          participants: db.matchParticipants.filter(
+            participant => participant.matchId === match.id && participant.status === 'CONFIRMED'
+          )
+        }));
+
+      res.json({ success: true, count: matches.length, data: matches });
+    } catch {
+      res.status(500).json({ success: false, message: 'Lỗi server khi tải kèo của bạn' });
     }
   },
 
@@ -186,6 +219,11 @@ export const matchController = {
         return;
       }
 
+      if (venue.status !== 'ACTIVE') {
+        res.status(400).json({ success: false, message: 'Cụm sân này chưa được quản trị viên phê duyệt để hoạt động' });
+        return;
+      }
+
       const field = fieldId ? db.fields.find(f => f.id === fieldId) : undefined;
       const user = db.users.find(u => u.id === req.user?.id);
 
@@ -214,7 +252,7 @@ export const matchController = {
         maxPlayers: fieldType === '5_vs_5' ? 10 : fieldType === '7_vs_7' ? 14 : 22,
         currentPlayers: 7,
         description: description || '',
-        status: 'OPEN',
+        status: 'PENDING_APPROVAL',
         costPerPerson,
         totalFieldFee: fee,
         costSharing,
@@ -227,7 +265,7 @@ export const matchController = {
         updatedAt: new Date().toISOString()
       };
 
-      db.matches.push(newMatch);
+      await db.syncMatch(newMatch);
 
       // Add creator as Team A Captain participant
       const creatorParticipant: IMatchParticipant = {
@@ -242,7 +280,7 @@ export const matchController = {
         status: 'CONFIRMED',
         joinedAt: new Date().toISOString()
       };
-      db.matchParticipants.push(creatorParticipant);
+      await db.syncMatchParticipant(creatorParticipant);
 
       // Create match conversation
       const matchConversation = {
@@ -261,11 +299,11 @@ export const matchController = {
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
       };
-      db.conversations.push(matchConversation);
+      await db.syncConversation(matchConversation);
 
       res.status(201).json({
         success: true,
-        message: 'Đã tạo kèo tìm đối thủ cho đội bóng thành công!',
+        message: 'Đã tạo kèo thành công và đang chờ Admin duyệt!',
         data: {
           ...newMatch,
           conversationId: matchConversation.id
@@ -273,6 +311,40 @@ export const matchController = {
       });
     } catch {
       res.status(500).json({ success: false, message: 'Lỗi server khi tạo kèo' });
+    }
+  },
+
+  // PUT /api/matches/:id/approve (Admin duyệt kèo)
+  approveMatch: async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+    try {
+      const match = db.matches.find(m => m.id === req.params.id);
+      if (!match) {
+        res.status(404).json({ success: false, message: 'Trận đấu không tồn tại' });
+        return;
+      }
+
+      if (match.status !== 'PENDING_APPROVAL') {
+        res.status(400).json({ success: false, message: 'Kèo này không ở trạng thái chờ duyệt' });
+        return;
+      }
+
+      match.status = 'OPEN';
+      match.updatedAt = new Date().toISOString();
+      await db.syncMatch(match);
+      await db.syncNotification({
+        id: db.generateId('notif'),
+        userId: match.creatorId,
+        title: 'Kèo đã được Admin duyệt',
+        message: `Kèo "${match.title}" đã được duyệt và hiện đã hoạt động.`,
+        type: 'SYSTEM',
+        link: `/matches/${match.id}`,
+        isRead: false,
+        createdAt: new Date().toISOString()
+      });
+
+      res.json({ success: true, message: 'Đã duyệt kèo và đưa vào hoạt động', data: match });
+    } catch {
+      res.status(500).json({ success: false, message: 'Lỗi server khi duyệt kèo' });
     }
   },
 
@@ -290,6 +362,11 @@ export const matchController = {
 
       if (!match) {
         res.status(404).json({ success: false, message: 'Trận đấu không tồn tại' });
+        return;
+      }
+
+      if (match.status === 'PENDING_APPROVAL') {
+        res.status(400).json({ success: false, message: 'Kèo đang chờ Admin duyệt, chưa thể nhận bắt kèo' });
         return;
       }
 
@@ -311,6 +388,7 @@ export const matchController = {
       match.teamBJoined = true;
       match.status = 'FULL';
       match.updatedAt = new Date().toISOString();
+      await db.syncMatch(match);
 
       const newParticipant: IMatchParticipant = {
         id: db.generateId('part'),
@@ -324,7 +402,7 @@ export const matchController = {
         status: 'CONFIRMED',
         joinedAt: new Date().toISOString()
       };
-      db.matchParticipants.push(newParticipant);
+      await db.syncMatchParticipant(newParticipant);
 
       // Add to conversation
       const conversation = db.conversations.find(c => c.matchId === match.id);
@@ -332,7 +410,8 @@ export const matchController = {
         if (!conversation.participantIds.includes(req.user.id)) {
           conversation.participantIds.push(req.user.id);
         }
-        db.messages.push({
+        await db.syncConversation(conversation);
+        await db.syncMessage({
           id: db.generateId('msg'),
           conversationId: conversation.id,
           senderId: req.user.id,
@@ -346,7 +425,7 @@ export const matchController = {
       }
 
       // Notify match creator (Team A)
-      db.notifications.push({
+      await db.syncNotification({
         id: db.generateId('notif'),
         userId: match.creatorId,
         title: '🎉 Đã có Đội B nhận bắt kèo của bạn!',
@@ -391,13 +470,13 @@ export const matchController = {
         return;
       }
 
-      const partIndex = db.matchParticipants.findIndex(p => p.matchId === id && p.userId === req.user?.id && p.status === 'CONFIRMED');
-      if (partIndex === -1) {
+      const part = db.matchParticipants.find(p => p.matchId === id && p.userId === req.user?.id && p.status === 'CONFIRMED');
+      if (!part) {
         res.status(400).json({ success: false, message: 'Bạn chưa tham gia trận đấu này' });
         return;
       }
 
-      db.matchParticipants.splice(partIndex, 1);
+      await db.deleteMatchParticipant(part.id);
 
       const activeParticipants = db.matchParticipants.filter(p => p.matchId === match.id && p.status === 'CONFIRMED');
       match.currentPlayers = activeParticipants.length;
@@ -405,6 +484,7 @@ export const matchController = {
         match.status = 'OPEN';
       }
       match.updatedAt = new Date().toISOString();
+      await db.syncMatch(match);
 
       res.json({
         success: true,
@@ -433,12 +513,13 @@ export const matchController = {
 
       match.status = 'CANCELLED';
       match.updatedAt = new Date().toISOString();
+      await db.syncMatch(match);
 
       // Notify all participants
       const participants = db.matchParticipants.filter(p => p.matchId === id && p.status === 'CONFIRMED');
-      participants.forEach(p => {
+      for (const p of participants) {
         if (p.userId !== req.user?.id) {
-          db.notifications.push({
+          await db.syncNotification({
             id: db.generateId('notif'),
             userId: p.userId,
             title: 'Trận đấu đã bị hủy',
@@ -449,7 +530,7 @@ export const matchController = {
             createdAt: new Date().toISOString()
           });
         }
-      });
+      }
 
       res.json({
         success: true,

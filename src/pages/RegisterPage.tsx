@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
-  Trophy,
   Mail,
   Lock,
   User,
@@ -14,8 +13,7 @@ import {
   CheckCircle2,
   RotateCw,
   ArrowLeft,
-  KeyRound,
-  Sparkles
+  KeyRound
 } from 'lucide-react';
 import { api } from '../services/api.js';
 import { useAuthStore } from '../stores/auth.store.js';
@@ -34,12 +32,10 @@ export const RegisterPage: React.FC = () => {
   const [role, setRole] = useState<'USER' | 'OWNER'>('USER');
   const [city, setCity] = useState('Hà Nội');
   const [district, setDistrict] = useState('Cầu Giấy');
-  const [businessName, setBusinessName] = useState('');
 
   // OTP State
   const [otp, setOtp] = useState('');
-  const [demoOtp, setDemoOtp] = useState('');
-  const [otpExpiresIn, setOtpExpiresIn] = useState(300); // 5 minutes (300s)
+  const [otpExpiresIn, setOtpExpiresIn] = useState(60); // 1 phút (60s)
   const [resendCooldown, setResendCooldown] = useState(0); // 60s cooldown
 
   const [isLoading, setIsLoading] = useState(false);
@@ -84,19 +80,15 @@ export const RegisterPage: React.FC = () => {
         password,
         phone,
         role,
-        businessName: role === 'OWNER' ? businessName : undefined,
         city,
         district
       });
 
-      if (res.data.demoOtp) {
-        setDemoOtp(res.data.demoOtp);
-      }
       setSuccessMsg(res.data.message || 'Mã OTP đã được gửi đến email của bạn.');
       setStep('OTP');
       setOtp('');
-      setOtpExpiresIn(300); // 5 minutes
-      setResendCooldown(60); // 60s cooldown
+      setOtpExpiresIn(60);
+      setResendCooldown(60);
     } catch (err: unknown) {
       const msg =
         (err as { response?: { data?: { message?: string } } })?.response?.data?.message ||
@@ -121,16 +113,12 @@ export const RegisterPage: React.FC = () => {
         password,
         phone,
         role,
-        businessName: role === 'OWNER' ? businessName : undefined,
         city,
         district
       });
 
-      if (res.data.demoOtp) {
-        setDemoOtp(res.data.demoOtp);
-      }
-      setSuccessMsg('Đã gửi lại mã OTP mới về email của bạn!');
-      setOtpExpiresIn(300);
+      setSuccessMsg(res.data.message || 'Đã gửi lại mã OTP mới về email của bạn!');
+      setOtpExpiresIn(60);
       setResendCooldown(60);
     } catch (err: unknown) {
       const msg =
@@ -145,6 +133,7 @@ export const RegisterPage: React.FC = () => {
   // Step 3: Verify OTP and complete registration
   const handleVerifyOtp = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isLoading) return;
     setLocalError('');
 
     if (otp.trim().length !== 6) {
@@ -153,7 +142,7 @@ export const RegisterPage: React.FC = () => {
     }
 
     if (otpExpiresIn <= 0) {
-      setLocalError('Mã OTP đã hết hạn (quá 5 phút). Vui lòng bấm gửi lại mã mới!');
+      setLocalError('Mã OTP đã hết hạn. Vui lòng bấm gửi lại mã mới!');
       return;
     }
 
@@ -167,7 +156,7 @@ export const RegisterPage: React.FC = () => {
       const { user, accessToken } = res.data.data;
       setAuthSession(user, accessToken);
 
-      if (role === 'OWNER') navigate('/owner/dashboard');
+      if (role === 'OWNER') navigate('/owner/venues');
       else navigate('/');
     } catch (err: unknown) {
       const msg =
@@ -195,7 +184,7 @@ export const RegisterPage: React.FC = () => {
 
           <div className="relative z-10">
             <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/20 border border-amber-400/40 backdrop-blur-md text-amber-300 text-[11px] font-black uppercase">
-              <Trophy className="w-3.5 h-3.5" /> Tinh thần thể thao đẹp
+              <img src="/images/football-connect-logo.png" alt="Football Connect" className="h-8 w-28 object-contain" /> Tinh thần thể thao đẹp
             </div>
           </div>
 
@@ -225,22 +214,20 @@ export const RegisterPage: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setRole('USER')}
-                  className={`py-2.5 rounded-xl font-bold transition-all cursor-pointer ${
-                    role === 'USER'
-                      ? 'bg-emerald-600 text-white font-black shadow-xs'
-                      : 'text-slate-600 hover:text-slate-900'
-                  }`}
+                  className={`py-2.5 rounded-xl font-bold transition-all cursor-pointer ${role === 'USER'
+                    ? 'bg-emerald-600 text-white font-black shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900'
+                    }`}
                 >
                   Tôi là Cầu Thủ
                 </button>
                 <button
                   type="button"
                   onClick={() => setRole('OWNER')}
-                  className={`py-2.5 rounded-xl font-bold transition-all cursor-pointer ${
-                    role === 'OWNER'
-                      ? 'bg-amber-500 text-white font-black shadow-xs'
-                      : 'text-slate-600 hover:text-slate-900'
-                  }`}
+                  className={`py-2.5 rounded-xl font-bold transition-all cursor-pointer ${role === 'OWNER'
+                    ? 'bg-amber-500 text-white font-black shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900'
+                    }`}
                 >
                   Tôi là Chủ Sân Bóng
                 </button>
@@ -270,20 +257,6 @@ export const RegisterPage: React.FC = () => {
                     />
                   </div>
                 </div>
-
-                {role === 'OWNER' && (
-                  <div>
-                    <label className="block text-slate-700 font-bold mb-1">Tên Cụm Sân / Doanh nghiệp *</label>
-                    <input
-                      type="text"
-                      required
-                      value={businessName}
-                      onChange={(e) => setBusinessName(e.target.value)}
-                      placeholder="VD: Cụm Sân Bóng Thượng Đình"
-                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:bg-white focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
-                    />
-                  </div>
-                )}
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
@@ -371,7 +344,7 @@ export const RegisterPage: React.FC = () => {
                   disabled={isLoading}
                   className="w-full py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-bold transition-all shadow-xs flex items-center justify-center gap-2 cursor-pointer"
                 >
-                  {isLoading ? 'Đang gửi mã xác thực...' : 'Nhận Mã Xác Thực Email'} <ArrowRight className="w-4 h-4" />
+                  {isLoading ? 'Đang gửi mã xác thực qua email...' : 'Đăng kí ngay'} <ArrowRight className="w-4 h-4" />
                 </button>
               </form>
 
@@ -402,26 +375,9 @@ export const RegisterPage: React.FC = () => {
                 </div>
                 <h2 className="text-xl font-black text-slate-900">Xác Thực Email Của Bạn</h2>
                 <p className="text-xs text-slate-500 max-w-sm mx-auto">
-                  Mã OTP 6 số đã được gửi tới email <strong className="text-slate-800">{email}</strong>. Vui lòng kiểm tra hộp thư (hoặc mục Spam).
+                  Mã OTP 6 số đã được gửi tới email <strong className="text-slate-800">{email}</strong>. Vui lòng kiểm tra hộp thư.
                 </p>
               </div>
-
-              {/* Dev Hint if applicable */}
-              {demoOtp && (
-                <div className="p-3 bg-emerald-50/90 border border-emerald-300 rounded-xl text-emerald-900 text-xs flex items-center justify-between">
-                  <span className="flex items-center gap-1.5 font-medium">
-                    <Sparkles className="w-4 h-4 text-emerald-600 shrink-0" />
-                    Mã OTP thử nghiệm nhanh: <strong className="font-mono text-sm tracking-widest text-emerald-800">{demoOtp}</strong>
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setOtp(demoOtp)}
-                    className="px-2.5 py-1 bg-emerald-600 text-white font-bold rounded-lg text-[10px] hover:bg-emerald-700 transition-colors cursor-pointer"
-                  >
-                    Điền nhanh
-                  </button>
-                </div>
-              )}
 
               {successMsg && (
                 <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs flex items-center gap-2">
@@ -441,8 +397,8 @@ export const RegisterPage: React.FC = () => {
                 <div>
                   <div className="flex items-center justify-between mb-2">
                     <label className="text-xs font-bold text-slate-700">Mã xác thực OTP (6 chữ số)</label>
-                    <span className={`text-xs font-extrabold ${otpExpiresIn < 60 ? 'text-rose-600 animate-pulse' : 'text-emerald-700'}`}>
-                      ⏱️ Còn {formatTime(otpExpiresIn)}
+                    <span className={`text-xs font-extrabold ${otpExpiresIn < 30 ? 'text-rose-600 animate-pulse' : 'text-emerald-700'}`}>
+                      Còn {formatTime(otpExpiresIn)}
                     </span>
                   </div>
 
@@ -455,7 +411,7 @@ export const RegisterPage: React.FC = () => {
                       required
                       value={otp}
                       onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
-                      placeholder="Nhập 6 số (VD: 123456)"
+                      placeholder="XXXXXX"
                       className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-center text-lg font-mono font-bold tracking-widest text-slate-900 focus:outline-none focus:bg-white focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
                     />
                   </div>

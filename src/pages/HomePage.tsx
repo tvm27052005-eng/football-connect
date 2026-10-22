@@ -46,46 +46,50 @@ export const HomePage: React.FC = () => {
     navigate(`/venues?city=${encodeURIComponent(searchCity)}${searchFieldType ? `&fieldType=${searchFieldType}` : ''}`);
   };
 
+  const featuredVenue = topVenues[0];
+  const heroImages = featuredVenue?.images.filter(Boolean) || [];
+  const heroImage = heroImages[0] || '/images/stadium-7.png';
+
   return (
     <div className="space-y-16 sm:space-y-24 pb-20">
       {/*  -------------------- home 1 -------------------- */}
-      <section className="relative overflow-hidden pt-10 pb-8 lg:pt-16 lg:pb-10 bg-gradient-to-b from-white via-slate-50 to-[#F8FAFC]">
-        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[380px] bg-emerald-200/40 rounded-full blur-3xl pointer-events-none -z-10" />
-        <div className="absolute top-1/3 left-1/4 w-[350px] h-[250px] bg-teal-200/30 rounded-full blur-3xl pointer-events-none -z-10" />
+      <section className="relative overflow-hidden bg-[#06130d] pb-10 pt-10 text-white lg:pb-14 lg:pt-16">
+        <div className="absolute inset-0 opacity-[0.07]" style={{ backgroundImage: 'linear-gradient(rgba(255,255,255,.35) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.35) 1px, transparent 1px)', backgroundSize: '52px 52px' }} />
+        <div className="pointer-events-none absolute -right-32 top-0 h-full w-[48%] -skew-x-12 border-l border-lime-400/20 bg-gradient-to-b from-emerald-400/10 to-transparent" />
+        <div className="pointer-events-none absolute left-1/2 top-1/3 h-80 w-80 rounded-full bg-emerald-500/15 blur-3xl" />
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-center">
             <div className="lg:col-span-7 text-center lg:text-left">
               {/* Badge */}
-              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-50 border border-emerald-200/90 text-emerald-800 text-xs sm:text-sm font-black mb-6 shadow-xs">
-                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
-                Nền Tảng Đặt Sân và Kết Nối Hàng Đầu Việt Nam
+              <div className="mb-6 inline-flex items-center gap-2 border-l-4 border-lime-400 bg-white/5 px-4 py-2 text-[10px] font-black uppercase tracking-[0.18em] text-lime-300 backdrop-blur-sm sm:text-xs">
+                <span className="h-2 w-2 rounded-full bg-lime-400 animate-pulse" />
+                Đặt sân · Bắt đối · Ra sân
               </div>
 
               {/* Heading */}
-              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black text-slate-950 tracking-tight leading-[1.1]">
-                ĐẶT SÂN NHƯ Ý. <br />
-                <span className="bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-500 bg-clip-text text-transparent">
-                  GIAO LƯU VUI VẺ.
+              <h1 className="text-4xl font-black uppercase italic leading-[0.98] tracking-tight text-white sm:text-6xl lg:text-7xl">
+                Tìm sân đúng chất. <br />
+                <span className="text-lime-400">
+                  Chơi bóng đúng gu.
                 </span>
               </h1>
 
               {/* Subtitle */}
-              <p className="mt-5 text-sm sm:text-base text-slate-600 max-w-xl mx-auto lg:mx-0 leading-relaxed font-medium">
-                Nền tảng kết nối bóng đá phong trào chuyên nghiệp.
-                Hỗ trợ tìm đối thủ giao lưu phù hợp, quản lý đội bóng và giữ chỗ sân đấu cực kỳ nhanh chóng, tiện lợi.
+              <p className="mx-auto mt-5 max-w-xl text-sm font-medium leading-relaxed text-slate-300 sm:text-base lg:mx-0">
+                Xem ảnh sân thực tế, chọn lịch còn trống và kết nối những đội bóng cùng trình độ trong một trải nghiệm thể thao liền mạch.
               </p>
 
               {/* Quick Search & Booking Bar */}
               <form
                 onSubmit={handleHeroSearch}
-                className="mt-8 max-w-2xl bg-white/95 backdrop-blur-xl border border-slate-200/90 p-3 sm:p-4 rounded-3xl shadow-xl shadow-slate-200/50 grid grid-cols-1 sm:grid-cols-12 gap-3 text-left"
+                className="mt-8 grid max-w-2xl grid-cols-1 gap-3 rounded-3xl border border-white/15 bg-white/10 p-3 text-left shadow-2xl backdrop-blur-xl sm:grid-cols-12 sm:p-4"
               >
 
 
                 {/* Field Type Selector */}
                 <div className="sm:col-span-4 text-left">
-                  <label className="block text-[11px] font-black uppercase tracking-wider text-slate-500 px-3 mb-1.5 flex items-center gap-1.5">
-                    Tìm kiếm sân ngay:
+                  <label className="mb-1.5 flex items-center gap-1.5 px-3 text-[11px] font-black uppercase tracking-wider text-slate-300">
+                    Sẵn sàng ra sân?
                   </label>
 
                 </div>
@@ -94,7 +98,7 @@ export const HomePage: React.FC = () => {
                 <div className="sm:col-span-3 flex items-end">
                   <button
                     type="submit"
-                    className="w-full py-3 px-4 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-black text-xs sm:text-sm rounded-2xl shadow-md shadow-emerald-600/30 transition-all duration-200 flex items-center justify-center gap-2 active:scale-95 cursor-pointer"
+                    className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-2xl bg-lime-400 px-4 py-3 text-xs font-black uppercase text-slate-950 shadow-lg shadow-lime-400/20 transition-all duration-200 hover:bg-lime-300 active:scale-95 sm:text-sm"
                   >
                     <Search className="w-4 h-4" /> Tìm Sân
                   </button>
@@ -102,18 +106,18 @@ export const HomePage: React.FC = () => {
               </form>
 
               {/* Quick search */}
-              <div className="mt-4 flex items-center justify-center lg:justify-start flex-wrap gap-2 text-xs text-slate-500">
-                <span className="font-semibold text-slate-400">Tìm kiếm nhanh:</span>
+              <div className="mt-4 flex flex-wrap items-center justify-center gap-2 text-xs text-slate-400 lg:justify-start">
+                <span className="font-semibold">Tìm kiếm nhanh:</span>
                 <button
                   onClick={() => navigate('/venues?fieldType=7_vs_7')}
-                  className="px-3 py-1 rounded-full bg-slate-100 hover:bg-emerald-50 hover:text-emerald-700 transition-colors font-medium cursor-pointer"
+                  className="cursor-pointer rounded-full border border-white/15 bg-white/5 px-3 py-1 font-medium text-slate-300 transition-colors hover:border-lime-400/50 hover:text-lime-300"
                 >
                   🔴 Sân 7 Hà Nội
                 </button>
 
                 <button
                   onClick={() => navigate('/venues?sort=price_asc')}
-                  className="px-3 py-1 rounded-full bg-slate-100 hover:bg-emerald-50 hover:text-emerald-700 transition-colors font-medium cursor-pointer"
+                  className="cursor-pointer rounded-full border border-white/15 bg-white/5 px-3 py-1 font-medium text-slate-300 transition-colors hover:border-lime-400/50 hover:text-lime-300"
                 >
                   🔴 Sân giá rẻ
                 </button>
@@ -124,24 +128,25 @@ export const HomePage: React.FC = () => {
             <div className="lg:col-span-5 relative">
               <div className="relative mx-auto max-w-md lg:max-w-none">
                 {/* Main Featured Image Card */}
-                <div className="relative rounded-3xl overflow-hidden shadow-2xl border-4 border-white/80 group">
+                <div className="group relative overflow-hidden rounded-[2rem] border border-white/20 bg-slate-900 shadow-2xl shadow-black/40">
                   <img
-                    src="/images/stadium-7.png"
-                    alt="Sân cỏ bóng đá chuyên nghiệp"
+                    src={heroImage}
+                    alt={featuredVenue ? `Ảnh ${featuredVenue.name} do chủ sân cung cấp` : 'Sân bóng Football Connect'}
+                    onError={(event) => { event.currentTarget.src = '/images/stadium-7.png'; }}
                     className="w-full h-80 sm:h-96 object-cover transform group-hover:scale-105 transition-transform duration-700"
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-slate-950/20 to-transparent" />
 
                   {/* Overlay text on image */}
                   <div className="absolute bottom-5 left-5 right-5 text-white">
-                    <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/90 text-[11px] font-black uppercase tracking-wider mb-2">
-                      ⚽︎ Các sân bóng chất lượng trên khắp cả nước
+                    <div className="mb-2 inline-flex items-center gap-1.5 rounded-full bg-lime-400 px-3 py-1 text-[10px] font-black uppercase tracking-wider text-slate-950">
+                      <Camera className="h-3 w-3" /> Ảnh thực tế từ chủ sân
                     </div>
                     <h3 className="text-lg font-black leading-snug text-white drop-shadow-sm">
-                      Mặt cỏ nhân tạo chuẩn quốc tế, hệ thống đèn LED chiếu sáng đầy đủ và tiêu chuẩn
+                      {featuredVenue?.name || 'Khám phá sân bóng phù hợp với đội của bạn'}
                     </h3>
-                    <p className="text-xs text-slate-200 mt-1 flex items-center gap-1">
-                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" /> Đặt sân ngay - Chỉ với 1 click
+                    <p className="mt-1 flex items-center gap-1 text-xs text-slate-200">
+                      <CheckCircle2 className="h-3.5 w-3.5 text-lime-400" /> {featuredVenue ? `${featuredVenue.district}, ${featuredVenue.city}` : 'Tìm sân và đặt lịch trực tuyến'}
                     </p>
                   </div>
                 </div>

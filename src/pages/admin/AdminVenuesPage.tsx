@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Building, MapPin, Star, ShieldCheck, CheckCircle2, XCircle, Search } from 'lucide-react';
+import { Building, MapPin, Star, Search } from 'lucide-react';
 import { api } from '../../services/api.js';
 import { IVenue } from '../../types/index.js';
 import { AdminSidebar } from '../../components/layout/AdminSidebar.js';
@@ -60,7 +60,7 @@ export const AdminVenuesPage: React.FC = () => {
               Kiểm Duyệt & Giám Sát Cụm Sân Bóng
             </h1>
             <p className="text-xs text-slate-500 mt-1">
-              Phê duyệt hồ sơ cụm sân mới đăng ký hoặc tạm đình chỉ các cơ sở vi phạm tiêu chuẩn.
+              Phê duyệt hồ sơ cụm sân mới đăng ký hoặc tạm đình chỉ các cơ sở vi phạm tiêu chuẩn. Chỉ khi đã kiểm duyệt xong mới hoạt động.
             </p>
           </div>
         </div>
@@ -125,20 +125,20 @@ export const AdminVenuesPage: React.FC = () => {
                       <td className="p-4">
                         <div className="flex items-center gap-1 font-bold text-amber-500">
                           <Star className="w-3.5 h-3.5 fill-amber-400" /> {v.rating.toFixed(1)}
-                          <span className="text-[10px] text-slate-400">({v.totalReviews})</span>
+                          <span className="text-[10px] text-slate-400">({v.totalReviews || v.reviewCount || 0})</span>
                         </div>
                       </td>
                       <td className="p-4">
                         <Badge
-                          variant={v.status === 'APPROVED' ? 'emerald' : v.status === 'PENDING' ? 'amber' : 'rose'}
+                          variant={v.status === 'ACTIVE' ? 'emerald' : v.status === 'PENDING_APPROVAL' ? 'amber' : 'rose'}
                           size="sm"
                         >
-                          {v.status === 'APPROVED' ? 'Đã duyệt' : v.status === 'PENDING' ? 'Chờ duyệt' : 'Từ chối'}
+                          {v.status === 'ACTIVE' ? 'Đã duyệt' : v.status === 'PENDING_APPROVAL' ? 'Chờ duyệt' : 'Từ chối'}
                         </Badge>
                       </td>
                       <td className="p-4 text-right">
                         <div className="flex items-center justify-end gap-1.5">
-                          {v.status !== 'APPROVED' && (
+                          {v.status !== 'ACTIVE' && (
                             <button
                               onClick={() => handleUpdateStatus(v.id, 'APPROVED')}
                               className="px-2.5 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 font-bold transition-all cursor-pointer"
@@ -146,12 +146,12 @@ export const AdminVenuesPage: React.FC = () => {
                               Duyệt sân
                             </button>
                           )}
-                          {v.status !== 'REJECTED' && (
+                          {v.status !== 'CLOSED' && (
                             <button
                               onClick={() => handleUpdateStatus(v.id, 'REJECTED')}
                               className="px-2.5 py-1.5 rounded-lg bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200 font-bold transition-all cursor-pointer"
                             >
-                              Khóa sân
+                              Từ chối
                             </button>
                           )}
                         </div>

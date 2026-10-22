@@ -73,7 +73,7 @@ export const ProfilePage: React.FC = () => {
     <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8 space-y-8">
       <div>
         <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
-          Hồ Sơ Cầu Thủ & Cài Đặt
+          Hồ Sơ & Cài Đặt
         </h1>
         <p className="text-xs text-slate-500 mt-1">
           Cập nhật kỹ năng, vị trí thi đấu và khu vực để nhận gợi ý ghép kèo chuẩn xác nhất.
@@ -112,6 +112,7 @@ export const ProfilePage: React.FC = () => {
         </div>
 
         {/* Basic Info */}
+       
         <div className="bg-white border border-slate-200/90 rounded-3xl p-6 space-y-4 shadow-xs">
           <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
             <User className="w-4 h-4 text-emerald-600" /> Thông Tin Cơ Bản
@@ -165,8 +166,10 @@ export const ProfilePage: React.FC = () => {
             </div>
           </div>
         </div>
+        
 
         {/* Football Specs */}
+         {user?.role === 'USER' && (
         <div className="bg-white border border-slate-200/90 rounded-3xl p-6 space-y-4 shadow-xs">
           <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
             <Trophy className="w-4 h-4 text-emerald-600" /> Kỹ Năng & Sở Thích Bóng Đá
@@ -225,6 +228,7 @@ export const ProfilePage: React.FC = () => {
             />
           </div>
         </div>
+         )}
 
         {/* Submit */}
         <div className="flex justify-end">

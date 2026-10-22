@@ -25,3 +25,34 @@ export const uploadMiddleware = multer({
     fileSize: 5 * 1024 * 1024 // Giới hạn kích thước ảnh tối đa 5MB
   }
 });
+
+const chatFileFilter = (
+  _req: Request,
+  file: Express.Multer.File,
+  cb: multer.FileFilterCallback
+) => {
+  const allowedMimeTypes = [
+    'image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/jpg',
+    'application/pdf',
+    'application/msword',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'application/vnd.ms-excel',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    'text/plain',
+    'application/zip',
+    'application/x-rar-compressed'
+  ];
+  if (allowedMimeTypes.includes(file.mimetype)) {
+    cb(null, true);
+  } else {
+    cb(new Error('Định dạng tệp này chưa được hỗ trợ trong chat'));
+  }
+};
+
+export const chatUploadMiddleware = multer({
+  storage,
+  fileFilter: chatFileFilter,
+  limits: {
+    fileSize: 10 * 1024 * 1024
+  }
+});

@@ -7,7 +7,13 @@ import {
   Search,
   MapPin,
   Calendar,
-  Clock
+  Clock,
+  ClipboardList,
+  SlidersHorizontal,
+  RotateCcw,
+  Target,
+  Trophy,
+  ChevronRight
 } from 'lucide-react';
 import { api } from '../services/api.js';
 import { IMatch, IMatchRecommendation, IVenue } from '../types/index.js';
@@ -20,6 +26,8 @@ export const MatchesPage: React.FC = () => {
   const { user, isAuthenticated } = useAuthStore();
 
   const [matches, setMatches] = useState<IMatch[]>([]);
+  const [myMatches, setMyMatches] = useState<IMatch[]>([]);
+  const [showMyMatches, setShowMyMatches] = useState(false);
   const [recommendations, setRecommendations] = useState<IMatchRecommendation[]>([]);
   const [venues, setVenues] = useState<IVenue[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -48,6 +56,7 @@ export const MatchesPage: React.FC = () => {
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [createError, setCreateError] = useState('');
+  const [createSuccess, setCreateSuccess] = useState('');
 
   const fetchMatches = async () => {
     try {
@@ -71,6 +80,20 @@ export const MatchesPage: React.FC = () => {
     }
   };
 
+  const fetchMyMatches = async () => {
+    if (!isAuthenticated) {
+      setMyMatches([]);
+      return;
+    }
+
+    try {
+      const res = await api.get('/matches/mine');
+      setMyMatches(Array.isArray(res.data?.data) ? res.data.data : []);
+    } catch (error) {
+      console.error('Failed to load my matches:', error);
+    }
+  };
+
   const fetchVenues = async () => {
     try {
       const res = await api.get('/venues');
@@ -86,26 +109,52 @@ export const MatchesPage: React.FC = () => {
   useEffect(() => {
     fetchMatches();
     fetchRecommendations();
+    fetchMyMatches();
     fetchVenues();
   }, [isAuthenticated]);
 
   const handleCreateMatch = async (e: React.FormEvent) => {
     e.preventDefault();
+    setCreateError('');
+    setCreateSuccess('');
+
     if (!isAuthenticated) {
-      alert('Vui lòng đăng nhập để tạo kèo tìm đối');
+      setCreateError('Vui lòng đăng nhập để tạo kèo tìm đối');
       return;
     }
-    if (!createForm.title.trim() || !createForm.venueId) {
-      setCreateError('Vui lòng điền đầy đủ tiêu đề và chọn sân bóng');
+
+    if (!createForm.teamAName.trim() || !createForm.teamAPhone.trim() || !createForm.title.trim()) {
+      setCreateError('Vui lòng điền tên đội, số điện thoại đội trưởng và tiêu đề kèo');
+      return;
+    }
+
+    if (!createForm.venueId || venues.length === 0) {
+      setCreateError('Chưa có cụm sân đang hoạt động để đăng kèo');
+      return;
+    }
+
+    if (!createForm.matchDate || !createForm.startTime || !createForm.endTime) {
+      setCreateError('Vui lòng chọn ngày và nhập đầy đủ giờ thi đấu');
       return;
     }
 
     try {
       setIsSubmitting(true);
-      setCreateError('');
-      await api.post('/matches', createForm);
+      const response = await api.post<{ data?: IMatch }>('/matches', createForm);
       setShowCreateModal(false);
+      setShowMyMatches(true);
+      setCreateSuccess('Đã gửi kèo thành công. Kèo đang chờ Admin duyệt và được hiển thị trong mục Kèo của tôi.');
       fetchMatches();
+      await fetchMyMatches();
+      const createdMatch = response.data.data;
+      if (createdMatch) {
+        setMyMatches((currentMatches) => {
+          if (currentMatches.some((match) => match.id === createdMatch.id)) {
+            return currentMatches;
+          }
+          return [createdMatch, ...currentMatches];
+        });
+      }
       fetchRecommendations();
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Không thể tạo kèo đá';
@@ -127,118 +176,191 @@ export const MatchesPage: React.FC = () => {
     return true;
   });
 
+  const hasActiveFilters = Boolean(searchQuery || fieldType || skillLevel);
+  const openMatchesCount = matches.filter((match) => match.status === 'OPEN').length;
+
+  const openCreateMatch = () => {
+    if (!isAuthenticated) {
+      window.location.href = '/login';
+      return;
+    }
+    setCreateError('');
+    setShowCreateModal(true);
+  };
+
+  const resetFilters = () => {
+    setSearchQuery('');
+    setFieldType('');
+    setSkillLevel('');
+  };
+
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
-      {/* Top Banner with Action Photo */}
-      <div className="relative rounded-3xl overflow-hidden bg-slate-950 p-6 sm:p-10 text-white shadow-xl border border-slate-800">
+    <div className="max-w-[1440px] mx-auto px-8 py-8 space-y-6">
+      <section className="relative rounded-[28px] overflow-hidden bg-slate-950 text-white shadow-xl border border-slate-800 min-h-[290px]">
         <div className="absolute inset-0 z-0">
           <img
             src="/images/vn-match-action.png"
             alt="Trận đấu bóng đá phong trào Việt Nam"
-            className="w-full h-full object-cover opacity-30"
+            className="w-full h-full object-cover opacity-40"
           />
-          <div className="absolute inset-0 bg-gradient-to-r from-slate-950 via-slate-950/85 to-slate-950/60" />
+          <div className="absolute inset-0 bg-gradient-to-r from-slate-950 via-slate-950/90 to-slate-950/35" />
         </div>
 
-        <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-2 mb-2">
-              <span className="px-2.5 py-1 rounded-full text-[11px] font-black bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 backdrop-blur-md uppercase tracking-wider">
-                ⚡ Sàn Đấu & Tìm Đối Thủ
+        <div className="relative z-10 grid grid-cols-[1fr_430px] gap-10 items-center p-10">
+          <div className="max-w-2xl">
+            <div className="flex items-center gap-2 mb-4">
+              <span className="px-3 py-1.5 rounded-full text-[11px] font-black bg-emerald-500/15 text-emerald-300 border border-emerald-400/30 uppercase tracking-[0.18em]">
+                Football Connect Matchmaking
               </span>
             </div>
-            <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
-              Kèo Đá Bóng & Ghép Đội Trực Tuyến
+            <h1 className="text-4xl font-black text-white tracking-tight leading-tight">
+              Tìm đối thủ vừa sức.<br /><span className="text-emerald-400">Lên sân đúng chất.</span>
             </h1>
-            <p className="text-xs sm:text-sm text-slate-300 mt-1 max-w-xl">
-              Tham gia ngay các trận đấu đang thiếu chân hoặc tạo kèo mới để tìm đối thủ xứng tầm.
+            <p className="text-sm text-slate-300 mt-4 max-w-xl leading-6">
+              Lọc kèo theo loại sân và trình độ, xem nhanh lịch thi đấu, chi phí rồi kết nối với đội phù hợp chỉ trong vài bước.
             </p>
-          </div>
-
-          <div className="flex items-center gap-3">
-            {isAuthenticated && (
-              <button
-                onClick={() => setShowSmartModal(true)}
-                className="px-4 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs transition-all shadow-md flex items-center gap-1.5 cursor-pointer active:scale-95"
-              >
-                <Sparkles className="w-4 h-4" /> Kèo Phù Hợp ({recommendations.length})
-              </button>
-            )}
-
             <button
-              onClick={() => {
-                if (!isAuthenticated) {
-                  window.location.href = '/login';
-                } else {
-                  setShowCreateModal(true);
-                }
-              }}
-              className="px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs transition-all flex items-center gap-1.5 border border-white/20 backdrop-blur-md cursor-pointer"
+              onClick={openCreateMatch}
+              className="mt-6 px-5 py-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-sm transition-all flex items-center gap-2 shadow-lg shadow-emerald-950/20 cursor-pointer"
             >
-              <Plus className="w-4 h-4" /> Tạo Kèo Mới
+              <Plus className="w-4 h-4" /> Đăng kèo tìm đối thủ
             </button>
           </div>
-        </div>
-      </div>
 
-      {/* Filter Row */}
-      <div className="bg-white border border-slate-200/90 rounded-2xl p-4 shadow-xs grid grid-cols-1 sm:grid-cols-12 gap-3">
-        <div className="sm:col-span-6 relative">
-          <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Tìm theo tiêu đề trận đấu, sân bóng, khu vực..."
-            className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:bg-white focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
-          />
+          <div className="grid grid-cols-2 gap-3">
+            <div className="col-span-2 rounded-2xl border border-white/10 bg-white/[0.08] backdrop-blur-md p-5">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs text-slate-400 font-semibold">Đang mở đăng ký</p>
+                  <p className="text-3xl font-black mt-1">{openMatchesCount} <span className="text-base text-slate-300">kèo đấu</span></p>
+                </div>
+                <div className="w-12 h-12 rounded-2xl bg-emerald-400/15 border border-emerald-400/20 flex items-center justify-center">
+                  <Target className="w-6 h-6 text-emerald-300" />
+                </div>
+              </div>
+            </div>
+            <div className="rounded-2xl border border-white/10 bg-white/[0.08] backdrop-blur-md p-4">
+              <Trophy className="w-5 h-5 text-amber-300 mb-3" />
+              <div className="text-xl font-black">{matches.length}</div>
+              <div className="text-[11px] text-slate-400 mt-0.5">Tổng kèo hiện có</div>
+            </div>
+            <div className="rounded-2xl border border-white/10 bg-white/[0.08] backdrop-blur-md p-4">
+              <Sparkles className="w-5 h-5 text-emerald-300 mb-3" />
+              <div className="text-xl font-black">{recommendations.length}</div>
+              <div className="text-[11px] text-slate-400 mt-0.5">Kèo hợp với bạn</div>
+            </div>
+          </div>
         </div>
+      </section>
 
-        <div className="sm:col-span-3">
-          <select
-            value={fieldType}
-            onChange={(e) => setFieldType(e.target.value)}
-            className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 font-medium focus:outline-none focus:bg-white focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
+      {isAuthenticated && (
+        <div className="grid grid-cols-3 gap-3">
+          <button
+            onClick={() => setShowMyMatches(false)}
+            className={`rounded-2xl border p-4 text-left transition-all cursor-pointer ${!showMyMatches ? 'bg-emerald-50 border-emerald-300 ring-2 ring-emerald-500/10' : 'bg-white border-slate-200 hover:border-slate-300'}`}
           >
-            <option value="">Tất cả loại sân</option>
-            <option value="5_vs_5">Sân 5 người</option>
-            <option value="7_vs_7">Sân 7 người</option>
-          </select>
-        </div>
-
-        <div className="sm:col-span-3">
-          <select
-            value={skillLevel}
-            onChange={(e) => setSkillLevel(e.target.value)}
-            className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 font-medium focus:outline-none focus:bg-white focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
+            <span className="flex items-center justify-between"><span className="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center"><Users className="w-4 h-4" /></span><ChevronRight className="w-4 h-4 text-slate-400" /></span>
+            <strong className="block text-sm text-slate-900 mt-3">Khám phá kèo công khai</strong>
+            <span className="block text-[11px] text-slate-500 mt-1">{openMatchesCount} kèo đang chờ đối thủ</span>
+          </button>
+          <button onClick={() => setShowSmartModal(true)} className="rounded-2xl border border-slate-200 bg-white hover:border-emerald-300 p-4 text-left transition-all cursor-pointer">
+            <span className="flex items-center justify-between"><span className="w-9 h-9 rounded-xl bg-violet-100 text-violet-700 flex items-center justify-center"><Sparkles className="w-4 h-4" /></span><ChevronRight className="w-4 h-4 text-slate-400" /></span>
+            <strong className="block text-sm text-slate-900 mt-3">Gợi ý dành cho bạn</strong>
+            <span className="block text-[11px] text-slate-500 mt-1">{recommendations.length} kèo dựa trên hồ sơ thi đấu</span>
+          </button>
+          <button
+            onClick={() => { setCreateSuccess(''); setShowMyMatches(true); }}
+            className={`rounded-2xl border p-4 text-left transition-all cursor-pointer ${showMyMatches ? 'bg-amber-50 border-amber-300 ring-2 ring-amber-500/10' : 'bg-white border-slate-200 hover:border-amber-300'}`}
           >
-            <option value="">Tất cả trình độ</option>
-            <option value="BEGINNER">Tập sự / Nhẹ nhàng</option>
-            <option value="INTERMEDIATE">Trung bình / Khá</option>
-            <option value="ADVANCED">Nâng cao / Chuyên nghiệp</option>
-          </select>
+            <span className="flex items-center justify-between"><span className="w-9 h-9 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center"><ClipboardList className="w-4 h-4" /></span><ChevronRight className="w-4 h-4 text-slate-400" /></span>
+            <strong className="block text-sm text-slate-900 mt-3">Quản lý kèo của tôi</strong>
+            <span className="block text-[11px] text-slate-500 mt-1">{myMatches.length} kèo đã đăng</span>
+          </button>
         </div>
-      </div>
+      )}
 
-      {/* Matches Grid */}
-      {isLoading ? (
-        <LoadingSkeleton count={6} type="card" />
-      ) : filteredMatches.length === 0 ? (
-        <EmptyState
-          title="Chưa có kèo đấu nào phù hợp"
-          description="Hiện tại chưa có trận đấu nào theo tiêu chí bạn chọn. Hãy là người đầu tiên tạo kèo mới nhé!"
-          icon={Users}
-          action={{
-            label: 'Tạo kèo đấu ngay',
-            onClick: () => setShowCreateModal(true)
-          }}
-        />
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredMatches.map((m) => (
-            <MatchCard key={m.id} match={m} />
-          ))}
-        </div>
+      {isAuthenticated && showMyMatches && (
+        <section className="bg-white border border-amber-200 rounded-2xl p-6 shadow-sm space-y-5">
+          <div className="flex items-center justify-between gap-2">
+            <div>
+              <h2 className="text-xl font-black text-slate-900">Kèo của tôi</h2>
+              <p className="text-xs text-slate-500 mt-1">
+                Theo dõi các kèo bạn đã đăng và trạng thái kiểm duyệt của Admin.
+              </p>
+            </div>
+            <button onClick={openCreateMatch} className="px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold flex items-center gap-2 cursor-pointer"><Plus className="w-4 h-4" /> Đăng kèo mới</button>
+          </div>
+
+          {myMatches.length === 0 ? (
+            <div className="py-5 text-center text-xs text-slate-500">
+              Bạn chưa đăng kèo nào.
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 gap-5">
+              {myMatches.map((match) => (
+                <MatchCard key={match.id} match={match} />
+              ))}
+            </div>
+          )}
+
+          {createSuccess && (
+            <div className="fixed right-4 bottom-20 lg:bottom-6 z-40 max-w-sm rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-xs font-semibold text-emerald-800 shadow-lg">
+              {createSuccess}
+            </div>
+          )}
+        </section>
+      )}
+
+      {!showMyMatches && (
+        <section className="grid grid-cols-[280px_1fr] gap-6 items-start">
+          <aside className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm sticky top-24">
+            <div className="flex items-center justify-between mb-5">
+              <h2 className="font-black text-slate-900 flex items-center gap-2"><SlidersHorizontal className="w-4 h-4 text-emerald-600" /> Bộ lọc kèo</h2>
+              {hasActiveFilters && <button type="button" onClick={resetFilters} className="text-[11px] font-bold text-slate-500 hover:text-rose-600 flex items-center gap-1 cursor-pointer"><RotateCcw className="w-3 h-3" /> Đặt lại</button>}
+            </div>
+            <div className="space-y-5">
+              <div>
+                <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-2">Tìm kiếm</label>
+                <div className="relative">
+                  <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Tên đội, sân, khu vực..." className="w-full pl-9 pr-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:bg-white focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/15" />
+                </div>
+              </div>
+              <div>
+                <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-2">Loại sân</label>
+                <div className="grid grid-cols-1 gap-2">
+                  {[{ value: '', label: 'Tất cả loại sân' }, { value: '5_vs_5', label: 'Sân 5 người' }, { value: '7_vs_7', label: 'Sân 7 người' }].map((option) => (
+                    <button key={option.value} type="button" onClick={() => setFieldType(option.value)} className={`px-3 py-2.5 rounded-xl border text-xs font-bold text-left transition-all cursor-pointer ${fieldType === option.value ? 'border-emerald-500 bg-emerald-50 text-emerald-800' : 'border-slate-200 text-slate-600 hover:bg-slate-50'}`}>{option.label}</button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-2">Trình độ</label>
+                <select value={skillLevel} onChange={(e) => setSkillLevel(e.target.value)} className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 font-semibold focus:outline-none focus:bg-white focus:border-emerald-500">
+                  <option value="">Mọi trình độ</option><option value="BEGINNER">Tập sự / Nhẹ nhàng</option><option value="INTERMEDIATE">Trung bình / Khá</option><option value="ADVANCED">Nâng cao</option>
+                </select>
+              </div>
+            </div>
+          </aside>
+
+          <div>
+            <div className="flex items-end justify-between mb-5">
+              <div>
+                <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-emerald-700">Danh sách trận đấu</p>
+                <h2 className="text-2xl font-black text-slate-950 mt-1">Kèo đang tìm đối thủ</h2>
+                <p className="text-xs text-slate-500 mt-1">Tìm thấy {filteredMatches.length} kèo phù hợp với lựa chọn của bạn</p>
+              </div>
+              <button onClick={openCreateMatch} className="px-4 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold flex items-center gap-2 cursor-pointer"><Plus className="w-4 h-4" /> Tạo kèo mới</button>
+            </div>
+            {isLoading ? (
+              <LoadingSkeleton count={4} type="card" />
+            ) : filteredMatches.length === 0 ? (
+              <EmptyState title="Chưa có kèo đấu nào phù hợp" description="Hãy thử bỏ bớt bộ lọc hoặc chủ động tạo kèo mới để tìm đối thủ." icon={Users} action={{ label: 'Tạo kèo đấu ngay', onClick: openCreateMatch }} />
+            ) : (
+              <div className="grid grid-cols-2 gap-5">{filteredMatches.map((m) => <MatchCard key={m.id} match={m} />)}</div>
+            )}
+          </div>
+        </section>
       )}
 
       {/* Smart Matchmaking Modal */}
@@ -374,6 +496,7 @@ export const MatchesPage: React.FC = () => {
             <div>
               <label className="block text-slate-700 font-bold mb-1">Cụm Sân Thi Đấu *</label>
               <select
+                required
                 value={createForm.venueId}
                 onChange={(e) => setCreateForm({ ...createForm, venueId: e.target.value })}
                 className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 font-medium focus:outline-none focus:bg-white focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
@@ -404,6 +527,7 @@ export const MatchesPage: React.FC = () => {
               <label className="block text-slate-700 font-bold mb-1">Ngày Thi Đấu</label>
               <input
                 type="date"
+                required
                 min={new Date().toISOString().split('T')[0]}
                 value={createForm.matchDate}
                 onChange={(e) => setCreateForm({ ...createForm, matchDate: e.target.value })}
@@ -415,6 +539,7 @@ export const MatchesPage: React.FC = () => {
               <label className="block text-slate-700 font-bold mb-1">Giờ bắt đầu</label>
               <input
                 type="text"
+                required
                 value={createForm.startTime}
                 onChange={(e) => setCreateForm({ ...createForm, startTime: e.target.value })}
                 placeholder="19:00"
@@ -426,6 +551,7 @@ export const MatchesPage: React.FC = () => {
               <label className="block text-slate-700 font-bold mb-1">Giờ kết thúc</label>
               <input
                 type="text"
+                required
                 value={createForm.endTime}
                 onChange={(e) => setCreateForm({ ...createForm, endTime: e.target.value })}
                 placeholder="20:30"

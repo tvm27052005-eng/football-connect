@@ -153,6 +153,7 @@ export const VenueDetailPage: React.FC = () => {
             <img
               src={selectedImage || 'https://images.unsplash.com/photo-1529900748604-07564a03e7a6?w=1000'}
               alt={venue.name}
+              onError={(event) => { event.currentTarget.src = '/images/turf-pitch.png'; }}
               className="w-full h-full object-cover"
             />
             <div className="absolute top-4 left-4 flex gap-2">
@@ -174,7 +175,7 @@ export const VenueDetailPage: React.FC = () => {
                   : 'border-slate-200 opacity-70 hover:opacity-100'
                   }`}
               >
-                <img src={img} alt="thumb" className="w-full h-full object-cover" />
+                <img src={img} alt={`Ảnh ${venue.name} ${idx + 1}`} onError={(event) => { event.currentTarget.src = '/images/turf-pitch.png'; }} className="w-full h-full object-cover" />
               </button>
             ))}
           </div>
@@ -424,6 +425,13 @@ export const VenueDetailPage: React.FC = () => {
                     </div>
                   </div>
                   <StarRating rating={rev.rating} size="sm" />
+                </div>
+                      {/* thông tin sân bóng liên quan đến đánh giá */}
+                <div className="flex items-start gap-2 text-[11px] text-slate-500 border-l-2 border-emerald-300 pl-3">
+                  <MapPin className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
+                  <span>
+                    Đánh giá tại <strong className="text-slate-700">{venue.name}</strong> · {venue.address}, {venue.district}, {venue.city}
+                  </span>
                 </div>
 
                 <p className="text-xs text-slate-600 leading-relaxed">{rev.comment}</p>

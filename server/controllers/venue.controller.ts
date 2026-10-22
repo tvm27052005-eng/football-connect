@@ -1,9 +1,45 @@
 import { Request, Response } from 'express';
 import { db } from '../models/db.js';
 import { AuthenticatedRequest } from '../middlewares/auth.middleware.js';
+import { geocodeAddress } from '../services/geocoding.service.js';
 import { IVenue, IField } from '../types/index.js';
 
 export const venueController = {
+  // GET /api/venues/geocode
+  geocodeVenueAddress: async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+    try {
+      if (!req.user || !['OWNER', 'ADMIN'].includes(req.user.role)) {
+        res.status(403).json({ success: false, message: 'Bạn không có quyền xác thực địa chỉ sân' });
+        return;
+      }
+
+      const address = String(req.query.address || '').trim();
+      const district = String(req.query.district || '').trim();
+      const city = String(req.query.city || '').trim();
+      if (!address || !district || !city) {
+        res.status(400).json({ success: false, message: 'Vui lòng nhập địa chỉ, quận/huyện và thành phố' });
+        return;
+      }
+
+      const result = await geocodeAddress(address, district, city);
+      if (!result) {
+        res.status(422).json({
+          success: false,
+          message: 'Không tìm thấy địa chỉ thực tế. Vui lòng kiểm tra lại số nhà, đường, quận/huyện và thành phố.'
+        });
+        return;
+      }
+
+      res.json({ success: true, data: result });
+    } catch (error) {
+      console.error('Lỗi xác thực địa chỉ cụm sân:', error);
+      res.status(502).json({
+        success: false,
+        message: error instanceof Error ? error.message : 'Không thể xác thực địa chỉ lúc này'
+      });
+    }
+  },
+
   // GET /api/venues
   getAllVenues: async (req: Request, res: Response): Promise<void> => {
     try {
@@ -12,10 +48,8 @@ export const venueController = {
       let results = [...db.venues];
 
       // Status filter
-      if (status && typeof status === 'string') {
-        results = results.filter(v => v.status === status);
-      } else {
-        // Public list only shows ACTIVE
+      if (status !== 'ALL') {
+        // Public requests can only see approved venues. The admin endpoint uses ALL.
         results = results.filter(v => v.status === 'ACTIVE');
       }
 
@@ -135,7 +169,7 @@ export const venueController = {
     try {
       const { id } = req.params;
       const venue = db.venues.find(v => v.id === id);
-      if (!venue) {
+      if (!venue || venue.status !== 'ACTIVE') {
         res.status(404).json({ success: false, message: 'Không tìm thấy sân bóng' });
         return;
       }
@@ -200,8 +234,8 @@ export const venueController = {
         images: images && images.length > 0 ? images : [
           'https://images.unsplash.com/photo-1529900748604-07564a03e7a6?w=800'
         ],
-        latitude: Number(latitude) || 21.0285,
-        longitude: Number(longitude) || 105.7854,
+        latitude: Number(latitude),
+        longitude: Number(longitude),
         amenities: amenities || ['Bãi đỗ xe', 'Đèn LED', 'Nước uống'],
         rating: 5.0,
         reviewCount: 0,
@@ -211,12 +245,17 @@ export const venueController = {
         },
         openTime: openTime || '06:00',
         closeTime: closeTime || '23:00',
-        status: 'ACTIVE',
+        status: 'PENDING_APPROVAL',
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
       };
 
-      db.venues.push(newVenue);
+      if (!Number.isFinite(newVenue.latitude) || !Number.isFinite(newVenue.longitude)) {
+        res.status(400).json({ success: false, message: 'Địa chỉ chưa được xác thực trên bản đồ' });
+        return;
+      }
+
+      await db.syncVenue(newVenue);
 
       // Create a default field 7-vs-7 for this venue
       const defaultField: IField = {
@@ -231,15 +270,17 @@ export const venueController = {
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
       };
-      db.fields.push(defaultField);
+      await db.syncField(defaultField);
 
       res.status(201).json({
         success: true,
-        message: 'Thêm sân bóng thành công',
+        message: 'Đã gửi hồ sơ cụm sân. Cụm sân đang chờ quản trị viên phê duyệt trước khi hoạt động.',
         data: newVenue
       });
-    } catch {
-      res.status(500).json({ success: false, message: 'Lỗi server khi tạo sân' });
+    } catch (error) {
+      console.error('Lỗi khi tạo sân bóng:', error);
+      const message = error instanceof Error ? error.message : 'Lỗi server khi tạo sân';
+      res.status(500).json({ success: false, message });
     }
   },
 
@@ -261,23 +302,39 @@ export const venueController = {
         return;
       }
 
+      const requestedStatus = req.body?.status;
+      const isAdminStatusUpdate = req.user?.role === 'ADMIN' && req.originalUrl.includes('/admin/');
+      const nextStatus: IVenue['status'] = isAdminStatusUpdate
+        ? requestedStatus === 'APPROVED' ? 'ACTIVE'
+          : requestedStatus === 'PENDING' ? 'PENDING_APPROVAL'
+            : requestedStatus === 'REJECTED' ? 'CLOSED' : venue.status
+        : venue.status;
+
       const updatedVenue: IVenue = {
         ...venue,
         ...req.body,
         id: venue.id,
         ownerId: venue.ownerId, // preserve owner
+        status: nextStatus,
         updatedAt: new Date().toISOString()
       };
 
-      db.venues[venueIndex] = updatedVenue;
+      if (!Number.isFinite(updatedVenue.latitude) || !Number.isFinite(updatedVenue.longitude)) {
+        res.status(400).json({ success: false, message: 'Địa chỉ chưa được xác thực trên bản đồ' });
+        return;
+      }
+
+      await db.syncVenue(updatedVenue);
 
       res.json({
         success: true,
-        message: 'Cập nhật thông tin sân thành công',
+        message: isAdminStatusUpdate ? 'Đã cập nhật trạng thái kiểm duyệt cụm sân' : 'Cập nhật thông tin sân thành công',
         data: updatedVenue
       });
-    } catch {
-      res.status(500).json({ success: false, message: 'Lỗi server' });
+    } catch (error) {
+      console.error('Lỗi khi cập nhật sân bóng:', error);
+      const message = error instanceof Error ? error.message : 'Lỗi server';
+      res.status(500).json({ success: false, message });
     }
   },
 
@@ -296,9 +353,7 @@ export const venueController = {
         return;
       }
 
-      db.venues = db.venues.filter(v => v.id !== id);
-      // Clean up fields associated
-      db.fields = db.fields.filter(f => f.venueId !== id);
+      await db.deleteVenue(id);
 
       res.json({ success: true, message: 'Đã xóa sân bóng thành công' });
     } catch {

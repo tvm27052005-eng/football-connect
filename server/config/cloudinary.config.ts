@@ -5,7 +5,6 @@ import path from 'path';
 
 dotenv.config();
 
-// Configure Cloudinary
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME || '',
   api_key: process.env.CLOUDINARY_API_KEY || '',
@@ -13,65 +12,76 @@ cloudinary.config({
   secure: true
 });
 
-/**
- * Uploads an in-memory buffer to Cloudinary using upload_stream.
- * If Cloudinary credentials are not configured, it gracefully falls back
- * to saving the image locally in public/uploads and returning a local URL.
- */
-export async function uploadImageToCloudinary(
+const isCloudinaryConfigured = (): boolean => Boolean(
+  process.env.CLOUDINARY_CLOUD_NAME &&
+  process.env.CLOUDINARY_API_KEY &&
+  process.env.CLOUDINARY_API_SECRET
+);
+
+const saveLocally = (
   fileBuffer: Buffer,
-  folder: string = 'football-connect',
-  filename?: string
-): Promise<{ url: string; public_id: string; provider: 'cloudinary' | 'local' }> {
-  const isCloudinaryConfigured = Boolean(
-    process.env.CLOUDINARY_CLOUD_NAME &&
-    process.env.CLOUDINARY_API_KEY &&
-    process.env.CLOUDINARY_API_SECRET
-  );
-
-  if (isCloudinaryConfigured) {
-    return new Promise((resolve, reject) => {
-      const uploadStream = cloudinary.uploader.upload_stream(
-        {
-          folder,
-          resource_type: 'image',
-          transformation: [
-            { quality: 'auto', fetch_format: 'auto' }
-          ]
-        },
-        (error, result: UploadApiResponse | undefined) => {
-          if (error || !result) {
-            console.error('Cloudinary upload error:', error);
-            return reject(error || new Error('Upload to Cloudinary failed'));
-          }
-          resolve({
-            url: result.secure_url,
-            public_id: result.public_id,
-            provider: 'cloudinary'
-          });
-        }
-      );
-
-      uploadStream.end(fileBuffer);
-    });
-  }
-
-  // Graceful Local Fallback when Cloudinary API Key is not set in .env
-  console.log('⚠️ Cloudinary API Key chua duoc cau hinh. Chuyen sang luu anh cuc bo tai public/uploads...');
+  filename: string | undefined,
+  fallbackName: string
+): { url: string; public_id: string; provider: 'local' } => {
   const uploadsDir = path.join(process.cwd(), 'public', 'uploads');
   if (!fs.existsSync(uploadsDir)) {
     fs.mkdirSync(uploadsDir, { recursive: true });
   }
-
-  const safeFilename = `${Date.now()}-${filename ? filename.replace(/[^a-zA-Z0-9.-]/g, '_') : 'image.jpg'}`;
-  const filePath = path.join(uploadsDir, safeFilename);
-  fs.writeFileSync(filePath, fileBuffer);
-
+  const safeFilename = `${Date.now()}-${filename ? filename.replace(/[^a-zA-Z0-9.-]/g, '_') : fallbackName}`;
+  fs.writeFileSync(path.join(uploadsDir, safeFilename), fileBuffer);
   return {
     url: `/uploads/${safeFilename}`,
     public_id: safeFilename,
     provider: 'local'
   };
+};
+
+const uploadToCloudinary = (
+  fileBuffer: Buffer,
+  folder: string,
+  resourceType: 'image' | 'auto'
+): Promise<{ url: string; public_id: string; provider: 'cloudinary' }> =>
+  new Promise((resolve, reject) => {
+    const uploadStream = cloudinary.uploader.upload_stream(
+      {
+        folder,
+        resource_type: resourceType,
+        ...(resourceType === 'image' ? { transformation: [{ quality: 'auto', fetch_format: 'auto' }] } : {})
+      },
+      (error, result: UploadApiResponse | undefined) => {
+        if (error || !result) {
+          return reject(error || new Error('Tải tệp lên Cloudinary thất bại'));
+        }
+        resolve({
+          url: result.secure_url,
+          public_id: result.public_id,
+          provider: 'cloudinary'
+        });
+      }
+    );
+    uploadStream.end(fileBuffer);
+  });
+
+export async function uploadImageToCloudinary(
+  fileBuffer: Buffer,
+  folder: string = 'football-connect',
+  filename?: string
+): Promise<{ url: string; public_id: string; provider: 'cloudinary' | 'local' }> {
+  if (isCloudinaryConfigured()) {
+    return uploadToCloudinary(fileBuffer, folder, 'image');
+  }
+  return saveLocally(fileBuffer, filename, 'image.jpg');
+}
+
+export async function uploadFileToCloudinary(
+  fileBuffer: Buffer,
+  folder: string = 'football-connect/chat',
+  filename?: string
+): Promise<{ url: string; public_id: string; provider: 'cloudinary' | 'local' }> {
+  if (isCloudinaryConfigured()) {
+    return uploadToCloudinary(fileBuffer, folder, 'auto');
+  }
+  return saveLocally(fileBuffer, filename, 'file');
 }
 
 export default cloudinary;

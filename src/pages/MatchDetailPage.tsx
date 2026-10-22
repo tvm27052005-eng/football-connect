@@ -123,12 +123,25 @@ export const MatchDetailPage: React.FC = () => {
               <span className="px-2.5 py-0.5 rounded-md text-[11px] font-semibold bg-slate-100 text-slate-700 border border-slate-200">
                 Trình độ: {skillLevelMap[match.skillLevel] || match.skillLevel}
               </span>
-              <Badge variant={match.status === 'OPEN' ? 'emerald' : 'slate'} size="sm">
-                {match.status === 'OPEN' ? '🟢 Đang Tìm Đối Thủ' : '🔵 Đã Có Đối Thủ'}
+              <Badge
+                variant={match.status === 'PENDING_APPROVAL' ? 'amber' : match.status === 'OPEN' ? 'emerald' : 'slate'}
+                size="sm"
+              >
+                {match.status === 'PENDING_APPROVAL'
+                  ? '🟡 Chờ Admin duyệt'
+                  : match.status === 'OPEN'
+                    ? '🟢 Đang Tìm Đối Thủ'
+                    : '🔵 Đã Có Đối Thủ'}
               </Badge>
             </div>
 
             <h1 className="text-xl sm:text-2xl font-black text-slate-900">{match.title}</h1>
+
+            {match.status === 'PENDING_APPROVAL' && (
+              <p className="mt-3 text-xs font-medium text-amber-800 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
+                Kèo đã được gửi thành công và đang chờ Admin kiểm duyệt. Sau khi được duyệt, kèo mới hiển thị hoạt động để các đội khác tham gia.
+              </p>
+            )}
 
             <p className="flex items-center gap-1.5 text-xs text-slate-500 mt-2">
               <MapPin className="w-4 h-4 text-emerald-600 shrink-0" />

@@ -1,5 +1,11 @@
 import { Request, Response } from 'express';
-import { uploadImageToCloudinary } from '../config/cloudinary.config.js';
+import { uploadFileToCloudinary, uploadImageToCloudinary } from '../config/cloudinary.config.js';
+
+const normalizeUploadedFilename = (filename: string): string => {
+  const mojibakePattern = /Ã|Â|â|ð|�/;
+  if (!mojibakePattern.test(filename)) return filename;
+  return Buffer.from(filename, 'latin1').toString('utf8');
+};
 
 export const uploadController = {
   /**
@@ -79,6 +85,30 @@ export const uploadController = {
         success: false,
         message: error.message || 'Lỗi khi tải các tệp ảnh lên hệ thống'
       });
+    }
+  }
+  ,
+  async uploadChatFile(req: Request, res: Response) {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ success: false, message: 'Vui lòng chọn tệp cần gửi' });
+      }
+      const filename = normalizeUploadedFilename(req.file.originalname);
+      const folder = (req.body.folder as string) || 'football-connect/chat';
+      const result = await uploadFileToCloudinary(req.file.buffer, folder, filename);
+      return res.status(200).json({
+        success: true,
+        message: 'Tải tệp lên thành công',
+        data: {
+          url: result.url,
+          filename,
+          mimeType: req.file.mimetype,
+          size: req.file.size
+        }
+      });
+    } catch (error: any) {
+      console.error('Lỗi khi tải tệp chat lên:', error);
+      return res.status(500).json({ success: false, message: error.message || 'Không thể tải tệp lên' });
     }
   }
 };

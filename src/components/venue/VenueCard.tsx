@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { MapPin, Star, Clock, ArrowRight, ShieldCheck } from 'lucide-react';
+import { MapPin, Star, Clock, ArrowRight, Images, Trophy } from 'lucide-react';
 import { IVenue } from '../../types/index.js';
 import { Badge } from '../common/Badge.js';
 
@@ -9,20 +9,48 @@ interface VenueCardProps {
 }
 
 export const VenueCard: React.FC<VenueCardProps> = ({ venue }) => {
+  const venueImages = venue.images.filter(Boolean);
+  const primaryImage = venueImages[0] || '/images/turf-pitch.png';
+  const supportingImages = venueImages.slice(1, 3);
+
   return (
-    <div className="group bg-white border border-slate-200/90 hover:border-emerald-500/60 rounded-3xl overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-1 flex flex-col shadow-xs">
+    <article className="group relative flex flex-col overflow-hidden rounded-[1.75rem] border border-slate-200/90 bg-white shadow-sm transition-all duration-300 hover:-translate-y-1.5 hover:border-emerald-500/60 hover:shadow-2xl hover:shadow-emerald-950/10">
+      <div className="absolute inset-x-0 top-0 z-20 h-1 bg-gradient-to-r from-emerald-400 via-lime-400 to-amber-400" />
       {/* Image & Badges Container */}
-      <div className="relative h-52 sm:h-56 w-full overflow-hidden bg-slate-100">
-        <img
-          src={venue.images[0] || 'https://images.unsplash.com/photo-1529900748604-07564a03e7a6?w=600'}
-          alt={venue.name}
-          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ease-out"
-        />
+      <div className={`relative h-56 w-full overflow-hidden bg-slate-950 ${supportingImages.length ? 'grid grid-cols-[minmax(0,2fr)_minmax(88px,1fr)] gap-1' : ''}`}>
+        <div className="relative min-w-0 overflow-hidden">
+          <img
+            src={primaryImage}
+            alt={`Ảnh chính ${venue.name} do chủ sân cung cấp`}
+            onError={(event) => { event.currentTarget.src = '/images/turf-pitch.png'; }}
+            className="h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
+          />
+        </div>
+        {supportingImages.length > 0 && (
+          <div className={`grid min-w-0 gap-1 ${supportingImages.length > 1 ? 'grid-rows-2' : 'grid-rows-1'}`}>
+            {supportingImages.map((image, index) => (
+              <div key={image} className="relative min-h-0 overflow-hidden">
+                <img
+                  src={image}
+                  alt={`Không gian ${venue.name} ${index + 2}`}
+                  loading="lazy"
+                  onError={(event) => { event.currentTarget.src = '/images/turf-pitch.png'; }}
+                  className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
+                />
+                {index === supportingImages.length - 1 && venueImages.length > 3 && (
+                  <span className="absolute inset-0 flex items-center justify-center bg-slate-950/65 text-xs font-black text-white backdrop-blur-[1px]">
+                    +{venueImages.length - 3} ảnh
+                  </span>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
         <div className="absolute inset-0 bg-gradient-to-t from-slate-950/85 via-slate-950/25 to-transparent" />
 
         {/* Top Badges */}
         <div className="absolute top-3.5 left-3.5 flex items-center gap-2">
-          <Badge variant="emerald" size="sm" className="backdrop-blur-md bg-white/95 text-emerald-800 font-bold shadow-xs">
+          <Badge variant="emerald" size="sm" className="bg-slate-950/75 font-bold text-emerald-300 shadow-xs backdrop-blur-md">
             <span className="w-2 h-2 rounded-full bg-emerald-500 mr-1.5 animate-pulse" />
             {venue.status === 'ACTIVE' ? 'Đang mở cửa' : 'Tạm bảo trì'}
           </Badge>
@@ -37,13 +65,13 @@ export const VenueCard: React.FC<VenueCardProps> = ({ venue }) => {
         </div>
 
         {/* Bottom overlay text on image */}
-        <div className="absolute bottom-3.5 left-3.5 right-3.5 flex items-center justify-between text-xs text-white font-semibold">
+        <div className="absolute bottom-3.5 left-3.5 right-3.5 flex items-end justify-between gap-2 text-xs font-semibold text-white">
           <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-black/40 backdrop-blur-md text-[11px]">
             <Clock className="w-3.5 h-3.5 text-emerald-400" />
             <span>{venue.openTime} - {venue.closeTime}</span>
           </div>
-          <span className="px-2.5 py-1 rounded-lg bg-emerald-500/80 backdrop-blur-md text-[11px] font-extrabold text-white">
-            {venue.totalFields || 4} sân cỏ
+          <span className="inline-flex items-center gap-1 rounded-lg bg-white/15 px-2.5 py-1 text-[10px] font-bold text-white backdrop-blur-md">
+            <Images className="h-3 w-3 text-lime-300" /> Ảnh từ chủ sân
           </span>
         </div>
       </div>
@@ -51,8 +79,8 @@ export const VenueCard: React.FC<VenueCardProps> = ({ venue }) => {
       {/* Content Body */}
       <div className="p-5 flex-1 flex flex-col justify-between space-y-4">
         <div>
-          <div className="flex items-center gap-1 text-[11px] font-bold text-emerald-600 uppercase tracking-wider mb-1">
-            <ShieldCheck className="w-3.5 h-3.5" /> Sân đạt chuẩn chất lượng
+          <div className="mb-1 flex items-center gap-1 text-[10px] font-black uppercase tracking-[0.18em] text-emerald-600">
+            <Trophy className="h-3.5 w-3.5" /> Điểm hẹn sân cỏ
           </div>
           <h3 className="text-base sm:text-lg font-black text-slate-900 group-hover:text-emerald-700 transition-colors line-clamp-1">
             {venue.name}
@@ -109,6 +137,6 @@ export const VenueCard: React.FC<VenueCardProps> = ({ venue }) => {
           </div>
         </div>
       </div>
-    </div>
+    </article>
   );
 };

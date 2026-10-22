@@ -101,7 +101,7 @@ export const AdminDashboardPage: React.FC = () => {
                 </div>
                 <div className="text-2xl font-black text-slate-900">{stats?.summary?.totalBookings || stats?.metrics?.totalBookings || 0}</div>
                 <div className="text-[11px] text-sky-700 font-medium">
-                  Tỷ lệ hoàn thành 98.2%
+                  Tỷ lệ xác nhận/hoàn thành {stats?.summary?.completionRate || 0}%
                 </div>
               </div>
 
@@ -179,21 +179,21 @@ export const AdminDashboardPage: React.FC = () => {
                 <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-1">
                   <span className="text-slate-500">Socket.IO Realtime Gateway</span>
                   <div className="font-bold text-emerald-700 flex items-center gap-1.5">
-                    <span className="w-2 h-2 rounded-full bg-emerald-600 animate-pulse" /> Sẵn sàng & Khỏe mạnh
+                    <span className="w-2 h-2 rounded-full bg-emerald-600 animate-pulse" /> {stats?.metrics?.systemHealth || 'Đang hoạt động'}
                   </div>
                 </div>
 
                 <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-1">
                   <span className="text-slate-500">Database Cluster</span>
                   <div className="font-bold text-emerald-700 flex items-center gap-1.5">
-                    <Database className="w-3.5 h-3.5" /> InMemory Hybrid Persistence (Active)
+                    <Database className="w-3.5 h-3.5" /> Dữ liệu đồng bộ từ database
                   </div>
                 </div>
 
                 <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-1">
                   <span className="text-slate-500">Matchmaking Recommender Engine</span>
                   <div className="font-bold text-emerald-700 flex items-center gap-1.5">
-                    <Cpu className="w-3.5 h-3.5" /> Trọng số 5 tham số chuẩn xác
+                    <Cpu className="w-3.5 h-3.5" /> {stats?.summary?.totalMatches || 0} kèo đấu trong hệ thống
                   </div>
                 </div>
               </div>

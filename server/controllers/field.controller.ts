@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { db } from '../models/db.js';
 import { AuthenticatedRequest } from '../middlewares/auth.middleware.js';
-import { IField, ITimeSlot } from '../types/index.js';
+import { IField, ITimeSlot, IFieldTimeSlot } from '../types/index.js';
 
 export const standardTimeSlots = [
   { startTime: '06:00', endTime: '07:30', durationHours: 1.5 },
@@ -14,6 +14,16 @@ export const standardTimeSlots = [
   { startTime: '20:30', endTime: '22:00', durationHours: 1.5 }, // Peak
   { startTime: '22:00', endTime: '23:30', durationHours: 1.5 }
 ];
+// Lấy tất cả các khung giờ còn trống của một sân bóng cụ thể.”
+export const getFieldTimeSlots = (field: IField): IFieldTimeSlot[] =>
+  field.timeSlots?.length
+    ? field.timeSlots.filter(slot => slot.isActive)
+    : standardTimeSlots.map(slot => ({
+      startTime: slot.startTime,
+      endTime: slot.endTime,
+      price: Math.round(field.pricePerHour * slot.durationHours * ([ '17:30', '19:00', '20:30' ].includes(slot.startTime) ? 1.15 : 1)),
+      isActive: true
+    }));
 
 export const fieldController = {
   // GET /api/fields?venueId=...
@@ -82,16 +92,15 @@ export const fieldController = {
         b.bookingDate === date &&
         (b.status === 'CONFIRMED' || b.status === 'PENDING')
       );
-
       const now = new Date();
 
-      const slots: ITimeSlot[] = standardTimeSlots.map(slot => {
+      const slots: ITimeSlot[] = getFieldTimeSlots(field).map(slot => {
         if (!isFieldActive) {
           return {
             startTime: slot.startTime,
             endTime: slot.endTime,
             status: 'BLOCKED',
-            price: Math.round(field.pricePerHour * slot.durationHours)
+            price: slot.price
           };
         }
 
@@ -104,18 +113,12 @@ export const fieldController = {
           (slot.startTime < b.endTime && slot.endTime > b.startTime)
         );
 
-        let slotPrice = Math.round(field.pricePerHour * slot.durationHours);
-        // Prime time surcharge (17:30 - 20:30)
-        if (slot.startTime === '17:30' || slot.startTime === '19:00' || slot.startTime === '20:30') {
-          slotPrice = Math.round(slotPrice * 1.15);
-        }
-
         return {
           startTime: slot.startTime,
           endTime: slot.endTime,
           status: isPastSlot ? 'BLOCKED' : conflictingBooking ? 'BOOKED' : 'AVAILABLE',
           bookingId: conflictingBooking ? conflictingBooking.id : undefined,
-          price: slotPrice
+          price: slot.price
         };
       });
 
@@ -136,7 +139,7 @@ export const fieldController = {
   // POST /api/fields (Owner / Admin)
   createField: async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
-      const { venueId, name, fieldType, capacity, pricePerHour, surfaceType } = req.body;
+      const { venueId, name, fieldType, capacity, pricePerHour, surfaceType, timeSlots } = req.body;
 
       if (!venueId || !name || !fieldType || !pricePerHour) {
         res.status(400).json({ success: false, message: 'Vui lòng cung cấp đầy đủ thông tin sân con' });
@@ -161,21 +164,30 @@ export const fieldController = {
         fieldType,
         capacity: Number(capacity) || (fieldType === '5_vs_5' ? 10 : fieldType === '7_vs_7' ? 14 : 22),
         pricePerHour: Number(pricePerHour),
+        // Lấy các khung giờ đã được cấu hình cho sân này
+        timeSlots: Array.isArray(timeSlots) ? timeSlots.map((slot: IFieldTimeSlot) => ({
+          startTime: String(slot.startTime),
+          endTime: String(slot.endTime),
+          price: Number(slot.price),
+          isActive: slot.isActive !== false
+        })) : undefined,
         surfaceType: surfaceType || 'ARTIFICIAL_GRASS',
         status: 'ACTIVE',
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
       };
 
-      db.fields.push(newField);
+      await db.syncField(newField);
 
       res.status(201).json({
         success: true,
         message: 'Tạo sân con thành công',
         data: newField
       });
-    } catch {
-      res.status(500).json({ success: false, message: 'Lỗi server' });
+    } catch (error) {
+      console.error('Lỗi khi tạo sân con:', error);
+      const message = error instanceof Error ? error.message : 'Lỗi server';
+      res.status(500).json({ success: false, message });
     }
   },
 
@@ -196,24 +208,36 @@ export const fieldController = {
         res.status(403).json({ success: false, message: 'Bạn không có quyền sửa sân con này' });
         return;
       }
+// Lấy các khung giờ đã được cấu hình cho sân này
+      const timeSlots = Array.isArray(req.body.timeSlots)
+        ? req.body.timeSlots.map((slot: IFieldTimeSlot) => ({
+          startTime: String(slot.startTime),
+          endTime: String(slot.endTime),
+          price: Number(slot.price),
+          isActive: slot.isActive !== false
+        }))
+        : field.timeSlots;
 
       const updatedField: IField = {
         ...field,
         ...req.body,
+        ...(timeSlots ? { timeSlots } : {}),
         id: field.id,
         venueId: field.venueId,
         updatedAt: new Date().toISOString()
       };
 
-      db.fields[fieldIndex] = updatedField;
+      await db.syncField(updatedField);
 
       res.json({
         success: true,
         message: 'Cập nhật sân con thành công',
         data: updatedField
       });
-    } catch {
-      res.status(500).json({ success: false, message: 'Lỗi server' });
+    } catch (error) {
+      console.error('Lỗi khi cập nhật sân con:', error);
+      const message = error instanceof Error ? error.message : 'Lỗi server';
+      res.status(500).json({ success: false, message });
     }
   },
 
@@ -233,7 +257,7 @@ export const fieldController = {
         return;
       }
 
-      db.fields = db.fields.filter(f => f.id !== id);
+      await db.deleteField(id);
 
       res.json({ success: true, message: 'Đã xóa sân con thành công' });
     } catch {

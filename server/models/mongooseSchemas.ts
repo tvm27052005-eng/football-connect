@@ -205,7 +205,7 @@ export interface IMatchDocument extends Document {
   maxPlayers: number;
   currentPlayers: number;
   description: string;
-  status: 'OPEN' | 'FULL' | 'STARTED' | 'COMPLETED' | 'CANCELLED';
+  status: 'PENDING_APPROVAL' | 'OPEN' | 'FULL' | 'STARTED' | 'COMPLETED' | 'CANCELLED';
   costPerPerson: number;
   teamAName?: string;
   teamBName?: string;
@@ -226,7 +226,7 @@ export const MatchSchema = new Schema<IMatchDocument>({
   maxPlayers: { type: Number, default: 14 },
   currentPlayers: { type: Number, default: 1 },
   description: { type: String },
-  status: { type: String, enum: ['OPEN', 'FULL', 'STARTED', 'COMPLETED', 'CANCELLED'], default: 'OPEN', index: true },
+  status: { type: String, enum: ['PENDING_APPROVAL', 'OPEN', 'FULL', 'STARTED', 'COMPLETED', 'CANCELLED'], default: 'PENDING_APPROVAL', index: true },
   costPerPerson: { type: Number, default: 50000 },
   teamAName: { type: String, default: 'Đội Nhà (Team A)' },
   teamBName: { type: String, default: 'Đội Khách (Team B)' }
@@ -335,4 +335,31 @@ export const ReportSchema = new Schema({
   status: { type: String, enum: ['PENDING', 'RESOLVED', 'DISMISSED'], default: 'PENDING' },
   resolutionNote: { type: String }
 }, { timestamps: true });
+
+/* =========================================================================
+   11. OTP VERIFICATION SCHEMA
+   ========================================================================= */
+export interface IOtpDocument extends Document {
+  email: string;
+  otp: string;
+  purpose: 'REGISTER' | 'FORGOT_PASSWORD';
+  expiresAt: Date;
+  sentAt: Date;
+  attempts: number;
+  used: boolean;
+  registrationPayload?: Record<string, unknown>;
+}
+
+export const OtpSchema = new Schema<IOtpDocument>({
+  email: { type: String, required: true, lowercase: true, trim: true, index: true },
+  otp: { type: String, required: true },
+  purpose: { type: String, enum: ['REGISTER', 'FORGOT_PASSWORD'], required: true },
+  expiresAt: { type: Date, required: true, index: { expires: 0 } }, // TTL index
+  sentAt: { type: Date, required: true, default: Date.now },
+  attempts: { type: Number, default: 0 },
+  used: { type: Boolean, default: false },
+  registrationPayload: { type: Schema.Types.Mixed }
+}, { timestamps: true });
+
+OtpSchema.index({ email: 1, purpose: 1 });
 `;

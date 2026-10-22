@@ -12,6 +12,22 @@ import {
   IPayment,
   IReport
 } from '../types/index.js';
+import {
+  NguoiDungModel,
+  CumSanBongModel,
+  SanChiTietModel,
+  DonDatSanModel,
+  KeoGiaoHuuModel,
+  ThanhVienKeoModel,
+  DanhGiaModel,
+  ThanhToanModel,
+  HoiThoaiModel,
+  TinNhanModel,
+  ThongBaoModel,
+  BaoCaoModel
+} from './mongoose.models.js';
+
+const ADMIN_PASSWORD_HASH = '$2b$10$ZERM7hJv2Pqkcj/I5my42uUn0lLqTX3MLd1WWzQFaSDb3OuGAba42';
 
 // Pre-seeded Users with passwords (all pass: "123456" for ease of testing)
 export const initialUsers: IUser[] = [
@@ -85,7 +101,7 @@ export const initialUsers: IUser[] = [
     id: 'admin_1',
     name: 'Quản Trị Viên Hệ Thống',
     email: 'admin@footballconnect.vn',
-    password: '$2a$10$wNq1cZpvh48p/1P3GgQY6eS6q4h6m8dG.oWcMqvW345eF8Bkm4Y.G', // "123456"
+    password: ADMIN_PASSWORD_HASH, // "123456"
     phone: '0999888999',
     role: 'ADMIN',
     avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150',
@@ -714,8 +730,431 @@ export const initialReports: IReport[] = [
   }
 ];
 
-// Persistent Live Database Engine in Server Memory
+// Mappers between Memory Types and MongoDB Documents
+export const mappers = {
+  userToMongo: (u: IUser) => ({
+    ma_nguoi_dung: u.id,
+    ho_ten: u.name,
+    email: u.email,
+    mat_khau: u.password,
+    so_dien_thoai: u.phone,
+    vai_tro: u.role === 'OWNER' ? 'CHU_SAN' : u.role === 'ADMIN' ? 'ADMIN' : 'KHACH_HANG',
+    anh_dai_dien: u.avatar,
+    gioi_thieu: u.bio,
+    dia_chi: u.location ? {
+      thanh_pho: u.location.city,
+      quan_huyen: u.location.district,
+      vi_do: u.location.latitude,
+      kinh_do: u.location.longitude
+    } : undefined,
+    trinh_do: u.skillLevel,
+    loai_san_yeu_thich: u.preferredFieldType,
+    vi_tri_so_truong: u.preferredPosition,
+    trang_thai: u.isActive !== false,
+    ten_doanh_nghiep: u.businessName,
+    ma_so_thue: u.businessTaxId
+  }),
+  mongoToUser: (doc: any): IUser => ({
+    id: doc.ma_nguoi_dung,
+    name: doc.ho_ten,
+    email: doc.email,
+    password: doc.mat_khau,
+    phone: doc.so_dien_thoai || '',
+    role: (doc.vai_tro === 'CHU_SAN' ? 'OWNER' : doc.vai_tro === 'ADMIN' ? 'ADMIN' : 'USER') as any,
+    avatar: doc.anh_dai_dien,
+    bio: doc.gioi_thieu,
+    location: doc.dia_chi ? {
+      city: doc.dia_chi.thanh_pho || 'Hà Nội',
+      district: doc.dia_chi.quan_huyen || 'Cầu Giấy',
+      latitude: doc.dia_chi.vi_do,
+      longitude: doc.dia_chi.kinh_do
+    } : undefined,
+    skillLevel: doc.trinh_do || 'INTERMEDIATE',
+    preferredFieldType: doc.loai_san_yeu_thich || '7_vs_7',
+    preferredPosition: doc.vi_tri_so_truong || 'Tiền vệ (CM)',
+    isActive: doc.trang_thai !== false,
+    businessName: doc.ten_doanh_nghiep,
+    businessTaxId: doc.ma_so_thue,
+    createdAt: doc.ngay_tao ? new Date(doc.ngay_tao).toISOString() : new Date().toISOString(),
+    updatedAt: doc.ngay_cap_nhat ? new Date(doc.ngay_cap_nhat).toISOString() : new Date().toISOString()
+  }),
+
+  venueToMongo: (v: IVenue) => ({
+    ma_cum_san: v.id,
+    ma_chu_san: v.ownerId,
+    ten_chu_san: v.ownerName || '',
+    ten_cum_san: v.name,
+    dia_chi: v.address,
+    thanh_pho: v.city,
+    quan_huyen: v.district,
+    mo_ta: v.description || '',
+    danh_sach_anh: v.images || [],
+    vi_do: v.latitude,
+    kinh_do: v.longitude,
+    tien_ich: v.amenities || [],
+    danh_gia_sao: v.rating || 5.0,
+    so_luong_danh_gia: v.reviewCount || 0,
+    gia_tu: v.priceRange?.min || 200000,
+    gia_den: v.priceRange?.max || 800000,
+    gio_mo_cua: v.openTime || '06:00',
+    gio_dong_cua: v.closeTime || '23:00',
+    trang_thai: v.status === 'ACTIVE' ? 'DANG_HOAT_DONG' : v.status === 'PENDING_APPROVAL' ? 'CHO_DUYET' : v.status === 'MAINTENANCE' ? 'BAO_TRI' : 'DONG_CUA'
+  }),
+  mongoToVenue: (doc: any): IVenue => ({
+    id: doc.ma_cum_san,
+    name: doc.ten_cum_san,
+    ownerId: doc.ma_chu_san,
+    ownerName: doc.ten_chu_san,
+    address: doc.dia_chi,
+    city: doc.thanh_pho,
+    district: doc.quan_huyen,
+    description: doc.mo_ta || '',
+    images: doc.danh_sach_anh || [],
+    latitude: doc.vi_do || 21.0,
+    longitude: doc.kinh_do || 105.8,
+    amenities: doc.tien_ich || [],
+    rating: doc.danh_gia_sao || 5.0,
+    reviewCount: doc.so_luong_danh_gia || 0,
+    priceRange: { min: doc.gia_tu || 200000, max: doc.gia_den || 800000 },
+    openTime: doc.gio_mo_cua || '06:00',
+    closeTime: doc.gio_dong_cua || '23:00',
+    status: (doc.trang_thai === 'DANG_HOAT_DONG' ? 'ACTIVE' : doc.trang_thai === 'CHO_DUYET' ? 'PENDING_APPROVAL' : doc.trang_thai === 'BAO_TRI' ? 'MAINTENANCE' : 'CLOSED') as any,
+    createdAt: doc.ngay_tao ? new Date(doc.ngay_tao).toISOString() : new Date().toISOString(),
+    updatedAt: doc.ngay_cap_nhat ? new Date(doc.ngay_cap_nhat).toISOString() : new Date().toISOString()
+  }),
+
+  fieldToMongo: (f: IField) => ({
+    ma_san_con: f.id,
+    ma_cum_san: f.venueId,
+    ten_san: f.name,
+    loai_san: f.fieldType === '5_vs_5' ? 'SAN_5' : f.fieldType === '11_vs_11' ? 'SAN_11' : 'SAN_7',
+    suc_chua: f.capacity,
+    gia_thue_gio: f.pricePerHour,
+    mat_co: f.surfaceType === 'NATURAL_GRASS' ? 'Cỏ tự nhiên' : f.surfaceType === 'INDOOR_FUTSAL' ? 'Futsal trong nhà' : 'Cỏ nhân tạo',
+    trang_thai: f.status === 'ACTIVE' ? 'DANG_HOAT_DONG' : 'BAO_TRI',
+    khung_gio_thue: f.timeSlots || []
+  }),
+  mongoToField: (doc: any): IField => ({
+    id: doc.ma_san_con,
+    venueId: doc.ma_cum_san,
+    name: doc.ten_san,
+    fieldType: (doc.loai_san === 'SAN_5' ? '5_vs_5' : doc.loai_san === 'SAN_11' ? '11_vs_11' : '7_vs_7') as any,
+    capacity: doc.suc_chua || 14,
+    pricePerHour: doc.gia_thue_gio || 400000,
+    timeSlots: doc.khung_gio_thue && doc.khung_gio_thue.length > 0 ? doc.khung_gio_thue : undefined,
+    surfaceType: (doc.mat_co === 'Cỏ tự nhiên' ? 'NATURAL_GRASS' : doc.mat_co === 'Futsal trong nhà' ? 'INDOOR_FUTSAL' : 'ARTIFICIAL_GRASS') as any,
+    status: (doc.trang_thai === 'DANG_HOAT_DONG' ? 'ACTIVE' : 'MAINTENANCE') as any,
+    createdAt: doc.ngay_tao ? new Date(doc.ngay_tao).toISOString() : new Date().toISOString(),
+    updatedAt: doc.ngay_cap_nhat ? new Date(doc.ngay_cap_nhat).toISOString() : new Date().toISOString()
+  }),
+
+  bookingToMongo: (b: IBooking) => ({
+    ma_don_dat: b.id,
+    ma_khach_hang: b.userId,
+    ten_khach_hang: b.userName || '',
+    so_dien_thoai: b.userPhone,
+    email: b.userEmail,
+    ma_cum_san: b.venueId,
+    ten_cum_san: b.venueName || '',
+    dia_chi_san: b.venueAddress,
+    ma_san_con: b.fieldId,
+    ten_san_con: b.fieldName || '',
+    loai_san: b.fieldType || '7_vs_7',
+    ngay_dat: b.bookingDate,
+    gio_bat_dau: b.startTime,
+    gio_ket_thuc: b.endTime,
+    thoi_luong_gio: b.durationHours || 1.5,
+    tong_tien: b.totalPrice,
+    trang_thai_don: b.status === 'CONFIRMED' ? 'DA_XAC_NHAN' : b.status === 'PENDING' ? 'CHO_DUYET' : b.status === 'CANCELLED' ? 'DA_HUY' : 'HOAN_THANH',
+    trang_thai_thanh_toan: b.paymentStatus === 'PAID' ? 'DA_THANH_TOAN' : b.paymentStatus === 'REFUNDED' ? 'HOAN_TIEN' : 'CHUA_THANH_TOAN',
+    phuong_thuc_thanh_toan: (b.paymentMethod === 'CASH' ? 'TIEN_MAT' : b.paymentMethod) || 'TIEN_MAT',
+    ghi_chu: b.note,
+    ly_do_huy: b.cancellationReason
+  }),
+  mongoToBooking: (doc: any): IBooking => ({
+    id: doc.ma_don_dat,
+    userId: doc.ma_khach_hang,
+    userName: doc.ten_khach_hang,
+    userPhone: doc.so_dien_thoai,
+    userEmail: doc.email,
+    venueId: doc.ma_cum_san,
+    venueName: doc.ten_cum_san,
+    venueAddress: doc.dia_chi_san,
+    fieldId: doc.ma_san_con,
+    fieldName: doc.ten_san_con,
+    fieldType: doc.loai_san,
+    bookingDate: doc.ngay_dat,
+    startTime: doc.gio_bat_dau,
+    endTime: doc.gio_ket_thuc,
+    durationHours: doc.thoi_luong_gio || 1.5,
+    totalPrice: doc.tong_tien,
+    status: (doc.trang_thai_don === 'DA_XAC_NHAN' ? 'CONFIRMED' : doc.trang_thai_don === 'CHO_DUYET' ? 'PENDING' : doc.trang_thai_don === 'DA_HUY' ? 'CANCELLED' : 'COMPLETED') as any,
+    paymentStatus: (doc.trang_thai_thanh_toan === 'DA_THANH_TOAN' ? 'PAID' : doc.trang_thai_thanh_toan === 'HOAN_TIEN' ? 'REFUNDED' : 'UNPAID') as any,
+    paymentMethod: (doc.phuong_thuc_thanh_toan === 'TIEN_MAT' ? 'CASH' : doc.phuong_thuc_thanh_toan) as any,
+    note: doc.ghi_chu,
+    cancellationReason: doc.ly_do_huy,
+    createdAt: doc.ngay_tao ? new Date(doc.ngay_tao).toISOString() : new Date().toISOString(),
+    updatedAt: doc.ngay_cap_nhat ? new Date(doc.ngay_cap_nhat).toISOString() : new Date().toISOString()
+  }),
+
+  matchToMongo: (m: IMatch) => ({
+    ma_keo_dau: m.id,
+    ma_nguoi_tao: m.creatorId,
+    ten_nguoi_tao: m.creatorName || '',
+    anh_nguoi_tao: m.creatorAvatar,
+    sdt_nguoi_tao: m.creatorPhone,
+    tieu_de_keo: m.title,
+    ma_cum_san: m.venueId,
+    ten_cum_san: m.venueName || '',
+    dia_chi_san: m.venueAddress,
+    ma_san_con: m.fieldId,
+    ten_san_con: m.fieldName,
+    ngay_thi_dau: m.matchDate,
+    gio_bat_dau: m.startTime,
+    gio_ket_thuc: m.endTime,
+    loai_san: m.fieldType,
+    trinh_do: m.skillLevel,
+    so_nguoi_toi_da: m.maxPlayers,
+    so_nguoi_hien_tai: m.currentPlayers,
+    mo_ta: m.description,
+    trang_thai_keo: m.status === 'PENDING_APPROVAL' ? 'CHO_DUYET' : m.status === 'OPEN' ? 'DANG_TIM_DOI' : m.status === 'FULL' ? 'DA_DU_DOI' : m.status === 'CANCELLED' ? 'DA_HUY' : 'HOAN_THANH',
+    tien_san_moi_nguoi: m.costPerPerson,
+    tong_tien_san: m.totalFieldFee,
+    hinh_thuc_chia_tien: m.costSharing === '50_50' ? 'CHIA_DOI_50_50' : m.costSharing === 'LOOSER_PAYS' ? 'THUA_TRA' : 'BAO_SAN',
+    ten_doi_a: m.teamAName,
+    ten_doi_b: m.teamBName,
+    doi_truong_doi_a: m.teamACaptain,
+    doi_truong_doi_b: m.teamBCaptain,
+    sdt_doi_a: m.teamAPhone,
+    sdt_doi_b: m.teamBPhone,
+    doi_b_da_tham_gia: m.teamBJoined
+  }),
+  mongoToMatch: (doc: any): IMatch => ({
+    id: doc.ma_keo_dau,
+    creatorId: doc.ma_nguoi_tao,
+    creatorName: doc.ten_nguoi_tao,
+    creatorAvatar: doc.anh_nguoi_tao,
+    creatorPhone: doc.sdt_nguoi_tao,
+    title: doc.tieu_de_keo,
+    venueId: doc.ma_cum_san,
+    venueName: doc.ten_cum_san,
+    venueAddress: doc.dia_chi_san,
+    fieldId: doc.ma_san_con,
+    fieldName: doc.ten_san_con,
+    matchDate: doc.ngay_thi_dau,
+    startTime: doc.gio_bat_dau,
+    endTime: doc.gio_ket_thuc,
+    fieldType: doc.loai_san,
+    skillLevel: doc.trinh_do,
+    maxPlayers: doc.so_nguoi_toi_da,
+    currentPlayers: doc.so_nguoi_hien_tai,
+    description: doc.mo_ta || '',
+    status: (doc.trang_thai_keo === 'CHO_DUYET' ? 'PENDING_APPROVAL' : doc.trang_thai_keo === 'DANG_TIM_DOI' ? 'OPEN' : doc.trang_thai_keo === 'DA_DU_DOI' ? 'FULL' : doc.trang_thai_keo === 'DA_HUY' ? 'CANCELLED' : 'COMPLETED') as any,
+    costPerPerson: doc.tien_san_moi_nguoi,
+    totalFieldFee: doc.tong_tien_san,
+    costSharing: (doc.hinh_thuc_chia_tien === 'CHIA_DOI_50_50' ? '50_50' : doc.hinh_thuc_chia_tien === 'THUA_TRA' ? 'LOOSER_PAYS' : 'HOME_PAYS') as any,
+    teamAName: doc.ten_doi_a,
+    teamBName: doc.ten_doi_b,
+    teamACaptain: doc.doi_truong_doi_a,
+    teamBCaptain: doc.doi_truong_doi_b,
+    teamAPhone: doc.sdt_doi_a,
+    teamBPhone: doc.sdt_doi_b,
+    teamBJoined: doc.doi_b_da_tham_gia,
+    createdAt: doc.ngay_tao ? new Date(doc.ngay_tao).toISOString() : new Date().toISOString(),
+    updatedAt: doc.ngay_cap_nhat ? new Date(doc.ngay_cap_nhat).toISOString() : new Date().toISOString()
+  }),
+
+  participantToMongo: (p: IMatchParticipant) => ({
+    ma_tham_gia: p.id,
+    ma_keo_dau: p.matchId,
+    ma_nguoi_dung: p.userId,
+    ten_nguoi_dung: p.userName,
+    anh_dai_dien: p.userAvatar,
+    so_dien_thoai: p.userPhone,
+    trinh_do: p.skillLevel,
+    doi_thi_dau: p.team === 'A' ? 'DOI_A' : p.team === 'B' ? 'DOI_B' : 'CHUA_CHON',
+    trang_thai: p.status === 'CONFIRMED' ? 'XAC_NHAN' : p.status === 'LEFT' ? 'DA_ROI' : 'CHO_DUYET',
+    ngay_tham_gia: p.joinedAt
+  }),
+  mongoToParticipant: (doc: any): IMatchParticipant => ({
+    id: doc.ma_tham_gia,
+    matchId: doc.ma_keo_dau,
+    userId: doc.ma_nguoi_dung,
+    userName: doc.ten_nguoi_dung,
+    userAvatar: doc.anh_dai_dien,
+    userPhone: doc.so_dien_thoai,
+    skillLevel: doc.trinh_do,
+    team: (doc.doi_thi_dau === 'DOI_A' ? 'A' : doc.doi_thi_dau === 'DOI_B' ? 'B' : 'UNASSIGNED') as any,
+    status: (doc.trang_thai === 'XAC_NHAN' ? 'CONFIRMED' : doc.trang_thai === 'DA_ROI' ? 'LEFT' : 'PENDING') as any,
+    joinedAt: doc.ngay_tham_gia || (doc.ngay_tao ? new Date(doc.ngay_tao).toISOString() : new Date().toISOString())
+  }),
+
+  reviewToMongo: (r: IReview) => ({
+    ma_danh_gia: r.id,
+    ma_nguoi_dung: r.userId,
+    ten_nguoi_dung: r.userName,
+    anh_dai_dien: r.userAvatar,
+    ma_cum_san: r.venueId,
+    ma_don_dat: r.bookingId,
+    so_sao: r.rating,
+    nhan_xet: r.comment,
+    danh_sach_anh: r.images || [],
+    phan_hoi_chu_san: r.ownerReply ? {
+      noi_dung: r.ownerReply.content,
+      ngay_tra_loi: r.ownerReply.createdAt
+    } : undefined
+  }),
+  mongoToReview: (doc: any): IReview => ({
+    id: doc.ma_danh_gia,
+    userId: doc.ma_nguoi_dung,
+    userName: doc.ten_nguoi_dung,
+    userAvatar: doc.anh_dai_dien,
+    venueId: doc.ma_cum_san,
+    bookingId: doc.ma_don_dat,
+    rating: doc.so_sao,
+    comment: doc.nhan_xet,
+    images: doc.danh_sach_anh || [],
+    ownerReply: doc.phan_hoi_chu_san ? {
+      content: doc.phan_hoi_chu_san.noi_dung,
+      createdAt: doc.phan_hoi_chu_san.ngay_tra_loi
+    } : undefined,
+    createdAt: doc.ngay_tao ? new Date(doc.ngay_tao).toISOString() : new Date().toISOString()
+  }),
+
+  conversationToMongo: (c: IConversation) => ({
+    ma_hoi_thoai: c.id,
+    loai_hoi_thoai: c.type === 'DIRECT' ? 'TRUC_TIEP' : c.type === 'MATCH' ? 'KEO_DAU' : 'SAN_BONG',
+    tieu_de: c.title,
+    ma_keo_dau: c.matchId,
+    ma_cum_san: c.venueId,
+    danh_sach_thanh_vien: c.participantIds,
+    tin_nhan_cuoi: c.lastMessage ? {
+      noi_dung: c.lastMessage.content,
+      ma_nguoi_gui: c.lastMessage.senderId,
+      ten_nguoi_gui: c.lastMessage.senderName,
+      thoi_gian: c.lastMessage.createdAt
+    } : undefined
+  }),
+  mongoToConversation: (doc: any): IConversation => ({
+    id: doc.ma_hoi_thoai,
+    type: (doc.loai_hoi_thoai === 'TRUC_TIEP' ? 'DIRECT' : doc.loai_hoi_thoai === 'KEO_DAU' ? 'MATCH' : 'VENUE') as any,
+    title: doc.tieu_de,
+    matchId: doc.ma_keo_dau,
+    venueId: doc.ma_cum_san,
+    participantIds: doc.danh_sach_thanh_vien || [],
+    lastMessage: doc.tin_nhan_cuoi ? {
+      content: doc.tin_nhan_cuoi.noi_dung,
+      senderId: doc.tin_nhan_cuoi.ma_nguoi_gui,
+      senderName: doc.tin_nhan_cuoi.ten_nguoi_gui,
+      createdAt: doc.tin_nhan_cuoi.thoi_gian
+    } : undefined,
+    createdAt: doc.ngay_tao ? new Date(doc.ngay_tao).toISOString() : new Date().toISOString(),
+    updatedAt: doc.ngay_cap_nhat ? new Date(doc.ngay_cap_nhat).toISOString() : new Date().toISOString()
+  }),
+
+  messageToMongo: (msg: IMessage) => ({
+    ma_tin_nhan: msg.id,
+    ma_hoi_thoai: msg.conversationId,
+    ma_nguoi_gui: msg.senderId,
+    ten_nguoi_gui: msg.senderName,
+    anh_nguoi_gui: msg.senderAvatar,
+    noi_dung: msg.content,
+    loai_tin_nhan: msg.type === 'TEXT' ? 'VAN_BAN' : 'HE_THONG',
+    tep_dinh_kem: msg.attachment ? {
+      url: msg.attachment.url,
+      ten_tep: msg.attachment.filename,
+      loai_mime: msg.attachment.mimeType,
+      kich_thuoc: msg.attachment.size
+    } : undefined,
+    da_xem: msg.readBy || []
+  }),
+  mongoToMessage: (doc: any): IMessage => ({
+    id: doc.ma_tin_nhan,
+    conversationId: doc.ma_hoi_thoai,
+    senderId: doc.ma_nguoi_gui,
+    senderName: doc.ten_nguoi_gui,
+    senderAvatar: doc.anh_nguoi_gui,
+    content: doc.noi_dung,
+    type: (doc.loai_tin_nhan === 'VAN_BAN' ? 'TEXT' : 'SYSTEM') as any,
+    attachment: doc.tep_dinh_kem ? {
+      url: doc.tep_dinh_kem.url,
+      filename: doc.tep_dinh_kem.ten_tep,
+      mimeType: doc.tep_dinh_kem.loai_mime,
+      size: doc.tep_dinh_kem.kich_thuoc
+    } : undefined,
+    readBy: doc.da_xem || [],
+    createdAt: doc.ngay_tao ? new Date(doc.ngay_tao).toISOString() : new Date().toISOString()
+  }),
+
+  notifToMongo: (n: INotification) => ({
+    ma_thong_bao: n.id,
+    ma_nguoi_dung: n.userId,
+    tieu_de: n.title,
+    noi_dung: n.message,
+    loai_thong_bao: n.type,
+    duong_dan: n.link,
+    da_doc: n.isRead
+  }),
+  mongoToNotif: (doc: any): INotification => ({
+    id: doc.ma_thong_bao,
+    userId: doc.ma_nguoi_dung,
+    title: doc.tieu_de,
+    message: doc.noi_dung,
+    type: doc.loai_thong_bao as any,
+    link: doc.duong_dan,
+    isRead: !!doc.da_doc,
+    createdAt: doc.ngay_tao ? new Date(doc.ngay_tao).toISOString() : new Date().toISOString()
+  }),
+
+  reportToMongo: (rp: IReport) => ({
+    ma_bao_cao: rp.id,
+    ma_nguoi_bao_cao: rp.reporterId,
+    ten_nguoi_bao_cao: rp.reporterName,
+    loai_muc_tieu: rp.targetType,
+    ma_muc_tieu: rp.targetId,
+    tieu_de_muc_tieu: rp.targetTitle,
+    ly_do: rp.reason,
+    trang_thai: rp.status === 'PENDING' ? 'CHO_XU_LY' : 'DA_XU_LY',
+    ghi_chu_xu_ly: rp.resolutionNote
+  }),
+  mongoToReport: (doc: any): IReport => ({
+    id: doc.ma_bao_cao,
+    reporterId: doc.ma_nguoi_bao_cao,
+    reporterName: doc.ten_nguoi_bao_cao || '',
+    targetType: doc.loai_muc_tieu as any,
+    targetId: doc.ma_muc_tieu,
+    targetTitle: doc.tieu_de_muc_tieu,
+    reason: doc.ly_do,
+    status: (doc.trang_thai === 'CHO_XU_LY' ? 'PENDING' : 'RESOLVED') as any,
+    resolutionNote: doc.ghi_chu_xu_ly,
+    createdAt: doc.ngay_tao ? new Date(doc.ngay_tao).toISOString() : new Date().toISOString()
+  }),
+
+  paymentToMongo: (p: IPayment) => ({
+    ma_thanh_toan: p.id,
+    ma_don_dat: p.bookingId,
+    ma_nguoi_dung: p.userId,
+    so_tien: p.amount,
+    phuong_thuc: p.method === 'CASH' ? 'TIEN_MAT' : p.method,
+    trang_thai: p.status === 'SUCCESS' ? 'THANH_CONG' : p.status === 'FAILED' ? 'THAT_BAI' : 'CHO_XU_LY',
+    ma_giao_dich: p.transactionCode
+  }),
+  mongoToPayment: (doc: any): IPayment => ({
+    id: doc.ma_thanh_toan,
+    bookingId: doc.ma_don_dat,
+    userId: doc.ma_nguoi_dung,
+    amount: doc.so_tien,
+    method: (doc.phuong_thuc === 'TIEN_MAT' ? 'CASH' : doc.phuong_thuc) as any,
+    status: (doc.trang_thai === 'THANH_CONG' ? 'SUCCESS' : doc.trang_thai === 'THAT_BAI' ? 'FAILED' : 'PENDING') as any,
+    transactionCode: doc.ma_giao_dich,
+    createdAt: doc.ngay_tao ? new Date(doc.ngay_tao).toISOString() : new Date().toISOString()
+  })
+};
+
+// Persistent Database Engine with Real-time MongoDB Synchronization
 class DatabaseStore {
+  isMongoConnected = false;
+
   users: IUser[] = [...initialUsers];
   venues: IVenue[] = [...initialVenues];
   fields: IField[] = [...initialFields];
@@ -727,10 +1166,17 @@ class DatabaseStore {
   notifications: INotification[] = [...initialNotifications];
   reviews: IReview[] = [...initialReviews];
   reports: IReport[] = [...initialReports];
+  payments: IPayment[] = [];
 
   // Helper for generating standard IDs
   generateId(prefix: string): string {
     return `${prefix}_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+  }
+
+  private ensureMongoConnected(operation: string): void {
+    if (!this.isMongoConnected) {
+      throw new Error(`MongoDB chưa kết nối, không thể ${operation}. Hãy kiểm tra MongoDB và MONGODB_URI.`);
+    }
   }
 
   // Atomic conflict check for Double Booking prevention
@@ -746,6 +1192,377 @@ class DatabaseStore {
     });
 
     return !!existing;
+  }
+
+  // Initialize and load all records from MongoDB into memory
+  async initFromMongoDB(): Promise<void> {
+    try {
+      const [
+        usersDocs, venuesDocs, fieldsDocs, bookingsDocs,
+        matchesDocs, participantsDocs, reviewsDocs,
+        conversationsDocs, messagesDocs, notificationsDocs, reportsDocs, paymentsDocs
+      ] = await Promise.all([
+        NguoiDungModel.find().lean(),
+        CumSanBongModel.find().lean(),
+        SanChiTietModel.find().lean(),
+        DonDatSanModel.find().lean(),
+        KeoGiaoHuuModel.find().lean(),
+        ThanhVienKeoModel.find().lean(),
+        DanhGiaModel.find().lean(),
+        HoiThoaiModel.find().lean(),
+        TinNhanModel.find().lean(),
+        ThongBaoModel.find().lean(),
+        BaoCaoModel.find().lean(),
+        ThanhToanModel.find().lean()
+      ]);
+
+      const hasMongoData = [
+        usersDocs,
+        venuesDocs,
+        fieldsDocs,
+        bookingsDocs,
+        matchesDocs,
+        participantsDocs,
+        reviewsDocs,
+        conversationsDocs,
+        messagesDocs,
+        notificationsDocs,
+        reportsDocs,
+        paymentsDocs
+      ].some(docs => docs.length > 0);
+
+      if (hasMongoData) {
+        this.users = usersDocs.map(mappers.mongoToUser);
+        this.venues = venuesDocs.map(mappers.mongoToVenue);
+        this.fields = fieldsDocs.map(mappers.mongoToField);
+        this.bookings = bookingsDocs.map(mappers.mongoToBooking);
+        this.matches = matchesDocs.map(mappers.mongoToMatch);
+        this.matchParticipants = participantsDocs.map(mappers.mongoToParticipant);
+        this.reviews = reviewsDocs.map(mappers.mongoToReview);
+        this.conversations = conversationsDocs.map(mappers.mongoToConversation);
+        this.messages = messagesDocs.map(mappers.mongoToMessage);
+        this.notifications = notificationsDocs.map(mappers.mongoToNotif);
+        this.reports = reportsDocs.map(mappers.mongoToReport);
+        this.payments = paymentsDocs.map(mappers.mongoToPayment);
+
+        const admin = this.users.find(user => user.email.toLowerCase() === 'admin@footballconnect.vn');
+        if (admin && admin.password !== ADMIN_PASSWORD_HASH) {
+          admin.password = ADMIN_PASSWORD_HASH;
+          await NguoiDungModel.updateOne(
+            { ma_nguoi_dung: admin.id },
+            { $set: { mat_khau: ADMIN_PASSWORD_HASH } }
+          );
+          console.log('🔐 Đã cập nhật mật khẩu admin mặc định thành 123456.');
+        }
+
+        console.log(`📦 Đồng bộ thành công từ MongoDB: ${this.users.length} người dùng, ${this.venues.length} cụm sân, ${this.fields.length} sân con, ${this.bookings.length} đơn đặt sân, ${this.matches.length} kèo đấu.`);
+      } else {
+        console.log('🌱 MongoDB chưa có dữ liệu, tiến hành nạp dữ liệu khởi tạo mẫu...');
+        await Promise.all([
+          (NguoiDungModel as any).insertMany(this.users.map(mappers.userToMongo)),
+          (CumSanBongModel as any).insertMany(this.venues.map(mappers.venueToMongo)),
+          (SanChiTietModel as any).insertMany(this.fields.map(mappers.fieldToMongo)),
+          (DonDatSanModel as any).insertMany(this.bookings.map(mappers.bookingToMongo)),
+          (KeoGiaoHuuModel as any).insertMany(this.matches.map(mappers.matchToMongo)),
+          (ThanhVienKeoModel as any).insertMany(this.matchParticipants.map(mappers.participantToMongo)),
+          (DanhGiaModel as any).insertMany(this.reviews.map(mappers.reviewToMongo)),
+          (HoiThoaiModel as any).insertMany(this.conversations.map(mappers.conversationToMongo)),
+          (TinNhanModel as any).insertMany(this.messages.map(mappers.messageToMongo)),
+          (ThongBaoModel as any).insertMany(this.notifications.map(mappers.notifToMongo)),
+          (BaoCaoModel as any).insertMany(this.reports.map(mappers.reportToMongo))
+        ]);
+        console.log('✅ Đã nạp dữ liệu mẫu vào MongoDB thành công!');
+      }
+      this.isMongoConnected = true;
+    } catch (err: any) {
+      this.isMongoConnected = false;
+      console.error('⚠️ Lỗi khi đồng bộ từ MongoDB:', err.message || err);
+      throw err;
+    }
+  }
+
+  // Real-time synchronization methods with MongoDB:
+  async syncUser(user: IUser): Promise<void> {
+    if (!this.isMongoConnected) {
+      throw new Error('MongoDB chưa kết nối, không thể lưu người dùng');
+    }
+
+    try {
+      await (NguoiDungModel as any).findOneAndUpdate(
+        { ma_nguoi_dung: user.id },
+        mappers.userToMongo(user),
+        { upsert: true, returnDocument: 'after', runValidators: true }
+      );
+      const idx = this.users.findIndex(u => u.id === user.id);
+      if (idx >= 0) { this.users[idx] = user; } else { this.users.push(user); }
+    } catch (err) {
+      console.error('MongoDB syncUser error:', err);
+      throw err;
+    }
+  }
+
+  async deleteUser(userId: string): Promise<void> {
+    this.ensureMongoConnected('xóa người dùng');
+    try {
+      await (NguoiDungModel as any).deleteOne({ ma_nguoi_dung: userId });
+      this.users = this.users.filter(u => u.id !== userId);
+    } catch (err) {
+      console.error('MongoDB deleteUser error:', err);
+      throw err;
+    }
+  }
+
+  async syncVenue(venue: IVenue): Promise<void> {
+    this.ensureMongoConnected('lưu cụm sân');
+
+    try {
+      await (CumSanBongModel as any).findOneAndUpdate(
+        { ma_cum_san: venue.id },
+        mappers.venueToMongo(venue),
+        { upsert: true, returnDocument: 'after', runValidators: true }
+      );
+      const idx = this.venues.findIndex(v => v.id === venue.id);
+      if (idx >= 0) { this.venues[idx] = venue; } else { this.venues.push(venue); }
+    } catch (err) {
+      console.error('MongoDB syncVenue error:', err);
+      throw err;
+    }
+  }
+
+  async deleteVenue(venueId: string): Promise<void> {
+    this.ensureMongoConnected('xóa cụm sân');
+    try {
+      await Promise.all([
+        (CumSanBongModel as any).deleteOne({ ma_cum_san: venueId }),
+        (SanChiTietModel as any).deleteMany({ ma_cum_san: venueId })
+      ]);
+      this.venues = this.venues.filter(v => v.id !== venueId);
+      this.fields = this.fields.filter(f => f.venueId !== venueId);
+    } catch (err) {
+      console.error('MongoDB deleteVenue error:', err);
+      throw err;
+    }
+  }
+
+  async syncField(field: IField): Promise<void> {
+    this.ensureMongoConnected('lưu sân con');
+
+    try {
+      await (SanChiTietModel as any).findOneAndUpdate(
+        { ma_san_con: field.id },
+        mappers.fieldToMongo(field),
+        { upsert: true, returnDocument: 'after', runValidators: true }
+      );
+      const idx = this.fields.findIndex(f => f.id === field.id);
+      if (idx >= 0) { this.fields[idx] = field; } else { this.fields.push(field); }
+    } catch (err) {
+      console.error('MongoDB syncField error:', err);
+      throw err;
+    }
+  }
+
+  async deleteField(fieldId: string): Promise<void> {
+    this.ensureMongoConnected('xóa sân con');
+    try {
+      await (SanChiTietModel as any).deleteOne({ ma_san_con: fieldId });
+      this.fields = this.fields.filter(f => f.id !== fieldId);
+    } catch (err) {
+      console.error('MongoDB deleteField error:', err);
+      throw err;
+    }
+  }
+
+  async syncBooking(booking: IBooking): Promise<void> {
+    this.ensureMongoConnected('lưu đơn đặt sân');
+    try {
+      await (DonDatSanModel as any).findOneAndUpdate(
+        { ma_don_dat: booking.id },
+        mappers.bookingToMongo(booking),
+        { upsert: true, returnDocument: 'after', runValidators: true }
+      );
+      const idx = this.bookings.findIndex(b => b.id === booking.id);
+      if (idx >= 0) { this.bookings[idx] = booking; } else { this.bookings.push(booking); }
+    } catch (err) {
+      console.error('MongoDB syncBooking error:', err);
+      throw err;
+    }
+  }
+
+  async deleteBooking(bookingId: string): Promise<void> {
+    this.ensureMongoConnected('xóa đơn đặt sân');
+    try {
+      await (DonDatSanModel as any).deleteOne({ ma_don_dat: bookingId });
+      this.bookings = this.bookings.filter(b => b.id !== bookingId);
+    } catch (err) {
+      console.error('MongoDB deleteBooking error:', err);
+      throw err;
+    }
+  }
+
+  async syncMatch(match: IMatch): Promise<void> {
+    this.ensureMongoConnected('lưu kèo đấu');
+    try {
+      await (KeoGiaoHuuModel as any).findOneAndUpdate(
+        { ma_keo_dau: match.id },
+        mappers.matchToMongo(match),
+        { upsert: true, returnDocument: 'after', runValidators: true }
+      );
+      const idx = this.matches.findIndex(m => m.id === match.id);
+      if (idx >= 0) { this.matches[idx] = match; } else { this.matches.push(match); }
+    } catch (err) {
+      console.error('MongoDB syncMatch error:', err);
+      throw err;
+    }
+  }
+
+  async deleteMatch(matchId: string): Promise<void> {
+    this.ensureMongoConnected('xóa kèo đấu');
+    try {
+      await Promise.all([
+        (KeoGiaoHuuModel as any).deleteOne({ ma_keo_dau: matchId }),
+        (ThanhVienKeoModel as any).deleteMany({ ma_keo_dau: matchId })
+      ]);
+      this.matches = this.matches.filter(m => m.id !== matchId);
+      this.matchParticipants = this.matchParticipants.filter(p => p.matchId !== matchId);
+    } catch (err) {
+      console.error('MongoDB deleteMatch error:', err);
+      throw err;
+    }
+  }
+
+  async syncMatchParticipant(participant: IMatchParticipant): Promise<void> {
+    this.ensureMongoConnected('lưu thành viên kèo đấu');
+    try {
+      await (ThanhVienKeoModel as any).findOneAndUpdate(
+        { ma_tham_gia: participant.id },
+        mappers.participantToMongo(participant),
+        { upsert: true, returnDocument: 'after', runValidators: true }
+      );
+      const idx = this.matchParticipants.findIndex(p => p.id === participant.id);
+      if (idx >= 0) { this.matchParticipants[idx] = participant; } else { this.matchParticipants.push(participant); }
+    } catch (err) {
+      console.error('MongoDB syncMatchParticipant error:', err);
+      throw err;
+    }
+  }
+
+  async deleteMatchParticipant(participantId: string): Promise<void> {
+    this.ensureMongoConnected('xóa thành viên kèo đấu');
+    try {
+      await (ThanhVienKeoModel as any).deleteOne({ ma_tham_gia: participantId });
+      this.matchParticipants = this.matchParticipants.filter(p => p.id !== participantId);
+    } catch (err) {
+      console.error('MongoDB deleteMatchParticipant error:', err);
+      throw err;
+    }
+  }
+
+  async syncReview(review: IReview): Promise<void> {
+    this.ensureMongoConnected('lưu đánh giá');
+    try {
+      await (DanhGiaModel as any).findOneAndUpdate(
+        { ma_danh_gia: review.id },
+        mappers.reviewToMongo(review),
+        { upsert: true, returnDocument: 'after', runValidators: true }
+      );
+      const idx = this.reviews.findIndex(r => r.id === review.id);
+      if (idx >= 0) { this.reviews[idx] = review; } else { this.reviews.push(review); }
+    } catch (err) {
+      console.error('MongoDB syncReview error:', err);
+      throw err;
+    }
+  }
+
+  async deleteReview(reviewId: string): Promise<void> {
+    this.ensureMongoConnected('xóa đánh giá');
+    try {
+      await (DanhGiaModel as any).deleteOne({ ma_danh_gia: reviewId });
+      this.reviews = this.reviews.filter(r => r.id !== reviewId);
+    } catch (err) {
+      console.error('MongoDB deleteReview error:', err);
+      throw err;
+    }
+  }
+
+  async syncConversation(conv: IConversation): Promise<void> {
+    this.ensureMongoConnected('lưu hội thoại');
+    try {
+      await (HoiThoaiModel as any).findOneAndUpdate(
+        { ma_hoi_thoai: conv.id },
+        mappers.conversationToMongo(conv),
+        { upsert: true, returnDocument: 'after', runValidators: true }
+      );
+      const idx = this.conversations.findIndex(c => c.id === conv.id);
+      if (idx >= 0) { this.conversations[idx] = conv; } else { this.conversations.push(conv); }
+    } catch (err) {
+      console.error('MongoDB syncConversation error:', err);
+      throw err;
+    }
+  }
+
+  async syncMessage(msg: IMessage): Promise<void> {
+    this.ensureMongoConnected('lưu tin nhắn');
+    try {
+      await (TinNhanModel as any).findOneAndUpdate(
+        { ma_tin_nhan: msg.id },
+        mappers.messageToMongo(msg),
+        { upsert: true, returnDocument: 'after', runValidators: true }
+      );
+      const idx = this.messages.findIndex(m => m.id === msg.id);
+      if (idx >= 0) { this.messages[idx] = msg; } else { this.messages.push(msg); }
+    } catch (err) {
+      console.error('MongoDB syncMessage error:', err);
+      throw err;
+    }
+  }
+
+  async syncNotification(notif: INotification): Promise<void> {
+    this.ensureMongoConnected('lưu thông báo');
+
+    try {
+      await (ThongBaoModel as any).findOneAndUpdate(
+        { ma_thong_bao: notif.id },
+        mappers.notifToMongo(notif),
+        { upsert: true, returnDocument: 'after', runValidators: true }
+      );
+      const idx = this.notifications.findIndex(n => n.id === notif.id);
+      if (idx >= 0) { this.notifications[idx] = notif; } else { this.notifications.push(notif); }
+    } catch (err) {
+      console.error('MongoDB syncNotification error:', err);
+      throw err;
+    }
+  }
+
+  async syncReport(report: IReport): Promise<void> {
+    this.ensureMongoConnected('lưu báo cáo');
+    try {
+      await (BaoCaoModel as any).findOneAndUpdate(
+        { ma_bao_cao: report.id },
+        mappers.reportToMongo(report),
+        { upsert: true, returnDocument: 'after', runValidators: true }
+      );
+      const idx = this.reports.findIndex(r => r.id === report.id);
+      if (idx >= 0) { this.reports[idx] = report; } else { this.reports.push(report); }
+    } catch (err) {
+      console.error('MongoDB syncReport error:', err);
+      throw err;
+    }
+  }
+
+  async syncPayment(payment: IPayment): Promise<void> {
+    this.ensureMongoConnected('lưu thanh toán');
+    try {
+      await (ThanhToanModel as any).findOneAndUpdate(
+        { ma_thanh_toan: payment.id },
+        mappers.paymentToMongo(payment),
+        { upsert: true, returnDocument: 'after', runValidators: true }
+      );
+      const idx = this.payments.findIndex(p => p.id === payment.id);
+      if (idx >= 0) { this.payments[idx] = payment; } else { this.payments.push(payment); }
+    } catch (err) {
+      console.error('MongoDB syncPayment error:', err);
+      throw err;
+    }
   }
 }
 

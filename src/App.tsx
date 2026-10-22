@@ -20,8 +20,9 @@ import { MatchesPage } from './pages/MatchesPage.js';
 import { MatchDetailPage } from './pages/MatchDetailPage.js';
 import { ChatPage } from './pages/ChatPage.js';
 import { ProfilePage } from './pages/ProfilePage.js';
-import { LoginPage } from './pages/LoginPage.js';
 import { RegisterPage } from './pages/RegisterPage.js';
+
+const LoginPage = React.lazy(() => import('./pages/LoginPage.js').then(module => ({ default: module.LoginPage })));
 
 // Owner Portal Pages
 import { OwnerDashboardPage } from './pages/owner/OwnerDashboardPage.js';
@@ -35,11 +36,16 @@ import { AdminDashboardPage } from './pages/admin/AdminDashboardPage.js';
 import { AdminUsersPage } from './pages/admin/AdminUsersPage.js';
 import { AdminVenuesPage } from './pages/admin/AdminVenuesPage.js';
 import { AdminBookingsPage } from './pages/admin/AdminBookingsPage.js';
+import { AdminMatchesPage } from './pages/admin/AdminMatchesPage.js';
 
 // Layout wrapper to control Navbar & Footer visibility
 const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const location = useLocation();
-  const isPortal = location.pathname.startsWith('/owner') || location.pathname.startsWith('/admin');
+  const { user } = useAuthStore();
+  const isOwnerChat = location.pathname === '/chat' && user?.role === 'OWNER';
+  const isAdminChat = location.pathname === '/chat' && user?.role === 'ADMIN';
+  const isPortal = location.pathname.startsWith('/owner') || location.pathname.startsWith('/admin') || isOwnerChat || isAdminChat;
+  const isAdmin = user?.role === 'ADMIN';
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] text-slate-900 flex flex-col font-sans selection:bg-emerald-600 selection:text-white pb-16 lg:pb-0">
@@ -47,7 +53,7 @@ const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       <main className="flex-1">{children}</main>
       {!isPortal && <Footer />}
       {!isPortal && <BottomNav />}
-      <AIChatWidget />
+      {!isAdmin && <AIChatWidget />}
     </div>
   );
 };
@@ -63,8 +69,9 @@ export default function App() {
 
   return (
     <BrowserRouter>
-      <AppLayout>
-        <Routes>
+      <React.Suspense fallback={<div className="min-h-[60vh] flex items-center justify-center"><div className="h-10 w-10 animate-spin rounded-full border-4 border-emerald-100 border-t-emerald-600" aria-label="Đang tải trang" /></div>}>
+        <AppLayout>
+          <Routes>
           {/* Public & Customer Routes */}
           <Route path="/" element={<HomePage />} />
           <Route path="/venues" element={<VenuesPage />} />
@@ -152,6 +159,14 @@ export default function App() {
 
           {/* Admin Portal Routes */}
           <Route
+            path="/admin"
+            element={
+              <RoleRoute allowedRoles={['ADMIN']}>
+                <AdminDashboardPage />
+              </RoleRoute>
+            }
+          />
+          <Route
             path="/admin/dashboard"
             element={
               <RoleRoute allowedRoles={['ADMIN']}>
@@ -183,11 +198,20 @@ export default function App() {
               </RoleRoute>
             }
           />
+          <Route
+            path="/admin/matches"
+            element={
+              <RoleRoute allowedRoles={['ADMIN']}>
+                <AdminMatchesPage />
+              </RoleRoute>
+            }
+          />
 
           {/* Fallback */}
           <Route path="*" element={<HomePage />} />
-        </Routes>
-      </AppLayout>
+          </Routes>
+        </AppLayout>
+      </React.Suspense>
     </BrowserRouter>
   );
 }

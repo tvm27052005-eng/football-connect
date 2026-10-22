@@ -6,7 +6,7 @@ import { VenueCard } from '../components/venue/VenueCard.js';
 import { VenueFilter } from '../components/venue/VenueFilter.js';
 import { LoadingSkeleton, EmptyState, Pagination } from '../components/common/LoadingSkeleton.js';
 import { GoogleMapView } from '../components/common/GoogleMapView.js';
-import { MapPin, LayoutGrid, Map } from 'lucide-react';
+import { MapPin, LayoutGrid, Map, Images, Search, Trophy } from 'lucide-react';
 
 export const VenuesPage: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -63,30 +63,67 @@ export const VenuesPage: React.FC = () => {
     (currentPage - 1) * itemsPerPage,
     currentPage * itemsPerPage
   );
+  const venuePreviewImages = venues.flatMap((venue) => venue.images.filter(Boolean)).slice(0, 3);
+  const coverImage = venuePreviewImages[0] || '/images/turf-pitch-top.png';
+  const supportingPreviewImages = [
+    venuePreviewImages[1] || '/images/turf-pitch.png',
+    venuePreviewImages[2] || '/images/stadium-7.png'
+  ];
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
-      {/* Header Banner with High-Angle Pitch Visual */}
-      <div className="relative rounded-3xl overflow-hidden bg-slate-950 p-6 sm:p-10 text-white shadow-xl border border-emerald-900/30">
-        <div className="absolute inset-0 z-0">
+    <div className="mx-auto max-w-7xl space-y-8 px-4 py-8 sm:px-6 lg:px-8">
+      {/* Sports editorial header using images managed by venue owners */}
+      <div className="relative overflow-hidden rounded-[2rem] border border-emerald-900/40 bg-[#07160f] text-white shadow-2xl shadow-emerald-950/15">
+        <div className="absolute inset-0">
           <img
-            src="/images/turf-pitch-top.png"
-            alt="Cụm sân cỏ nhân tạo từ trên cao"
-            className="w-full h-full object-cover opacity-35"
+            src={coverImage}
+            alt=""
+            aria-hidden="true"
+            onError={(event) => { event.currentTarget.src = '/images/turf-pitch-top.png'; }}
+            className="h-full w-full object-cover opacity-20"
           />
-          <div className="absolute inset-0 bg-gradient-to-r from-slate-950 via-slate-950/80 to-emerald-950/70" />
+          <div className="absolute inset-0 bg-gradient-to-r from-[#06120c] via-[#07160f]/95 to-emerald-950/70" />
+          <div className="absolute -right-24 top-0 h-full w-1/2 -skew-x-12 border-l border-lime-400/20 bg-emerald-500/5" />
         </div>
 
-        <div className="relative z-10 max-w-2xl">
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/20 border border-emerald-400/30 backdrop-blur-md text-emerald-300 text-xs font-bold mb-3">
-            <MapPin className="w-3.5 h-3.5" /> Hệ Thống Cụm Sân Đối Tác Toàn Quốc
+        <div className="relative z-10 grid items-stretch gap-8 p-6 sm:p-9 lg:grid-cols-12 lg:p-12">
+          <div className="flex flex-col justify-center lg:col-span-7">
+            <div className="mb-4 inline-flex w-fit items-center gap-2 border-l-4 border-lime-400 bg-white/5 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.2em] text-lime-300 backdrop-blur-md">
+              <Trophy className="h-3.5 w-3.5" /> Hệ thống sân bóng Football Connect
+            </div>
+            <h1 className="max-w-2xl text-3xl font-black uppercase italic leading-[0.95] tracking-tight text-white sm:text-5xl lg:text-6xl">
+              Chọn sân chuẩn.
+              <span className="mt-2 block text-lime-400">Sẵn sàng bóng lăn.</span>
+            </h1>
+            <p className="mt-5 max-w-xl text-sm leading-relaxed text-slate-300 sm:text-base">
+              Khám phá hình ảnh thực tế do chủ sân cung cấp, so sánh khu vực, loại sân, mức giá và chọn khung giờ phù hợp với đội của bạn.
+            </p>
+            <div className="mt-6 flex flex-wrap gap-3 text-xs font-bold">
+              <span className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-2">
+                <Search className="h-3.5 w-3.5 text-lime-300" /> Bộ lọc nhanh
+              </span>
+              <span className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-2">
+                <Map className="h-3.5 w-3.5 text-lime-300" /> Xem trên bản đồ
+              </span>
+              <span className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-2">
+                <Images className="h-3.5 w-3.5 text-lime-300" /> Ảnh từ chủ sân
+              </span>
+            </div>
           </div>
-          <h1 className="text-2xl sm:text-4xl font-black text-white tracking-tight leading-tight">
-            Danh Sách Sân Bóng Cỏ Nhân Tạo
-          </h1>
-          <p className="text-xs sm:text-sm text-slate-300 mt-2 leading-relaxed">
-            Khám phá và đặt trước các sân bóng đạt chuẩn FIFA, hệ thống thoát nước chuẩn quốc tế, đèn cao áp ban đêm và bãi đỗ xe an ninh tại Hà Nội, TP. HCM & Đà Nẵng.
-          </p>
+
+          <div className="hidden min-h-72 grid-cols-5 grid-rows-2 gap-2 lg:col-span-5 lg:grid">
+            <figure className="relative col-span-3 row-span-2 overflow-hidden rounded-2xl border border-white/15 bg-white/5">
+              <img src={coverImage} alt="Ảnh sân nổi bật do chủ sân cung cấp" onError={(event) => { event.currentTarget.src = '/images/turf-pitch-top.png'; }} className="h-full w-full object-cover" />
+              <figcaption className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-slate-950/90 to-transparent p-4 pt-12 text-xs font-bold text-white">
+                Hình ảnh thực tế từ các cụm sân
+              </figcaption>
+            </figure>
+            {supportingPreviewImages.map((image, index) => (
+              <div key={`${image}-${index}`} className="col-span-2 overflow-hidden rounded-2xl border border-white/15 bg-white/5">
+                <img src={image} alt={`Không gian sân bóng ${index + 2}`} onError={(event) => { event.currentTarget.src = index === 0 ? '/images/turf-pitch.png' : '/images/stadium-7.png'; }} className="h-full w-full object-cover transition-transform duration-700 hover:scale-105" />
+              </div>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -118,8 +155,11 @@ export const VenuesPage: React.FC = () => {
         />
       ) : (
         <>
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-slate-500">
-            <span>Tìm thấy <strong className="text-emerald-700 font-bold">{venues.length}</strong> cụm sân phù hợp</span>
+          <div className="flex flex-col gap-3 border-l-4 border-emerald-500 pl-4 text-xs text-slate-500 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <span className="block text-[10px] font-black uppercase tracking-[0.18em] text-emerald-600">Danh sách sân</span>
+              <span>Tìm thấy <strong className="font-black text-slate-900">{venues.length}</strong> cụm sân phù hợp</span>
+            </div>
 
             {/* View Mode Switcher */}
             <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200 self-start sm:self-auto">

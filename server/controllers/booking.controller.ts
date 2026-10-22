@@ -2,6 +2,7 @@ import { Response } from 'express';
 import { db } from '../models/db.js';
 import { AuthenticatedRequest } from '../middlewares/auth.middleware.js';
 import { IBooking, BookingStatus, PaymentStatus } from '../types/index.js';
+import { getFieldTimeSlots } from './field.controller.js';
 
 export const bookingController = {
   // GET /api/bookings
@@ -174,6 +175,11 @@ export const bookingController = {
         return;
       }
 
+      if (venue.status !== 'ACTIVE') {
+        res.status(400).json({ success: false, message: 'Cụm sân này chưa được quản trị viên phê duyệt để hoạt động' });
+        return;
+      }
+
       if (field.status !== 'ACTIVE') {
         res.status(400).json({ success: false, message: 'Sân con này hiện đang bảo trì hoặc tạm ngưng' });
         return;
@@ -193,11 +199,13 @@ export const bookingController = {
       const [sh, sm] = startTime.split(':').map(Number);
       const [eh, em] = endTime.split(':').map(Number);
       const durationHours = Math.max(1, (eh * 60 + em - (sh * 60 + sm)) / 60);
-
-      let price = Math.round(field.pricePerHour * durationHours);
-      if (startTime === '17:30' || startTime === '19:00' || startTime === '20:30') {
-        price = Math.round(price * 1.15); // Peak hour surcharge
+// “Tìm khung giờ đã được cấu hình cho sân này vào thời điểm này.”
+      const configuredSlot = getFieldTimeSlots(field).find(slot => slot.startTime === startTime && slot.endTime === endTime);
+      if (!configuredSlot) {
+        res.status(400).json({ success: false, message: 'Khung giờ này hiện không được sân cung cấp' });
+        return;
       }
+      const price = configuredSlot.price;
 
       const newBooking: IBooking = {
         id: db.generateId('book'),
@@ -225,10 +233,10 @@ export const bookingController = {
         updatedAt: new Date().toISOString()
       };
 
-      db.bookings.push(newBooking);
+      await db.syncBooking(newBooking);
 
       // Create notification for User
-      db.notifications.push({
+      await db.syncNotification({
         id: db.generateId('notif'),
         userId: req.user.id,
         title: 'Đặt sân thành công!',
@@ -240,7 +248,7 @@ export const bookingController = {
       });
 
       // Create notification for Owner
-      db.notifications.push({
+      await db.syncNotification({
         id: db.generateId('notif'),
         userId: venue.ownerId,
         title: 'Có lượt đặt sân mới',
@@ -319,10 +327,11 @@ export const bookingController = {
         }
       }
       booking.updatedAt = new Date().toISOString();
+      await db.syncBooking(booking);
 
       // Notify the user if cancelled by owner
       if (isOwner || isAdmin) {
-        db.notifications.push({
+        await db.syncNotification({
           id: db.generateId('notif'),
           userId: booking.userId,
           title: 'Đơn đặt sân đã bị hủy',
@@ -365,6 +374,7 @@ export const bookingController = {
       if (status) booking.status = status as BookingStatus;
       if (paymentStatus) booking.paymentStatus = paymentStatus as PaymentStatus;
       booking.updatedAt = new Date().toISOString();
+      await db.syncBooking(booking);
 
       res.json({
         success: true,

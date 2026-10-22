@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Trophy, Phone, Mail, MapPin, ShieldCheck, Heart, Zap, Sparkles } from 'lucide-react';
+import { Phone, Mail, MapPin, ShieldCheck, Heart, Zap, Sparkles } from 'lucide-react';
 
 export const Footer: React.FC = () => {
   return (
@@ -9,13 +9,12 @@ export const Footer: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-10">
           {/* Col 1 - Brand & Mission */}
           <div className="space-y-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-emerald-600 to-teal-500 flex items-center justify-center text-white shadow-md shadow-emerald-500/20">
-                <Trophy className="w-5 h-5 text-white" />
-              </div>
-              <span className="font-black text-xl text-white tracking-tight">
-                FOOTBALL <span className="text-emerald-500">CONNECT</span>
-              </span>
+            <div className="flex items-center">
+              <img
+                src="/images/football-connect-logo.png"
+                alt="Football Connect"
+                className="h-16 w-52 object-contain object-left drop-shadow-[0_8px_20px_rgba(16,185,129,0.18)]"
+              />
             </div>
             <p className="text-xs text-slate-400 leading-relaxed">
               Hệ thống công nghệ quản lý sân bóng đá và kết nối ghép đối trực tuyến hàng đầu Việt Nam. Giải quyết triệt để vấn đề tìm sân, chống trùng lịch và thúc đẩy văn hóa bóng đá phong trào lành mạnh.

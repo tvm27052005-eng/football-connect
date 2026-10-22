@@ -3,7 +3,7 @@ export type SkillLevel = 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED' | 'PRO';
 export type FieldType = '5_vs_5' | '7_vs_7' | '11_vs_11';
 export type BookingStatus = 'PENDING' | 'CONFIRMED' | 'CANCELLED' | 'COMPLETED';
 export type PaymentStatus = 'UNPAID' | 'PAID' | 'REFUNDED';
-export type MatchStatus = 'OPEN' | 'FULL' | 'STARTED' | 'COMPLETED' | 'CANCELLED';
+export type MatchStatus = 'PENDING_APPROVAL' | 'OPEN' | 'FULL' | 'STARTED' | 'COMPLETED' | 'CANCELLED';
 export type NotificationType =
   | 'BOOKING_CONFIRMED'
   | 'BOOKING_CANCELLED'
@@ -72,10 +72,19 @@ export interface IField {
   fieldType: FieldType;
   capacity: number; // e.g. 10, 14, 22
   pricePerHour: number;
+  /** Giá bán thực tế cho từng ca; dùng chung cho availability và booking. */
+  timeSlots?: IFieldTimeSlot[];
   surfaceType: 'ARTIFICIAL_GRASS' | 'NATURAL_GRASS' | 'INDOOR_FUTSAL';
   status: 'ACTIVE' | 'MAINTENANCE' | 'INACTIVE';
   createdAt: string;
   updatedAt: string;
+}
+// Định nghĩa cấu trúc cho từng khung giờ của sân bóng
+export interface IFieldTimeSlot {
+  startTime: string;
+  endTime: string;
+  price: number;
+  isActive: boolean;
 }
 
 export interface IBooking {
@@ -181,6 +190,12 @@ export interface IMessage {
   senderAvatar?: string;
   content: string;
   type: 'TEXT' | 'SYSTEM' | 'MATCH_INVITE';
+  attachment?: {
+    url: string;
+    filename: string;
+    mimeType: string;
+    size: number;
+  };
   readBy: string[];
   createdAt: string;
 }

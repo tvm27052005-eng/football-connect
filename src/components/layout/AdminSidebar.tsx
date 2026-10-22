@@ -6,10 +6,8 @@ import {
   Building2,
   CalendarCheck,
   Swords,
-  Star,
-  Flag,
-  ArrowLeft,
-  FileCode2
+  MessageSquare,
+  ArrowLeft
 } from 'lucide-react';
 
 export const AdminSidebar: React.FC = () => {
@@ -19,18 +17,22 @@ export const AdminSidebar: React.FC = () => {
     { name: 'Dashboard Toàn Sàn', path: '/admin/dashboard', icon: LayoutDashboard },
     { name: 'Quản lý Người Dùng', path: '/admin/users', icon: Users },
     { name: 'Phê Duyệt Cụm Sân', path: '/admin/venues', icon: Building2 },
-    { name: 'Sổ Cái Đặt Sân', path: '/admin/bookings', icon: CalendarCheck }
+    { name: 'Sổ Cái Đặt Sân', path: '/admin/bookings', icon: CalendarCheck },
+    { name: 'Quản lý Bài Đăng Kèo', path: '/admin/matches', icon: Swords },
+    { name: 'Phòng chat', path: '/chat', icon: MessageSquare }
   ];
 
   return (
     <aside className="w-64 bg-white border-r border-slate-200 flex flex-col shrink-0 min-h-[calc(100vh-4rem)]">
       <div className="p-4 border-b border-slate-100 bg-slate-50/75">
-        <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-xl bg-purple-100 text-purple-700 border border-purple-200 flex items-center justify-center font-bold text-sm">
-            🛡️
-          </div>
+        <div className="space-y-1.5">
+          <img
+            src="/images/football-connect-logo.png"
+            alt="Football Connect"
+            className="h-11 w-40 object-contain object-left"
+          />
           <div>
-            <h3 className="text-xs font-bold text-slate-900">Quản Trị Hệ Thống</h3>
+            <h3 className="text-[11px] font-black uppercase tracking-[0.16em] text-slate-900">Quản Trị Hệ Thống</h3>
             <p className="text-[11px] text-purple-700 font-semibold">Toàn quyền ADMIN</p>
           </div>
         </div>

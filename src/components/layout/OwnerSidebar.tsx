@@ -6,33 +6,32 @@ import {
   Grid3X3,
   CalendarDays,
   MessageSquareQuote,
+  MessageSquare,
   ArrowLeft
 } from 'lucide-react';
-import { useAuthStore } from '../../stores/auth.store.js';
 
 export const OwnerSidebar: React.FC = () => {
   const location = useLocation();
-  const { user } = useAuthStore();
 
   const navItems = [
     { name: 'Tổng quan Doanh thu', path: '/owner/dashboard', icon: LayoutDashboard },
     { name: 'Quản lý Cụm sân', path: '/owner/venues', icon: MapPin },
     { name: 'Quản lý Sân con & Giá', path: '/owner/fields', icon: Grid3X3 },
     { name: 'Lịch & Duyệt đặt sân', path: '/owner/bookings', icon: CalendarDays },
-    { name: 'Đánh giá từ khách', path: '/owner/reviews', icon: MessageSquareQuote }
+    { name: 'Đánh giá từ khách', path: '/owner/reviews', icon: MessageSquareQuote },
+    { name: 'Phòng chat', path: '/chat', icon: MessageSquare }
   ];
 
   return (
     <aside className="w-64 bg-white border-r border-slate-200 flex flex-col shrink-0 min-h-[calc(100vh-4rem)]">
       <div className="p-4 border-b border-slate-100 bg-slate-50/75">
-        <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-xl bg-amber-100 text-amber-700 border border-amber-200 flex items-center justify-center font-bold text-sm">
-            🏟️
-          </div>
-          <div>
-            <h3 className="text-xs font-bold text-slate-900">Cổng Chủ Sân</h3>
-            <p className="text-[11px] text-amber-700 font-semibold truncate max-w-[150px]">{user?.businessName || user?.name}</p>
-          </div>
+        <div className="space-y-1.5">
+          <img
+            src="/images/football-connect-logo.png"
+            alt="Football Connect"
+            className="h-11 w-40 object-contain object-left"
+          />
+          <h3 className="text-[11px] font-black uppercase tracking-[0.18em] text-amber-700">Cổng Chủ Sân</h3>
         </div>
       </div>
 

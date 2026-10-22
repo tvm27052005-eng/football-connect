@@ -2,6 +2,7 @@ import { Response } from 'express';
 import { db } from '../models/db.js';
 import { AuthenticatedRequest } from '../middlewares/auth.middleware.js';
 import { IConversation, IMessage } from '../types/index.js';
+import { emitConversationMessage } from '../sockets/socket.service.js';
 
 export const chatController = {
   // GET /api/conversations
@@ -82,6 +83,7 @@ export const chatController = {
           m.readBy.push(req.user.id);
         }
       });
+      await Promise.all(messages.map((message) => db.syncMessage(message)));
 
       res.json({ success: true, data: messages });
     } catch {
@@ -98,9 +100,9 @@ export const chatController = {
       }
 
       const { id } = req.params;
-      const { content, type = 'TEXT' } = req.body;
+      const { content, type = 'TEXT', attachment } = req.body;
 
-      if (!content || !content.trim()) {
+      if ((!content || !content.trim()) && !attachment?.url) {
         res.status(400).json({ success: false, message: 'Nội dung tin nhắn không được để trống' });
         return;
       }
@@ -117,19 +119,28 @@ export const chatController = {
       }
 
       const user = db.users.find(u => u.id === req.user?.id);
+      const attachmentOnlyLabel = attachment?.mimeType?.startsWith('image/')
+        ? 'Đã gửi ảnh'
+        : 'Đã gửi tệp';
       const newMessage: IMessage = {
         id: db.generateId('msg'),
         conversationId: id,
         senderId: req.user.id,
         senderName: req.user.name,
         senderAvatar: user?.avatar,
-        content: content.trim(),
+        content: content?.trim() || attachmentOnlyLabel,
         type,
+        attachment: attachment?.url ? {
+          url: String(attachment.url),
+          filename: String(attachment.filename || 'Tệp đính kèm'),
+          mimeType: String(attachment.mimeType || 'application/octet-stream'),
+          size: Number(attachment.size) || 0
+        } : undefined,
         readBy: [req.user.id],
         createdAt: new Date().toISOString()
       };
 
-      db.messages.push(newMessage);
+      await db.syncMessage(newMessage);
 
       conversation.lastMessage = {
         content: newMessage.content,
@@ -138,6 +149,8 @@ export const chatController = {
         createdAt: newMessage.createdAt
       };
       conversation.updatedAt = newMessage.createdAt;
+      await db.syncConversation(conversation);
+      emitConversationMessage(newMessage, conversation.participantIds);
 
       res.status(201).json({ success: true, data: newMessage });
     } catch {
@@ -181,7 +194,7 @@ export const chatController = {
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString()
         };
-        db.conversations.push(conv);
+        await db.syncConversation(conv);
       }
 
       res.json({ success: true, data: conv });
