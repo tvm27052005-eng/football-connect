@@ -9,15 +9,12 @@ export const Footer: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-10">
           {/* Col 1 - Brand & Mission */}
           <div className="space-y-4">
-            <div className="flex items-center gap-3">
+            <div className="flex items-center">
               <img
                 src="/images/football-connect-logo.png"
                 alt="Football Connect"
-                className="w-12 h-12 rounded-xl object-cover shadow-md shadow-emerald-500/20"
+                className="h-16 w-52 object-contain object-left drop-shadow-[0_8px_20px_rgba(16,185,129,0.18)]"
               />
-              <span className="font-black text-xl text-white tracking-tight">
-                FOOTBALL <span className="text-emerald-500">CONNECT</span>
-              </span>
             </div>
             <p className="text-xs text-slate-400 leading-relaxed">
               Hệ thống công nghệ quản lý sân bóng đá và kết nối ghép đối trực tuyến hàng đầu Việt Nam. Giải quyết triệt để vấn đề tìm sân, chống trùng lịch và thúc đẩy văn hóa bóng đá phong trào lành mạnh.

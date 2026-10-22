@@ -191,7 +191,7 @@ export const RegisterPage: React.FC = () => {
 
           <div className="relative z-10">
             <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/20 border border-amber-400/40 backdrop-blur-md text-amber-300 text-[11px] font-black uppercase">
-              <img src="/images/football-connect-logo.png" alt="" className="w-6 h-6 rounded-md object-cover" /> Tinh thần thể thao đẹp
+              <img src="/images/football-connect-logo.png" alt="Football Connect" className="h-8 w-28 object-contain" /> Tinh thần thể thao đẹp
             </div>
           </div>
 

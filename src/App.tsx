@@ -20,8 +20,9 @@ import { MatchesPage } from './pages/MatchesPage.js';
 import { MatchDetailPage } from './pages/MatchDetailPage.js';
 import { ChatPage } from './pages/ChatPage.js';
 import { ProfilePage } from './pages/ProfilePage.js';
-import { LoginPage } from './pages/LoginPage.js';
 import { RegisterPage } from './pages/RegisterPage.js';
+
+const LoginPage = React.lazy(() => import('./pages/LoginPage.js').then(module => ({ default: module.LoginPage })));
 
 // Owner Portal Pages
 import { OwnerDashboardPage } from './pages/owner/OwnerDashboardPage.js';
@@ -68,8 +69,9 @@ export default function App() {
 
   return (
     <BrowserRouter>
-      <AppLayout>
-        <Routes>
+      <React.Suspense fallback={<div className="min-h-[60vh] flex items-center justify-center"><div className="h-10 w-10 animate-spin rounded-full border-4 border-emerald-100 border-t-emerald-600" aria-label="Đang tải trang" /></div>}>
+        <AppLayout>
+          <Routes>
           {/* Public & Customer Routes */}
           <Route path="/" element={<HomePage />} />
           <Route path="/venues" element={<VenuesPage />} />
@@ -207,8 +209,9 @@ export default function App() {
 
           {/* Fallback */}
           <Route path="*" element={<HomePage />} />
-        </Routes>
-      </AppLayout>
+          </Routes>
+        </AppLayout>
+      </React.Suspense>
     </BrowserRouter>
   );
 }

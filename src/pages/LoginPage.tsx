@@ -11,8 +11,12 @@ import {
   CheckCircle2,
   RotateCw,
   Sparkles,
-  ShieldAlert
+  Trophy,
+  CalendarDays,
+  Users,
+  ShieldCheck
 } from 'lucide-react';
+import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { api } from '../services/api.js';
 import { useAuthStore } from '../stores/auth.store.js';
 import { Modal } from '../components/common/Modal.js';
@@ -20,7 +24,8 @@ import { Modal } from '../components/common/Modal.js';
 export const LoginPage: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { login, switchDemoRole, isLoading, error } = useAuthStore();
+  const { login, isLoading, error } = useAuthStore();
+  const shouldReduceMotion = useReducedMotion();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -192,126 +197,217 @@ export const LoginPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-[85vh] flex items-center justify-center px-4 py-8 sm:py-12">
-      <div className="w-full max-w-4xl bg-white border border-slate-200/90 rounded-3xl shadow-xl overflow-hidden grid grid-cols-1 lg:grid-cols-12">
-        {/* Left Side: Sports Passion Visual Banner (Hidden on mobile) */}
-        <div className="hidden lg:flex lg:col-span-5 relative bg-slate-950 p-8 text-white flex-col justify-between min-h-[500px]">
-          <div className="absolute inset-0 z-0">
-            <img
-              src="/images/vietnam-celebration.png"
-              alt="Cảm xúc chiến thắng bóng đá Việt Nam"
-              className="w-full h-full object-cover opacity-60"
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/40 to-emerald-950/40" />
+    <div className="relative min-h-[calc(100dvh-6rem)] overflow-hidden bg-[#06130d] px-4 py-8 sm:py-12">
+      <div className="absolute inset-0 opacity-[0.08]" style={{ backgroundImage: 'linear-gradient(rgba(255,255,255,.35) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.35) 1px, transparent 1px)', backgroundSize: '48px 48px' }} />
+      <motion.div
+        aria-hidden="true"
+        className="absolute -left-24 top-10 h-72 w-72 rounded-full bg-lime-400/15 blur-3xl"
+        animate={shouldReduceMotion ? undefined : { x: [0, 35, 0], y: [0, 25, 0] }}
+        transition={{ duration: 10, repeat: Infinity, ease: 'easeInOut' }}
+      />
+      <motion.div
+        aria-hidden="true"
+        className="absolute -right-24 bottom-0 h-96 w-96 rounded-full bg-emerald-500/15 blur-3xl"
+        animate={shouldReduceMotion ? undefined : { x: [0, -30, 0], y: [0, -20, 0] }}
+        transition={{ duration: 12, repeat: Infinity, ease: 'easeInOut' }}
+      />
+
+      <motion.div
+        initial={shouldReduceMotion ? false : { opacity: 0, y: 28, scale: 0.985 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={{ duration: 0.65, ease: [0.16, 1, 0.3, 1] }}
+        className="relative mx-auto grid w-full max-w-6xl grid-cols-1 overflow-hidden rounded-[2rem] border border-white/10 bg-white shadow-2xl shadow-black/35 lg:grid-cols-12"
+      >
+        {/* Sports visual */}
+        <div className="relative hidden min-h-[640px] overflow-hidden bg-slate-950 p-10 text-white lg:col-span-7 lg:flex lg:flex-col lg:justify-between">
+          <motion.img
+            src="/images/vietnam-celebration.png"
+            alt="Cảm xúc chiến thắng bóng đá Việt Nam"
+            className="absolute inset-0 h-full w-full object-cover"
+            initial={{ scale: 1.03 }}
+            animate={shouldReduceMotion ? { scale: 1.03 } : { scale: [1.03, 1.09, 1.03], x: [0, -8, 0] }}
+            transition={{ duration: 14, repeat: Infinity, ease: 'easeInOut' }}
+          />
+          <div className="absolute inset-0 bg-gradient-to-r from-slate-950/95 via-slate-950/55 to-emerald-950/15" />
+          <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-transparent to-slate-950/35" />
+          <div className="absolute -right-16 top-0 h-full w-1/2 -skew-x-12 border-l border-lime-400/30 bg-lime-400/5" />
+
+          <motion.div
+            className="relative z-10 w-fit rounded-2xl border border-white/15 bg-white/90 px-4 py-2 shadow-xl backdrop-blur-md"
+            initial={shouldReduceMotion ? false : { opacity: 0, x: -24 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.25, duration: 0.5 }}
+          >
+            <img src="/images/football-connect-logo.png" alt="Football Connect" className="h-10 w-36 object-contain" />
+          </motion.div>
+
+          <div className="relative z-10 mt-auto max-w-xl">
+            <motion.div
+              initial={shouldReduceMotion ? false : { opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.35, duration: 0.5 }}
+              className="mb-4 inline-flex items-center gap-2 border-l-4 border-lime-400 bg-black/25 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.2em] text-lime-300 backdrop-blur-sm"
+            >
+              <Trophy className="h-3.5 w-3.5" /> Sân chơi của đam mê
+            </motion.div>
+            <motion.h2
+              initial={shouldReduceMotion ? false : { opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.45, duration: 0.55 }}
+              className="text-5xl font-black uppercase italic leading-[0.95] tracking-tight"
+            >
+              Trở lại sân cỏ.
+              <span className="mt-2 block text-lime-400">Chạm lại đam mê.</span>
+            </motion.h2>
+            <motion.p
+              initial={shouldReduceMotion ? false : { opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.55, duration: 0.5 }}
+              className="mt-5 max-w-lg text-sm leading-relaxed text-slate-300"
+            >
+              Tìm sân, giữ lịch và bắt kèo cùng cộng đồng bóng đá phong trào trong một tài khoản duy nhất.
+            </motion.p>
+
+            <motion.div
+              initial={shouldReduceMotion ? false : { opacity: 0, y: 18 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.65, duration: 0.5 }}
+              className="mt-7 grid grid-cols-3 gap-2"
+            >
+              {[
+                { icon: CalendarDays, label: 'Đặt sân', value: 'Nhanh gọn' },
+                { icon: Users, label: 'Bắt đối', value: 'Đúng trình' },
+                { icon: ShieldCheck, label: 'Tài khoản', value: 'An toàn' },
+              ].map((item) => (
+                <div key={item.label} className="rounded-2xl border border-white/10 bg-white/10 p-3 backdrop-blur-md">
+                  <item.icon className="mb-2 h-4 w-4 text-lime-300" />
+                  <div className="text-[10px] font-black uppercase tracking-wider text-white">{item.label}</div>
+                  <div className="mt-0.5 text-[10px] text-slate-300">{item.value}</div>
+                </div>
+              ))}
+            </motion.div>
           </div>
 
-          <div className="relative z-10">
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/20 border border-emerald-400/40 backdrop-blur-md text-emerald-300 text-[11px] font-black uppercase">
-              <img src="/images/football-connect-logo.png" alt="" className="w-6 h-6 rounded-md object-cover" /> Football Connect
-            </div>
-          </div>
-
-          <div className="relative z-10 space-y-2 mt-auto">
-            <h3 className="text-2xl font-black leading-tight">
-              Thổi bùng ngọn lửa đam mê sân cỏ!
-            </h3>
-            <p className="text-xs text-slate-300 leading-relaxed">
-              Kết nối cộng đồng hàng ngàn cầu thủ phong trào. Tìm đối giao lưu, đặt sân nhanh chóng, không lo trễ giờ bóng lăn.
-            </p>
-          </div>
+          <motion.img
+            aria-hidden="true"
+            src="/images/hero-ball.png"
+            alt=""
+            className="absolute -right-10 top-28 z-10 h-36 w-36 object-contain opacity-80 drop-shadow-2xl"
+            animate={shouldReduceMotion ? undefined : { y: [0, -16, 0], rotate: [0, 8, 0] }}
+            transition={{ duration: 4.5, repeat: Infinity, ease: 'easeInOut' }}
+          />
         </div>
 
-        {/* Right Side: Form */}
-        <div className="lg:col-span-7 p-6 sm:p-10 flex flex-col min-h-[500px]">
-          {/* Header */}
-          <div className="text-center">
-            <h1 className="text-2xl sm:text-[2rem] font-black text-slate-900 leading-tight">
-              Đăng Nhập
+        {/* Login form */}
+        <motion.div
+          initial={shouldReduceMotion ? false : { opacity: 0, x: 28 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: 0.2, duration: 0.55, ease: [0.16, 1, 0.3, 1] }}
+          className="flex min-h-[590px] flex-col p-6 sm:p-10 lg:col-span-5 lg:p-12"
+        >
+          <div className="mb-8">
+            <div className="mb-4 flex items-center justify-between">
+              <span className="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.16em] text-emerald-700">
+                <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-500" /> Hệ thống trực tuyến
+              </span>
+              <img src="/images/football-connect-logo.png" alt="Football Connect" className="h-8 w-28 object-contain lg:hidden" />
+            </div>
+            <h1 className="text-3xl font-black uppercase italic leading-none tracking-tight text-slate-950 sm:text-4xl">
+              Đăng nhập
+              <span className="text-emerald-600">.</span>
             </h1>
-            <p className="text-xs sm:text-sm text-slate-500 mt-1">
-              Chào mừng bạn quay trở lại với cộng đồng Football Connect
+            <p className="mt-3 text-sm leading-relaxed text-slate-500">
+              Chào mừng bạn trở lại. Đăng nhập để tiếp tục lịch sân và những kèo đấu đang chờ.
             </p>
           </div>
 
-          {loginSuccessMsg && (
-            <div className="mt-4 p-3.5 rounded-xl bg-emerald-50 border border-emerald-300 text-emerald-800 text-xs flex items-center gap-2.5 font-medium animate-in fade-in">
-              <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
-              <span>{loginSuccessMsg}</span>
-            </div>
-          )}
+          <AnimatePresence mode="popLayout">
+            {loginSuccessMsg && (
+              <motion.div key="success" initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} className="mb-4 flex items-center gap-2.5 rounded-2xl border border-emerald-300 bg-emerald-50 p-3.5 text-xs font-medium text-emerald-800">
+                <CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-600" />
+                <span>{loginSuccessMsg}</span>
+              </motion.div>
+            )}
 
-          {(localError || error) && (
-            <div className="mt-4 p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-center gap-2 font-medium">
-              <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
-              <span>{localError || error}</span>
-            </div>
-          )}
+            {(localError || error) && (
+              <motion.div key="error" initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 8 }} className="mb-4 flex items-center gap-2 rounded-2xl border border-rose-200 bg-rose-50 p-3 text-xs font-medium text-rose-700">
+                <AlertCircle className="h-4 w-4 shrink-0 text-rose-600" />
+                <span>{localError || error}</span>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
-          <form onSubmit={handleSubmit} className="mt-5 space-y-4 text-sm flex-1">
-            <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-1.5">Email</label>
-              <div className="relative">
-                <Mail className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+          <form onSubmit={handleSubmit} className="flex-1 space-y-5 text-sm">
+            <motion.div initial={shouldReduceMotion ? false : { opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }}>
+              <label htmlFor="login-email" className="mb-2 block text-xs font-black uppercase tracking-wider text-slate-700">Email</label>
+              <div className="group relative">
+                <Mail className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 transition-colors group-focus-within:text-emerald-600" />
                 <input
+                  id="login-email"
                   type="email"
                   required
+                  autoComplete="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="hai.nguyen@footballconnect.vn"
-                  className="w-full pl-10 pr-4 py-3 text-sm bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:bg-white focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
+                  placeholder="ban@footballconnect.vn"
+                  className="w-full rounded-2xl border border-slate-200 bg-slate-50 py-3.5 pl-11 pr-4 text-sm text-slate-900 outline-none transition-all placeholder:text-slate-400 focus:border-emerald-500 focus:bg-white focus:ring-4 focus:ring-emerald-500/10"
                 />
               </div>
-            </div>
+            </motion.div>
 
-            <div>
-              <div className="flex items-center justify-between mb-1.5">
-                <label className="block text-sm font-semibold text-slate-700">Mật khẩu</label>
-                <button
-                  type="button"
-                  onClick={handleOpenForgotPassword}
-                  className="text-xs font-bold text-emerald-700 hover:text-emerald-800 hover:underline cursor-pointer"
-                >
+            <motion.div initial={shouldReduceMotion ? false : { opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.43 }}>
+              <div className="mb-2 flex items-center justify-between">
+                <label htmlFor="login-password" className="block text-xs font-black uppercase tracking-wider text-slate-700">Mật khẩu</label>
+                <button type="button" onClick={handleOpenForgotPassword} className="cursor-pointer text-xs font-bold text-emerald-700 hover:text-emerald-800 hover:underline">
                   Quên mật khẩu?
                 </button>
               </div>
-              <div className="relative">
-                <Lock className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+              <div className="group relative">
+                <Lock className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 transition-colors group-focus-within:text-emerald-600" />
                 <input
+                  id="login-password"
                   type={showPassword ? 'text' : 'password'}
                   required
+                  autoComplete="current-password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
-                  className="w-full pl-10 pr-11 py-3 text-sm bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:bg-white focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
+                  className="w-full rounded-2xl border border-slate-200 bg-slate-50 py-3.5 pl-11 pr-12 text-sm text-slate-900 outline-none transition-all focus:border-emerald-500 focus:bg-white focus:ring-4 focus:ring-emerald-500/10"
                 />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword((prev) => !prev)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-                  aria-label={showPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
-                >
-                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                <button type="button" onClick={() => setShowPassword((prev) => !prev)} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 transition-colors hover:text-slate-700" aria-label={showPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}>
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </div>
-            </div>
+            </motion.div>
 
-            <button
+            <motion.button
               type="submit"
               disabled={isLoading}
-              className="mt-2 w-full py-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-bold text-sm transition-all shadow-xs flex items-center justify-center gap-2 cursor-pointer"
+              whileHover={shouldReduceMotion ? undefined : { y: -2 }}
+              whileTap={shouldReduceMotion ? undefined : { scale: 0.985 }}
+              className="mt-2 flex w-full cursor-pointer items-center justify-center gap-2 rounded-2xl bg-lime-400 py-4 text-sm font-black uppercase tracking-wider text-slate-950 shadow-lg shadow-lime-500/20 transition-colors hover:bg-lime-300 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {isLoading ? 'Đang xác thực...' : 'Đăng Nhập'} <ArrowRight className="w-4 h-4" />
-            </button>
+              {isLoading ? (
+                <><RotateCw className="h-4 w-4 animate-spin" /> Đang xác thực...</>
+              ) : (
+                <>Vào sân ngay <ArrowRight className="h-4 w-4" /></>
+              )}
+            </motion.button>
           </form>
 
-          <div className="mt-auto pt-4 border-t border-slate-200 text-center text-sm text-slate-500">
-            Bạn chưa có tài khoản?{' '}
-            <Link to="/register" className="text-emerald-700 font-bold hover:underline">
+          <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-3 text-center text-[11px] leading-relaxed text-slate-500">
+            <ShieldCheck className="mr-1 inline h-3.5 w-3.5 text-emerald-600" />
+            Thông tin đăng nhập được gửi qua kết nối bảo mật.
+          </div>
+
+          <div className="mt-5 border-t border-slate-200 pt-5 text-center text-sm text-slate-500">
+            Chưa có tài khoản?{' '}
+            <Link to="/register" className="font-black text-emerald-700 hover:underline">
               Đăng ký ngay
             </Link>
           </div>
-        </div>
-      </div>
+        </motion.div>
+      </motion.div>
 
       {/* FORGOT PASSWORD MODAL */}
       <Modal

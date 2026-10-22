@@ -105,25 +105,12 @@ export const Navbar: React.FC = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16 sm:h-18">
           {/* Brand Logo */}
-          <Link to="/" className="flex items-center gap-3 group">
+          <Link to="/" className="group flex min-w-0 items-center" aria-label="Football Connect - Trang chủ">
             <img
               src="/images/football-connect-logo.png"
               alt="Football Connect"
-              className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl object-cover shadow-md shadow-emerald-500/20 group-hover:scale-105 transition-all duration-300"
+              className="h-12 w-40 object-contain object-left drop-shadow-sm transition-transform duration-300 group-hover:scale-[1.02] sm:h-14 sm:w-48"
             />
-            <div>
-              <div className="flex items-center gap-1">
-                <span className="font-black text-xl sm:text-2xl tracking-tight text-slate-900 group-hover:text-emerald-700 transition-colors">
-                  FOOTBALL
-                </span>
-                <span className="font-black text-xl sm:text-2xl tracking-tight text-emerald-600">
-                  CONNECT
-                </span>
-              </div>
-              <span className="text-[10px] tracking-widest uppercase text-emerald-700/80 block -mt-1 font-bold">
-                Cộng Đồng Bóng Đá Phong Trào
-              </span>
-            </div>
           </Link>
 
           {/* Desktop Nav Links */}
