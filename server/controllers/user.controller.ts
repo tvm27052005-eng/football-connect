@@ -3,6 +3,20 @@ import { db } from '../models/db.js';
 import { AuthenticatedRequest } from '../middlewares/auth.middleware.js';
 import { hashPassword, comparePassword } from '../utils/bcrypt.js';
 
+function publicUser(user: import('../types/index.js').IUser) {
+  const { password: _, payos, ...safeUser } = user;
+  return {
+    ...safeUser,
+    payos: payos ? {
+      connected: true,
+      accountNumber: payos.accountNumber,
+      accountName: payos.accountName,
+      bankBin: payos.bankBin,
+      connectedAt: payos.connectedAt
+    } : undefined
+  };
+}
+
 export const userController = {
   // GET /api/users/profile
   getProfile: async (req: AuthenticatedRequest, res: Response): Promise<void> => {
@@ -13,7 +27,7 @@ export const userController = {
         return;
       }
 
-      const { password: _, ...safeUser } = user;
+      const safeUser = publicUser(user);
       const userBookings = db.bookings.filter(b => b.userId === user.id);
       const userMatches = db.matches.filter(m => m.creatorId === user.id);
       const joinedMatches = db.matchParticipants.filter(p => p.userId === user.id && p.status === 'CONFIRMED');
@@ -73,7 +87,7 @@ export const userController = {
       };
 
       await db.syncUser(updatedUser);
-      const { password: _, ...safeUser } = updatedUser;
+      const safeUser = publicUser(updatedUser);
 
       res.json({
         success: true,
@@ -120,7 +134,7 @@ export const userController = {
   getAllUsers: async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
       const { role, search, status } = req.query;
-      let users = db.users.map(({ password: _, ...u }) => u);
+      let users = db.users.map(publicUser);
 
       if (role && typeof role === 'string' && role !== 'ALL') {
         users = users.filter(u => u.role === role);

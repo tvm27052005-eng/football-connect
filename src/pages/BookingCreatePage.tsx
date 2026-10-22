@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { api } from '../services/api.js';
 import { IVenue, IField, ITimeSlot } from '../types/index.js';
+import { PaymentTicket } from '../components/booking/PaymentTicket.js';
 import { TimeSlotMatrix } from '../components/booking/TimeSlotMatrix.js';
 import { formatBookingDate } from '../components/booking/BookingCard.js';
 import { useAuthStore } from '../stores/auth.store.js';
@@ -62,7 +63,14 @@ export const BookingCreatePage: React.FC = () => {
   const [isLoadingSlots, setIsLoadingSlots] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
-  const [successBookingId, setSuccessBookingId] = useState<string | null>(null);
+  const [successBookingId, setSuccessBookingId] = useState<string | null>(searchParams.get('bookingId'));
+  const [policy, setPolicy] = useState({ holdMinutes: 15, cancelBeforeHours: 2 });
+  useEffect(() => {
+    api.get('/payments/policy').then(res => {
+      const next = res.data?.data;
+      if (Number.isFinite(next?.holdMinutes) && Number.isFinite(next?.cancelBeforeHours)) setPolicy(next);
+    }).catch(() => {});
+  }, []);
 
   // Load all venues
   useEffect(() => {
@@ -141,7 +149,7 @@ export const BookingCreatePage: React.FC = () => {
     }
 
     const now = new Date();
-    const slotDateTime = new Date(`${bookingDate}T${selectedSlot.startTime}:00`);
+    const slotDateTime = new Date(`${bookingDate}T${selectedSlot.startTime}:00+07:00`);
     if (isNaN(slotDateTime.getTime()) || slotDateTime <= now) {
       setErrorMsg('Không thể đặt sân vì ngày hoặc khung giờ thi đấu này đã trôi qua rồi! Vui lòng chọn khung giờ khác.');
       return;
@@ -162,6 +170,7 @@ export const BookingCreatePage: React.FC = () => {
       });
 
       setSuccessBookingId(res.data.data.id);
+      navigate(`/booking/create?bookingId=${encodeURIComponent(res.data.data.id)}`, { replace: true });
     } catch (err: unknown) {
       const msg =
         (err as { response?: { data?: { message?: string } } })?.response?.data?.message ||
@@ -175,120 +184,7 @@ export const BookingCreatePage: React.FC = () => {
   const selectedVenue = venues.find((v) => v.id === selectedVenueId);
   const selectedField = fields.find((f) => f.id === selectedFieldId);
 
-  // Success Screen with automated QR payment ticket
-  if (successBookingId) {
-    const transferMemo = `FC ${successBookingId.toUpperCase()}`;
-    const qrUrl = selectedSlot
-      ? `https://api.vietqr.io/image/970422-0988889999-compact.png?amount=${selectedSlot.price}&addInfo=${encodeURIComponent(
-        transferMemo
-      )}&accountName=FOOTBALL%20CONNECT`
-      : '';
-
-    return (
-      <div className="max-w-2xl mx-auto px-4 py-12">
-        <div className="bg-white border border-slate-200/90 rounded-3xl p-6 sm:p-8 space-y-6 shadow-xs animate-in zoom-in-95">
-          <div className="w-16 h-16 rounded-2xl bg-emerald-50 text-emerald-600 border border-emerald-200 flex items-center justify-center mx-auto text-3xl shadow-xs">
-            <CheckCircle2 className="w-10 h-10 text-emerald-600" />
-          </div>
-
-          <div className="text-center">
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 mb-2">
-              <Lock className="w-3.5 h-3.5 text-emerald-600" /> Đã Khóa Khung Giờ Thành Công
-            </span>
-            <h2 className="text-2xl font-black text-slate-900">Giữ Chỗ Sân Bóng Thành Công!</h2>
-            <p className="text-xs text-slate-500 mt-1.5">
-              Mã đặt chỗ của bạn là <strong className="text-emerald-700 font-mono text-sm">#{successBookingId}</strong>. Khung giờ này đã được giữ độc quyền cho đội bóng của bạn.
-            </p>
-          </div>
-
-          {/* Ticket Specs */}
-          <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 text-xs space-y-2.5">
-            <div className="flex justify-between items-center">
-              <span className="text-slate-500">Cụm sân:</span>
-              <span className="font-bold text-slate-900">{selectedVenue?.name}</span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-slate-500">Sân con:</span>
-              <span className="font-bold text-slate-900">{selectedField?.name}</span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-slate-500">Ngày đá:</span>
-              <span className="font-bold text-emerald-700">{formatBookingDate(bookingDate)}</span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-slate-500">Khung giờ:</span>
-              <span className="font-bold text-emerald-700">{selectedSlot?.startTime} - {selectedSlot?.endTime}</span>
-            </div>
-            <div className="flex justify-between items-center border-t border-slate-200 pt-2.5">
-              <span className="text-slate-500 font-medium">Tổng tiền thanh toán:</span>
-              <span className="font-extrabold text-emerald-700 text-base">{selectedSlot?.price.toLocaleString('vi-VN')} đ</span>
-            </div>
-          </div>
-
-          {/* QR Code Transfer Info Box */}
-          <div className="bg-gradient-to-br from-emerald-50 to-teal-50/60 border border-emerald-200 rounded-2xl p-5 space-y-4 text-center">
-            <div className="space-y-1">
-              <h4 className="font-bold text-slate-900 text-xs flex items-center justify-center gap-1.5">
-                <QrCode className="w-4 h-4 text-emerald-600" /> Quét Mã VietQR Hoàn Tất Thanh Toán
-              </h4>
-              <p className="text-[11px] text-slate-500">
-                Sử dụng App Ngân hàng hoặc MoMo quét mã QR bên dưới để thanh toán tiền sân
-              </p>
-            </div>
-
-            {qrUrl && (
-              <div className="flex justify-center">
-                <div className="p-2 bg-white rounded-2xl border border-emerald-200 shadow-xs inline-block">
-                  <img
-                    src={qrUrl}
-                    alt="VietQR Payment"
-                    className="w-48 h-48 sm:w-56 sm:h-56 object-contain rounded-xl"
-                  />
-                </div>
-              </div>
-            )}
-
-            <div className="bg-white/90 p-3 rounded-xl border border-emerald-200 text-left text-xs space-y-1.5">
-              <div className="flex items-center justify-between">
-                <span className="text-slate-500 text-[11px]">Nội dung chuyển khoản (bắt buộc):</span>
-                <button
-                  onClick={() => {
-                    navigator.clipboard.writeText(transferMemo);
-                    setCopiedCode(true);
-                    setTimeout(() => setCopiedCode(false), 2000);
-                  }}
-                  className="font-mono font-bold text-emerald-700 flex items-center gap-1 hover:underline cursor-pointer"
-                >
-                  {transferMemo}
-                  <Copy className="w-3 h-3 text-emerald-600" />
-                  {copiedCode && <span className="text-[10px] text-emerald-600 font-normal">Đã sao chép!</span>}
-                </button>
-              </div>
-              <div className="flex items-center justify-between text-[11px]">
-                <span className="text-slate-500">Ngân hàng thụ hưởng:</span>
-                <span className="font-semibold text-slate-800">MB Bank (Quân Đội)</span>
-              </div>
-            </div>
-          </div>
-
-          <div className="flex gap-3">
-            <Link
-              to="/bookings"
-              className="flex-1 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition-all shadow-xs text-center cursor-pointer"
-            >
-              Xem Lịch Đặt Sân Của Tôi
-            </Link>
-            <Link
-              to="/"
-              className="px-4 py-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs transition-all border border-slate-200 text-center cursor-pointer"
-            >
-              Về Trang Chủ
-            </Link>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  if (successBookingId) return <PaymentTicket key={successBookingId} bookingId={successBookingId} />;
 
   return (
     <div className="max-w-[1440px] mx-auto px-8 py-8">
@@ -412,12 +308,12 @@ export const BookingCreatePage: React.FC = () => {
               <label className="mt-4 p-3 rounded-xl border border-emerald-400/30 bg-emerald-400/10 flex items-center gap-3 cursor-pointer">
                 <input type="radio" name="payment" checked={paymentMethod === 'BANK_TRANSFER'} onChange={() => setPaymentMethod('BANK_TRANSFER')} className="hidden" />
                 <span className="w-9 h-9 rounded-lg bg-emerald-400/15 text-emerald-300 flex items-center justify-center"><QrCode className="w-5 h-5" /></span>
-                <span><strong className="block text-xs">Thanh toán VietQR</strong><span className="text-[10px] text-slate-400">Bảo đảm giữ sân 100%</span></span><Check className="w-4 h-4 text-emerald-300 ml-auto" />
+                <span><strong className="block text-xs">Thanh toán VietQR</strong><span className="text-[10px] text-slate-400">Giữ chỗ tối đa {policy.holdMinutes} phút</span></span><Check className="w-4 h-4 text-emerald-300 ml-auto" />
               </label>
               <button type="submit" disabled={isSubmitting || !selectedSlot} className="mt-4 w-full px-5 py-3.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 disabled:bg-slate-700 disabled:text-slate-400 disabled:cursor-not-allowed text-slate-950 font-black text-xs transition-all flex items-center justify-center gap-2 cursor-pointer">
                 {isSubmitting ? 'Đang xử lý đặt sân...' : selectedSlot ? <>Xác nhận & thanh toán <ChevronRight className="w-4 h-4" /></> : 'Chọn khung giờ để tiếp tục'}
               </button>
-              <p className="text-[10px] text-slate-500 text-center mt-3 flex items-center justify-center gap-1"><ShieldCheck className="w-3 h-3" /> Khung giờ được khóa ngay sau khi xác nhận</p>
+              <p className="text-[10px] text-slate-500 text-center mt-3 flex items-center justify-center gap-1"><ShieldCheck className="w-3 h-3" /> Chưa thanh toán: chờ thanh toán • Quá hạn: tự hủy</p>
             </div>
           </div>
 

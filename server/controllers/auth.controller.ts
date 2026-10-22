@@ -7,6 +7,20 @@ import { IUser, UserRole } from '../types/index.js';
 import { NguoiDungModel } from '../models/mongoose.models.js';
 import { otpManager, sendOtpEmail } from '../services/email.service.js';
 
+function publicUser(user: IUser) {
+  const { password: _, payos, ...safeUser } = user;
+  return {
+    ...safeUser,
+    payos: payos ? {
+      connected: true,
+      accountNumber: payos.accountNumber,
+      accountName: payos.accountName,
+      bankBin: payos.bankBin,
+      connectedAt: payos.connectedAt
+    } : undefined
+  };
+}
+
 export const authController = {
   // POST /api/auth/register
   register: async (req: Request, res: Response): Promise<void> => {
@@ -64,7 +78,7 @@ export const authController = {
       const accessToken = generateAccessToken(newUser);
       const refreshToken = generateRefreshToken(newUser);
 
-      const { password: _, ...userSafe } = newUser;
+      const userSafe = publicUser(newUser);
       res.status(201).json({
         success: true,
         message: 'Đăng ký tài khoản thành công',
@@ -110,7 +124,7 @@ export const authController = {
       const accessToken = generateAccessToken(user);
       const refreshToken = generateRefreshToken(user);
 
-      const { password: _, ...userSafe } = user;
+      const userSafe = publicUser(user);
       res.json({
         success: true,
         message: 'Đăng nhập thành công',
@@ -140,7 +154,7 @@ export const authController = {
         return;
       }
 
-      const { password: _, ...userSafe } = user;
+      const userSafe = publicUser(user);
       res.json({
         success: true,
         data: userSafe
@@ -187,7 +201,7 @@ export const authController = {
 
     const accessToken = generateAccessToken(targetUser);
     const refreshToken = generateRefreshToken(targetUser);
-    const { password: _, ...userSafe } = targetUser;
+    const userSafe = publicUser(targetUser);
 
     res.json({
       success: true,
@@ -328,7 +342,7 @@ export const authController = {
 
       const accessToken = generateAccessToken(newUser);
       const refreshToken = generateRefreshToken(newUser);
-      const { password: _, ...userSafe } = newUser;
+      const userSafe = publicUser(newUser);
 
       res.status(201).json({
         success: true,

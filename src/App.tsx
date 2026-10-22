@@ -30,6 +30,7 @@ import { OwnerVenuesPage } from './pages/owner/OwnerVenuesPage.js';
 import { OwnerFieldsPage } from './pages/owner/OwnerFieldsPage.js';
 import { OwnerBookingsPage } from './pages/owner/OwnerBookingsPage.js';
 import { OwnerReviewsPage } from './pages/owner/OwnerReviewsPage.js';
+import { OwnerPaymentPage } from './pages/owner/OwnerPaymentPage.js';
 
 // Admin Portal Pages
 import { AdminDashboardPage } from './pages/admin/AdminDashboardPage.js';
@@ -153,6 +154,14 @@ export default function App() {
             element={
               <RoleRoute allowedRoles={['OWNER', 'ADMIN']}>
                 <OwnerReviewsPage />
+              </RoleRoute>
+            }
+          />
+          <Route
+            path="/owner/payment"
+            element={
+              <RoleRoute allowedRoles={['OWNER', 'ADMIN']}>
+                <OwnerPaymentPage />
               </RoleRoute>
             }
           />

@@ -7,6 +7,7 @@ import {
   CalendarDays,
   MessageSquareQuote,
   MessageSquare,
+  CreditCard,
   ArrowLeft
 } from 'lucide-react';
 
@@ -19,6 +20,7 @@ export const OwnerSidebar: React.FC = () => {
     { name: 'Quản lý Sân con & Giá', path: '/owner/fields', icon: Grid3X3 },
     { name: 'Lịch & Duyệt đặt sân', path: '/owner/bookings', icon: CalendarDays },
     { name: 'Đánh giá từ khách', path: '/owner/reviews', icon: MessageSquareQuote },
+    { name: 'Thanh toán & QR payOS', path: '/owner/payment', icon: CreditCard },
     { name: 'Phòng chat', path: '/chat', icon: MessageSquare }
   ];
 

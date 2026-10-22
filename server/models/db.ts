@@ -752,7 +752,8 @@ export const mappers = {
     vi_tri_so_truong: u.preferredPosition,
     trang_thai: u.isActive !== false,
     ten_doanh_nghiep: u.businessName,
-    ma_so_thue: u.businessTaxId
+    ma_so_thue: u.businessTaxId,
+    payos: u.payos
   }),
   mongoToUser: (doc: any): IUser => ({
     id: doc.ma_nguoi_dung,
@@ -775,6 +776,15 @@ export const mappers = {
     isActive: doc.trang_thai !== false,
     businessName: doc.ten_doanh_nghiep,
     businessTaxId: doc.ma_so_thue,
+    payos: doc.payos ? {
+      clientId: doc.payos.clientId,
+      apiKeyEncrypted: doc.payos.apiKeyEncrypted,
+      checksumKeyEncrypted: doc.payos.checksumKeyEncrypted,
+      accountNumber: doc.payos.accountNumber,
+      accountName: doc.payos.accountName,
+      bankBin: doc.payos.bankBin,
+      connectedAt: new Date(doc.payos.connectedAt).toISOString()
+    } : undefined,
     createdAt: doc.ngay_tao ? new Date(doc.ngay_tao).toISOString() : new Date().toISOString(),
     updatedAt: doc.ngay_cap_nhat ? new Date(doc.ngay_cap_nhat).toISOString() : new Date().toISOString()
   }),
@@ -849,6 +859,9 @@ export const mappers = {
   }),
 
   bookingToMongo: (b: IBooking) => ({
+    payment: b.payment,
+    refund: b.refund,
+    audit: b.audit,
     ma_don_dat: b.id,
     ma_khach_hang: b.userId,
     ten_khach_hang: b.userName || '',
@@ -872,6 +885,9 @@ export const mappers = {
     ly_do_huy: b.cancellationReason
   }),
   mongoToBooking: (doc: any): IBooking => ({
+    payment: doc.payment,
+    refund: doc.refund,
+    audit: doc.audit,
     id: doc.ma_don_dat,
     userId: doc.ma_khach_hang,
     userName: doc.ten_khach_hang,

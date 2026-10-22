@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { db } from '../models/db.js';
 import { AuthenticatedRequest } from '../middlewares/auth.middleware.js';
 import { IField, ITimeSlot, IFieldTimeSlot } from '../types/index.js';
+import { expirePendingBookings } from '../services/booking-payment.service.js';
 
 export const standardTimeSlots = [
   { startTime: '06:00', endTime: '07:30', durationHours: 1.5 },
@@ -69,6 +70,7 @@ export const fieldController = {
   // GET /api/fields/:id/availability?date=YYYY-MM-DD
   getFieldAvailability: async (req: Request, res: Response): Promise<void> => {
     try {
+      await expirePendingBookings();
       const { id } = req.params;
       const { date } = req.query;
 
@@ -90,7 +92,7 @@ export const fieldController = {
       const dateBookings = db.bookings.filter(b =>
         b.fieldId === id &&
         b.bookingDate === date &&
-        (b.status === 'CONFIRMED' || b.status === 'PENDING')
+        b.status !== 'CANCELLED'
       );
       const now = new Date();
 
@@ -105,7 +107,7 @@ export const fieldController = {
         }
 
         // Kiểm tra xem ca đá này đã trôi qua so với hiện tại chưa
-        const slotStartDateTime = new Date(`${date}T${slot.startTime}:00`);
+        const slotStartDateTime = new Date(`${date}T${slot.startTime}:00+07:00`);
         const isPastSlot = !isNaN(slotStartDateTime.getTime()) && slotStartDateTime <= now;
 
         // Check if any booking overlaps with this slot

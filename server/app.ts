@@ -12,6 +12,7 @@ import reviewRoutes from './routes/review.routes.js';
 import statsRoutes from './routes/stats.routes.js';
 import aiRoutes from './routes/ai.routes.js';
 import uploadRoutes from './routes/upload.routes.js';
+import paymentRoutes from './routes/payment.routes.js';
 import path from 'path';
 
 export function createApp(): Express {
@@ -27,6 +28,7 @@ export function createApp(): Express {
     if (error) { res.status(error.status === 413 ? 413 : 400).json({ code: 'INVALID_BODY', error: 'Dữ liệu chat không hợp lệ hoặc quá lớn.' }); return; }
     next();
   });
+  app.use('/api/payments', express.json({ limit: '32kb' }), paymentRoutes);
   app.use(express.json({ limit: '10mb' }));
   app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
