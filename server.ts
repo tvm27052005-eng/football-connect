@@ -13,7 +13,7 @@ async function startServer() {
   startPaymentWorker();
 
   const app = createApp();
-  const PORT = 3000;
+  const PORT = Number(process.env.PORT) || 3000;
   const server = http.createServer(app);
 
   // Initialize Socket.IO
