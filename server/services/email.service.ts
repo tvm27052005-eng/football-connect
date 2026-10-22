@@ -195,26 +195,7 @@ const getTransporter = async (): Promise<Transporter> => {
       console.log(`📧 [Nodemailer] Configured SMTP (${host}:${port}) for: ${user}`);
     }
   } else {
-    // Development fallback transporter
-    try {
-      const testAccount = await nodemailer.createTestAccount();
-      transporter = nodemailer.createTransport({
-        host: 'smtp.ethereal.email',
-        port: 587,
-        secure: false,
-        auth: {
-          user: testAccount.user,
-          pass: testAccount.pass
-        }
-      });
-      console.warn('⚠️ [Nodemailer] No MAIL_USER/MAIL_PASS found in .env, falling back to Ethereal test account.');
-    } catch {
-      transporter = nodemailer.createTransport({
-        streamTransport: true,
-        newline: 'unix',
-        buffer: true
-      });
-    }
+    throw new Error('Thiếu cấu hình MAIL_USER và MAIL_PASS để gửi email OTP.');
   }
 
   return transporter;

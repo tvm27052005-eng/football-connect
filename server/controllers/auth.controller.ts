@@ -259,12 +259,19 @@ export const authController = {
         businessTaxId
       });
 
-      await sendOtpEmail({
+      const sent = await sendOtpEmail({
         to: email,
         otp,
         purpose: 'REGISTER',
         userName: name
       });
+      if (!sent) {
+        res.status(503).json({
+          success: false,
+          message: 'Không thể gửi email xác thực lúc này. Vui lòng kiểm tra cấu hình SMTP hoặc thử lại sau.'
+        });
+        return;
+      }
 
       res.json({
         success: true,
@@ -417,12 +424,19 @@ export const authController = {
       const otp = otpManager.generateOtp();
       await otpManager.saveOtp(normalizedEmail, otp, 'FORGOT_PASSWORD');
 
-      await sendOtpEmail({
+      const sent = await sendOtpEmail({
         to: normalizedEmail,
         otp,
         purpose: 'FORGOT_PASSWORD',
         userName: user.name
       });
+      if (!sent) {
+        res.status(503).json({
+          success: false,
+          message: 'Không thể gửi email đặt lại mật khẩu lúc này. Vui lòng thử lại sau.'
+        });
+        return;
+      }
 
       console.log(`📨 [FORGOT PASSWORD OTP] Đã gửi mã xác thực cho: ${normalizedEmail}`);
 
