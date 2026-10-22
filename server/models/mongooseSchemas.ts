@@ -335,4 +335,31 @@ export const ReportSchema = new Schema({
   status: { type: String, enum: ['PENDING', 'RESOLVED', 'DISMISSED'], default: 'PENDING' },
   resolutionNote: { type: String }
 }, { timestamps: true });
+
+/* =========================================================================
+   11. OTP VERIFICATION SCHEMA
+   ========================================================================= */
+export interface IOtpDocument extends Document {
+  email: string;
+  otp: string;
+  purpose: 'REGISTER' | 'FORGOT_PASSWORD';
+  expiresAt: Date;
+  sentAt: Date;
+  attempts: number;
+  used: boolean;
+  registrationPayload?: Record<string, unknown>;
+}
+
+export const OtpSchema = new Schema<IOtpDocument>({
+  email: { type: String, required: true, lowercase: true, trim: true, index: true },
+  otp: { type: String, required: true },
+  purpose: { type: String, enum: ['REGISTER', 'FORGOT_PASSWORD'], required: true },
+  expiresAt: { type: Date, required: true, index: { expires: 0 } }, // TTL index
+  sentAt: { type: Date, required: true, default: Date.now },
+  attempts: { type: Number, default: 0 },
+  used: { type: Boolean, default: false },
+  registrationPayload: { type: Schema.Types.Mixed }
+}, { timestamps: true });
+
+OtpSchema.index({ email: 1, purpose: 1 });
 `;

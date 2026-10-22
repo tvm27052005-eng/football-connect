@@ -10,7 +10,6 @@ import {
   KeyRound,
   CheckCircle2,
   RotateCw,
-  Sparkles,
   Trophy,
   CalendarDays,
   Users,
@@ -43,9 +42,8 @@ export const LoginPage: React.FC = () => {
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-  const [forgotDemoOtp, setForgotDemoOtp] = useState('');
-  const [forgotOtpExpiresIn, setForgotOtpExpiresIn] = useState(300); // 5 mins
-  const [forgotResendCooldown, setForgotResendCooldown] = useState(0); // 60s
+  const [forgotOtpExpiresIn, setForgotOtpExpiresIn] = useState(60);
+  const [forgotResendCooldown, setForgotResendCooldown] = useState(0);
   const [isForgotLoading, setIsForgotLoading] = useState(false);
   const [forgotError, setForgotError] = useState('');
 
@@ -108,12 +106,9 @@ export const LoginPage: React.FC = () => {
 
     try {
       setIsForgotLoading(true);
-      const res = await api.post('/auth/forgot-password-otp', { email: forgotEmail.trim() });
-      if (res.data.demoOtp) {
-        setForgotDemoOtp(res.data.demoOtp);
-      }
+      await api.post('/auth/forgot-password-otp', { email: forgotEmail.trim() });
       setForgotStep('OTP');
-      setForgotOtpExpiresIn(300);
+      setForgotOtpExpiresIn(60);
       setForgotResendCooldown(60);
     } catch (err: unknown) {
       const msg =
@@ -132,11 +127,8 @@ export const LoginPage: React.FC = () => {
 
     try {
       setIsForgotLoading(true);
-      const res = await api.post('/auth/forgot-password-otp', { email: forgotEmail.trim() });
-      if (res.data.demoOtp) {
-        setForgotDemoOtp(res.data.demoOtp);
-      }
-      setForgotOtpExpiresIn(300);
+      await api.post('/auth/forgot-password-otp', { email: forgotEmail.trim() });
+      setForgotOtpExpiresIn(60);
       setForgotResendCooldown(60);
     } catch (err: unknown) {
       const msg =
@@ -151,6 +143,7 @@ export const LoginPage: React.FC = () => {
   // Step 2: Reset Password with OTP
   const handleResetPassword = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isForgotLoading) return;
     setForgotError('');
 
     if (forgotOtp.trim().length !== 6) {
@@ -169,7 +162,7 @@ export const LoginPage: React.FC = () => {
     }
 
     if (forgotOtpExpiresIn <= 0) {
-      setForgotError('Mã OTP đã hết hạn (quá 5 phút). Vui lòng gửi lại mã mới!');
+      setForgotError('Mã OTP đã hết hạn. Vui lòng gửi lại mã mới!');
       return;
     }
 
@@ -390,15 +383,10 @@ export const LoginPage: React.FC = () => {
               {isLoading ? (
                 <><RotateCw className="h-4 w-4 animate-spin" /> Đang xác thực...</>
               ) : (
-                <>Vào sân ngay <ArrowRight className="h-4 w-4" /></>
+                <>Đăng nhập <ArrowRight className="h-4 w-4" /></>
               )}
             </motion.button>
           </form>
-
-          <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-3 text-center text-[11px] leading-relaxed text-slate-500">
-            <ShieldCheck className="mr-1 inline h-3.5 w-3.5 text-emerald-600" />
-            Thông tin đăng nhập được gửi qua kết nối bảo mật.
-          </div>
 
           <div className="mt-5 border-t border-slate-200 pt-5 text-center text-sm text-slate-500">
             Chưa có tài khoản?{' '}
@@ -418,7 +406,7 @@ export const LoginPage: React.FC = () => {
             setForgotError('');
           }
         }}
-        title="Quên & Đặt Lại Mật Khẩu"
+        title="Quên mật khẩu"
       >
         <div className="space-y-4 text-xs">
           {forgotError && (
@@ -431,12 +419,8 @@ export const LoginPage: React.FC = () => {
           {forgotStep === 'EMAIL' ? (
             /* STEP 1: Enter email */
             <form onSubmit={handleSendForgotOtp} className="space-y-4">
-              <div className="text-slate-600 text-xs leading-relaxed">
-                Nhập địa chỉ email đã đăng ký trên hệ thống Football Connect. Chúng tôi sẽ gửi một mã OTP gồm 6 chữ số để xác thực bạn chính là chủ tài khoản.
-              </div>
-
               <div>
-                <label className="block text-slate-700 font-bold mb-1.5">Email tài khoản của bạn *</label>
+                <label className="block text-slate-700 font-bold mb-1.5">Email của bạn</label>
                 <div className="relative">
                   <Mail className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
                   <input
@@ -468,35 +452,14 @@ export const LoginPage: React.FC = () => {
               </div>
             </form>
           ) : (
-            /* STEP 2: Enter OTP + New Password */
+
             <form onSubmit={handleResetPassword} className="space-y-4">
-              <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-600">
-                Mã xác thực đã được gửi đến email: <strong className="text-slate-900">{forgotEmail}</strong>.
-              </div>
-
-              {/* Dev Quick Hint if present */}
-              {forgotDemoOtp && (
-                <div className="p-2.5 bg-emerald-50 border border-emerald-300 rounded-xl text-emerald-900 text-xs flex items-center justify-between">
-                  <span className="flex items-center gap-1">
-                    <Sparkles className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                    Mã OTP thử nghiệm nhanh: <strong className="font-mono text-sm tracking-widest text-emerald-800">{forgotDemoOtp}</strong>
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setForgotOtp(forgotDemoOtp)}
-                    className="px-2 py-0.5 bg-emerald-600 text-white font-bold rounded text-[10px] hover:bg-emerald-700 transition-colors cursor-pointer"
-                  >
-                    Điền
-                  </button>
-                </div>
-              )}
-
               {/* OTP Field */}
               <div>
                 <div className="flex items-center justify-between mb-1">
-                  <label className="text-xs font-bold text-slate-700">Mã xác thực OTP (6 chữ số) *</label>
+                  <label className="text-xs font-bold text-slate-700">Mã xác thực OTP (6 chữ số)</label>
                   <span className={`text-[11px] font-extrabold ${forgotOtpExpiresIn < 60 ? 'text-rose-600 animate-pulse' : 'text-emerald-700'}`}>
-                    ⏱️ Còn {formatTime(forgotOtpExpiresIn)}
+                    Còn {formatTime(forgotOtpExpiresIn)}
                   </span>
                 </div>
                 <div className="relative">
@@ -508,7 +471,7 @@ export const LoginPage: React.FC = () => {
                     required
                     value={forgotOtp}
                     onChange={(e) => setForgotOtp(e.target.value.replace(/\D/g, ''))}
-                    placeholder="123456"
+                    placeholder="XXXXXX"
                     className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-center text-base font-mono font-bold tracking-widest text-slate-900 focus:outline-none focus:bg-white focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
                   />
                 </div>
@@ -528,7 +491,7 @@ export const LoginPage: React.FC = () => {
 
               {/* New Password */}
               <div>
-                <label className="block text-slate-700 font-bold mb-1">Mật khẩu mới (Tối thiểu 6 ký tự) *</label>
+                <label className="block text-slate-700 font-bold mb-1">Mật khẩu mới (Tối thiểu 6 ký tự)</label>
                 <div className="relative">
                   <Lock className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
                   <input
@@ -551,7 +514,7 @@ export const LoginPage: React.FC = () => {
 
               {/* Confirm Password */}
               <div>
-                <label className="block text-slate-700 font-bold mb-1">Nhập lại mật khẩu mới *</label>
+                <label className="block text-slate-700 font-bold mb-1">Nhập lại mật khẩu mới</label>
                 <div className="relative">
                   <Lock className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
                   <input
@@ -574,18 +537,11 @@ export const LoginPage: React.FC = () => {
 
               <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
                 <button
-                  type="button"
-                  onClick={() => setForgotStep('EMAIL')}
-                  className="px-4 py-2 rounded-xl text-slate-600 hover:bg-slate-100 font-semibold cursor-pointer"
-                >
-                  Đổi email
-                </button>
-                <button
                   type="submit"
                   disabled={isForgotLoading || forgotOtp.length !== 6 || forgotOtpExpiresIn <= 0}
                   className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-bold transition-all shadow-xs flex items-center gap-1.5 cursor-pointer"
                 >
-                  {isForgotLoading ? 'Đang cập nhật...' : 'Xác Nhận & Đổi Mật Khẩu'}
+                  {isForgotLoading ? 'Đang cập nhật...' : 'Xác Nhận'}
                 </button>
               </div>
             </form>
