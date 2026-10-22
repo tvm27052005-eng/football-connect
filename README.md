@@ -15,6 +15,8 @@ View your app in AI Studio: https://ai.studio/apps/b9a443c2-78d3-4631-94b0-cbd3b
 
 1. Install dependencies:
    `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
+2. Copy `.env.example` to `.env` and configure MongoDB and server settings. The assistant works in knowledge mode without an AI key.
 3. Run the app:
    `npm run dev`
+
+See [ASSISTANT.md](ASSISTANT.md) for chatbot architecture, AI configuration, privacy, testing and production deployment.

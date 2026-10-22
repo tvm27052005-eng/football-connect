@@ -9,7 +9,8 @@
     "start": "node dist/server.cjs",
     "preview": "vite preview",
     "seed": "tsx server/scripts/seed.ts",
-    "lint": "tsc --noEmit"
+    "lint": "tsc --noEmit",
+    "test:assistant": "tsx --test server/tests/assistant.test.ts"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",

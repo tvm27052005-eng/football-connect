@@ -4,6 +4,7 @@ import { hashPassword, comparePassword } from '../utils/bcrypt.js';
 import { generateAccessToken, generateRefreshToken } from '../utils/jwt.js';
 import { AuthenticatedRequest } from '../middlewares/auth.middleware.js';
 import { IUser, UserRole } from '../types/index.js';
+import { NguoiDungModel } from '../models/mongoose.models.js';
 import { otpManager, sendOtpEmail } from '../services/email.service.js';
 
 export const authController = {
@@ -221,7 +222,7 @@ export const authController = {
       }
 
       // Check anti-spam cooldown (60 seconds)
-      const cooldownCheck = otpManager.isInCooldown(email, 'REGISTER');
+      const cooldownCheck = await otpManager.isInCooldown(email, 'REGISTER');
       if (cooldownCheck.inCooldown) {
         res.status(429).json({
           success: false,
@@ -232,7 +233,7 @@ export const authController = {
       }
 
       const otp = otpManager.generateOtp();
-      otpManager.saveOtp(email, otp, 'REGISTER', {
+      await otpManager.saveOtp(email, otp, 'REGISTER', {
         name,
         email,
         password,
@@ -253,8 +254,7 @@ export const authController = {
 
       res.json({
         success: true,
-        message: 'Mã xác thực OTP đã được gửi về email của bạn. Mã có hiệu lực trong vòng 5 phút.',
-        demoOtp: otp // Giúp kiểm tra thuận tiện trong môi trường dev
+        message: 'Mã xác thực OTP đã được gửi về email của bạn. Mã có hiệu lực trong vòng 1 phút.'
       });
     } catch (error) {
       console.error('Send register OTP error:', error);
@@ -272,7 +272,7 @@ export const authController = {
         return;
       }
 
-      const verification = otpManager.verifyOtp(email, otp, 'REGISTER');
+      const verification = await otpManager.verifyOtp(email, otp, 'REGISTER');
       if (!verification.valid) {
         res.status(400).json({ success: false, message: verification.message });
         return;
@@ -355,7 +355,30 @@ export const authController = {
         return;
       }
 
-      const user = db.users.find(u => u.email.toLowerCase() === email.toLowerCase().trim());
+      const normalizedEmail = email.toLowerCase().trim();
+      let user = db.users.find(u => u.email.toLowerCase() === normalizedEmail);
+
+      // Fallback: tìm trong MongoDB nếu chưa nạp vào memory
+      if (!user) {
+        const mongoUser = await (NguoiDungModel as any).findOne({ email: normalizedEmail }).lean();
+        if (mongoUser) {
+          user = {
+            id: mongoUser.ma_nguoi_dung,
+            name: mongoUser.ho_ten,
+            email: mongoUser.email,
+            password: mongoUser.mat_khau,
+            phone: mongoUser.so_dien_thoai || '',
+            role: mongoUser.vai_tro as any,
+            avatar: mongoUser.anh_dai_dien,
+            bio: mongoUser.gioi_thieu,
+            isActive: mongoUser.trang_thai,
+            createdAt: (mongoUser as any).ngay_tao ? new Date((mongoUser as any).ngay_tao).toISOString() : new Date().toISOString(),
+            updatedAt: (mongoUser as any).ngay_cap_nhat ? new Date((mongoUser as any).ngay_cap_nhat).toISOString() : new Date().toISOString()
+          };
+          db.users.push(user);
+        }
+      }
+
       if (!user) {
         res.status(404).json({ success: false, message: 'Không tìm thấy tài khoản nào liên kết với email này' });
         return;
@@ -367,7 +390,7 @@ export const authController = {
       }
 
       // Check anti-spam cooldown (60 seconds)
-      const cooldownCheck = otpManager.isInCooldown(email, 'FORGOT_PASSWORD');
+      const cooldownCheck = await otpManager.isInCooldown(normalizedEmail, 'FORGOT_PASSWORD');
       if (cooldownCheck.inCooldown) {
         res.status(429).json({
           success: false,
@@ -378,19 +401,20 @@ export const authController = {
       }
 
       const otp = otpManager.generateOtp();
-      otpManager.saveOtp(email, otp, 'FORGOT_PASSWORD');
+      await otpManager.saveOtp(normalizedEmail, otp, 'FORGOT_PASSWORD');
 
       await sendOtpEmail({
-        to: email,
+        to: normalizedEmail,
         otp,
         purpose: 'FORGOT_PASSWORD',
         userName: user.name
       });
 
+      console.log(`📨 [FORGOT PASSWORD OTP] Đã gửi mã xác thực cho: ${normalizedEmail}`);
+
       res.json({
         success: true,
-        message: 'Mã xác thực đổi mật khẩu đã được gửi đến email của bạn. Mã có hiệu lực trong 5 phút.',
-        demoOtp: otp // Giúp kiểm tra thuận tiện trong môi trường dev
+        message: 'Mã xác thực đổi mật khẩu đã được gửi đến email của bạn. Mã có hiệu lực trong 1 phút.'
       });
     } catch (error) {
       console.error('Send forgot password OTP error:', error);
@@ -413,13 +437,36 @@ export const authController = {
         return;
       }
 
-      const user = db.users.find(u => u.email.toLowerCase() === email.toLowerCase().trim());
+      const normalizedEmail = email.toLowerCase().trim();
+      let user = db.users.find(u => u.email.toLowerCase() === normalizedEmail);
+
+      // Fallback: tìm trong MongoDB nếu chưa nạp vào memory
       if (!user) {
-        res.status(404).json({ success: false, message: 'Không tìm thấy tài khoản' });
+        const mongoUser = await (NguoiDungModel as any).findOne({ email: normalizedEmail }).lean();
+        if (mongoUser) {
+          user = {
+            id: mongoUser.ma_nguoi_dung,
+            name: mongoUser.ho_ten,
+            email: mongoUser.email,
+            password: mongoUser.mat_khau,
+            phone: mongoUser.so_dien_thoai || '',
+            role: mongoUser.vai_tro as any,
+            avatar: mongoUser.anh_dai_dien,
+            bio: mongoUser.gioi_thieu,
+            isActive: mongoUser.trang_thai,
+            createdAt: (mongoUser as any).ngay_tao ? new Date((mongoUser as any).ngay_tao).toISOString() : new Date().toISOString(),
+            updatedAt: (mongoUser as any).ngay_cap_nhat ? new Date((mongoUser as any).ngay_cap_nhat).toISOString() : new Date().toISOString()
+          };
+          db.users.push(user);
+        }
+      }
+
+      if (!user) {
+        res.status(404).json({ success: false, message: 'Không tìm thấy tài khoản với email này' });
         return;
       }
 
-      const verification = otpManager.verifyOtp(email, otp, 'FORGOT_PASSWORD');
+      const verification = await otpManager.verifyOtp(normalizedEmail, otp, 'FORGOT_PASSWORD');
       if (!verification.valid) {
         res.status(400).json({ success: false, message: verification.message });
         return;
@@ -429,6 +476,12 @@ export const authController = {
       user.password = hashedPassword;
       user.updatedAt = new Date().toISOString();
       await db.syncUser(user);
+
+      // Cập nhật trực tiếp vào MongoDB để đảm bảo 100% mật khẩu được lưu bền vững
+      await (NguoiDungModel as any).updateOne(
+        { email: normalizedEmail },
+        { $set: { mat_khau: hashedPassword, ngay_cap_nhat: new Date() } }
+      );
 
       // Notification
       await db.syncNotification({
@@ -440,6 +493,8 @@ export const authController = {
         isRead: false,
         createdAt: new Date().toISOString()
       });
+
+      console.log(`✅ [PASSWORD RESET SUCCESS] Đổi mật khẩu thành công cho tài khoản: ${normalizedEmail}`);
 
       res.json({
         success: true,

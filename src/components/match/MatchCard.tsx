@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Calendar, Clock, MapPin, Users, ArrowRight, Zap, Trophy, Shield } from 'lucide-react';
+import { Calendar, Clock, MapPin, Users, ArrowRight, WalletCards, Activity } from 'lucide-react';
 import { IMatch } from '../../types/index.js';
 import { Badge } from '../common/Badge.js';
 
@@ -30,14 +30,19 @@ export const MatchCard: React.FC<MatchCardProps> = ({ match }) => {
 
 
   const progressPercent = Math.min(100, Math.round(((match.currentPlayers || 1) / (match.maxPlayers || 14)) * 100));
+  const remainingPlayers = Math.max(0, (match.maxPlayers || 14) - (match.currentPlayers || 1));
+  const formattedDate = new Date(`${match.matchDate}T00:00:00`).toLocaleDateString('vi-VN', {
+    weekday: 'short',
+    day: '2-digit',
+    month: '2-digit'
+  });
 
   return (
-    <div className="group bg-white border border-slate-200/90 hover:border-emerald-500/60 rounded-3xl p-5 shadow-xs hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between">
+    <article className="group bg-white border border-slate-200 hover:border-emerald-400 rounded-2xl p-5 shadow-sm hover:shadow-lg transition-all duration-200 flex flex-col justify-between min-h-[310px]">
       <div>
-        {/* Header Badges */}
-        <div className="flex items-center justify-between gap-2 mb-3.5">
+        <div className="flex items-center justify-between gap-3 mb-4">
           <div className="flex items-center gap-2">
-            <span className="px-2.5 py-1 rounded-lg text-[11px] font-black bg-slate-900 text-white shadow-xs">
+            <span className="px-2.5 py-1.5 rounded-lg text-[11px] font-black bg-slate-900 text-white">
               {match.fieldType === '5_vs_5' ? 'Sân 5' : match.fieldType === '7_vs_7' ? 'Sân 7' : 'Sân 11'}
             </span>
             <Badge variant={skillColor.variant} size="sm" className="font-bold">
@@ -66,44 +71,52 @@ export const MatchCard: React.FC<MatchCardProps> = ({ match }) => {
           </span>
         </div>
 
-        {/* Title */}
-        <h3 className="text-base sm:text-lg font-black text-slate-900 line-clamp-1 group-hover:text-emerald-700 transition-colors">
-          {match.teamAName}
-        </h3>
+        <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-emerald-700 mb-1.5">{match.title}</p>
+        <h3 className="text-xl font-black text-slate-950 line-clamp-1 group-hover:text-emerald-700 transition-colors">{match.teamAName}</h3>
+        <p className="text-xs text-slate-500 mt-1 line-clamp-1">Đang tìm một đối thủ phù hợp để giao lưu</p>
 
-        {/* Location & Time Box */}
-        <div className="mt-3 p-3 bg-slate-50/80 rounded-2xl border border-slate-200/60 space-y-2 text-xs">
-          <div className="flex items-center gap-2 text-slate-700 font-semibold truncate">
-            <MapPin className="w-4 h-4 text-emerald-600 shrink-0" />
-            <span className="truncate">{match.venueName}</span>
+        <div className="mt-4 grid grid-cols-[1.1fr_0.9fr] gap-2 text-xs">
+          <div className="col-span-2 flex items-start gap-2.5 p-3 bg-slate-50 rounded-xl border border-slate-100">
+            <MapPin className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+            <div className="min-w-0">
+              <div className="font-bold text-slate-800 truncate">{match.venueName}</div>
+              <div className="text-[11px] text-slate-500 truncate mt-0.5">{match.venueAddress || 'Xem chi tiết địa điểm'}</div>
+            </div>
           </div>
-          <div className="flex items-center justify-between text-slate-500 font-medium">
-            <div className="flex items-center gap-1.5">
-              <Calendar className="w-3.5 h-3.5 text-slate-400" />
-              <span>{new Date(match.matchDate).toLocaleDateString('vi-VN')}</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <Clock className="w-3.5 h-3.5 text-slate-400" />
-              <span className="font-bold text-slate-700">{match.startTime} - {match.endTime}</span>
-            </div>
+          <div className="flex items-center gap-2 p-3 bg-slate-50 rounded-xl border border-slate-100">
+            <Calendar className="w-4 h-4 text-slate-400" />
+            <span className="font-bold text-slate-700 capitalize">{formattedDate}</span>
+          </div>
+          <div className="flex items-center gap-2 p-3 bg-slate-50 rounded-xl border border-slate-100">
+            <Clock className="w-4 h-4 text-slate-400" />
+            <span className="font-bold text-slate-700">{match.startTime}–{match.endTime}</span>
+          </div>
+        </div>
+
+        <div className="mt-4">
+          <div className="flex items-center justify-between text-[11px] mb-1.5">
+            <span className="font-bold text-slate-600 flex items-center gap-1.5"><Users className="w-3.5 h-3.5" /> Quân số</span>
+            <span className="font-bold text-slate-800">Còn {remainingPlayers} vị trí</span>
+          </div>
+          <div className="h-2 rounded-full bg-slate-100 overflow-hidden">
+            <div className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-teal-500" style={{ width: `${progressPercent}%` }} />
           </div>
         </div>
       </div>
 
-      {/* Footer Info & Action */}
-      <div className="pt-4 mt-4 border-t border-slate-100 flex items-center justify-between">
-        <div>
-          <span className="text-[10px] text-slate-400 block font-bold uppercase tracking-wider">Tiền sân</span>
-          <span className="text-xs font-extrabold text-emerald-700">{costShareText}</span>
+      <div className="pt-4 mt-4 border-t border-slate-100 flex items-center justify-between gap-4">
+        <div className="min-w-0">
+          <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider flex items-center gap-1"><WalletCards className="w-3 h-3" /> Chia tiền sân</span>
+          <span className="text-xs font-extrabold text-slate-800 truncate block mt-1">{costShareText}</span>
         </div>
 
         <Link
           to={`/matches/${match.id}`}
-          className="px-4 py-2 rounded-xl text-xs font-black bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white transition-all shadow-sm shadow-emerald-600/20 flex items-center gap-1 active:scale-95 cursor-pointer"
+          className="px-4 py-2.5 rounded-xl text-xs font-black bg-emerald-600 hover:bg-emerald-700 text-white transition-all shadow-sm flex items-center gap-1.5 active:scale-95 cursor-pointer shrink-0"
         >
-          {match.status === 'OPEN' ? 'Bắt Kèo Ngay' : 'Xem Chi Tiết'} <ArrowRight className="w-3.5 h-3.5" />
+          {match.status === 'OPEN' ? <><Activity className="w-3.5 h-3.5" /> Bắt kèo</> : 'Xem chi tiết'} <ArrowRight className="w-3.5 h-3.5" />
         </Link>
       </div>
-    </div>
+    </article>
   );
 };

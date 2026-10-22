@@ -490,8 +490,38 @@ const BaoCaoSchema = new Schema<IBaoCao>({
   timestamps: { createdAt: 'ngay_tao', updatedAt: 'ngay_cap_nhat' }
 });
 
-// Export Compiled Mongoose Models (Tiếng Việt Không Dấu)
-export const NguoiDungModel = mongoose.models.nguoi_dung || model<INguoiDung>('nguoi_dung', NguoiDungSchema);
+/* =========================================================================
+   11. MA_XAC_THUC MODEL (OTP Verification Code)
+   ========================================================================= */
+export interface IMaXacThuc {
+  email: string;
+  ma_otp: string;
+  muc_dich: 'DANG_KY' | 'QUEN_MAT_KHAU';
+  het_han_luc: Date;         // TTL - MongoDB tự xóa sau khi hết hạn
+  gui_luc: Date;             // Thời điểm gửi (dùng để cooldown 60s)
+  so_lan_thu: number;        // Số lần nhập sai
+  da_su_dung: boolean;       // Đánh dấu đã dùng
+  du_lieu_dang_ky?: Record<string, unknown>; // Payload đăng ký (chỉ cho DANG_KY)
+}
+
+const MaXacThucSchema = new Schema<IMaXacThuc>({
+  email: { type: String, required: true, lowercase: true, trim: true, index: true },
+  ma_otp: { type: String, required: true },
+  muc_dich: { type: String, enum: ['DANG_KY', 'QUEN_MAT_KHAU'], required: true },
+  het_han_luc: { type: Date, required: true, index: { expires: 0 } }, // TTL index: MongoDB tự xóa document khi hết hạn
+  gui_luc: { type: Date, required: true, default: Date.now },
+  so_lan_thu: { type: Number, default: 0 },
+  da_su_dung: { type: Boolean, default: false },
+  du_lieu_dang_ky: { type: Schema.Types.Mixed }
+}, {
+  collection: 'ma_xac_thuc',
+  timestamps: { createdAt: 'ngay_tao', updatedAt: 'ngay_cap_nhat' }
+});
+
+// Compound index: mỗi email + mục đích chỉ có 1 OTP active
+MaXacThucSchema.index({ email: 1, muc_dich: 1 });
+
+export const NguoiDungModel: mongoose.Model<INguoiDung> = (mongoose.models.nguoi_dung as mongoose.Model<INguoiDung>) || model<INguoiDung>('nguoi_dung', NguoiDungSchema);
 export const CumSanBongModel = mongoose.models.cum_san_bong || model<ICumSanBong>('cum_san_bong', CumSanBongSchema);
 export const SanChiTietModel = mongoose.models.san_chi_tiet || model<ISanChiTiet>('san_chi_tiet', SanChiTietSchema);
 export const DonDatSanModel = mongoose.models.don_dat_san || model<IDonDatSan>('don_dat_san', DonDatSanSchema);
@@ -503,6 +533,7 @@ export const HoiThoaiModel = mongoose.models.hoi_thoai || model<IHoiThoai>('hoi_
 export const TinNhanModel = mongoose.models.tin_nhan || model<ITinNhan>('tin_nhan', TinNhanSchema);
 export const ThongBaoModel = mongoose.models.thong_bao || model<IThongBao>('thong_bao', ThongBaoSchema);
 export const BaoCaoModel = mongoose.models.bao_cao || model<IBaoCao>('bao_cao', BaoCaoSchema);
+export const MaXacThucModel: mongoose.Model<IMaXacThuc> = (mongoose.models.ma_xac_thuc as mongoose.Model<IMaXacThuc>) || model<IMaXacThuc>('ma_xac_thuc', MaXacThucSchema);
 
 // Aliases for compatibility
 export const UserModel = NguoiDungModel;

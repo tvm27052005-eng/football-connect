@@ -153,6 +153,7 @@ export const VenueDetailPage: React.FC = () => {
             <img
               src={selectedImage || 'https://images.unsplash.com/photo-1529900748604-07564a03e7a6?w=1000'}
               alt={venue.name}
+              onError={(event) => { event.currentTarget.src = '/images/turf-pitch.png'; }}
               className="w-full h-full object-cover"
             />
             <div className="absolute top-4 left-4 flex gap-2">
@@ -174,7 +175,7 @@ export const VenueDetailPage: React.FC = () => {
                   : 'border-slate-200 opacity-70 hover:opacity-100'
                   }`}
               >
-                <img src={img} alt="thumb" className="w-full h-full object-cover" />
+                <img src={img} alt={`Ảnh ${venue.name} ${idx + 1}`} onError={(event) => { event.currentTarget.src = '/images/turf-pitch.png'; }} className="w-full h-full object-cover" />
               </button>
             ))}
           </div>

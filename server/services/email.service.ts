@@ -1,4 +1,6 @@
+import 'dotenv/config';
 import nodemailer, { Transporter } from 'nodemailer';
+import { MaXacThucModel } from '../models/mongoose.models.js';
 
 interface SendOtpOptions {
   to: string;
@@ -7,103 +9,159 @@ interface SendOtpOptions {
   userName?: string;
 }
 
-// In-memory OTP storage
-export interface IOtpData {
-  email: string;
-  otp: string;
-  purpose: 'REGISTER' | 'FORGOT_PASSWORD';
-  expiresAt: number; // 5 minutes
-  lastSentAt: number; // for 60s cooldown
-  attempts: number;
-  used: boolean;
-  registrationPayload?: Record<string, unknown>;
-}
 
-// Map key: `${email.toLowerCase()}_${purpose}`
-const otpStore = new Map<string, IOtpData>();
+type OtpPurpose = 'REGISTER' | 'FORGOT_PASSWORD';
+type DbMucDich = 'DANG_KY' | 'QUEN_MAT_KHAU';
+
+const purposeToMucDich = (purpose: OtpPurpose): DbMucDich => {
+  return purpose === 'REGISTER' ? 'DANG_KY' : 'QUEN_MAT_KHAU';
+};
+
+
+
+const OTP_EXPIRY_MS = 60 * 1000;      
+const OTP_COOLDOWN_MS = 60 * 1000;     
+const OTP_MAX_ATTEMPTS = 5;           
 
 export const otpManager = {
-  // Check if user is in cooldown (60 seconds)
-  isInCooldown: (email: string, purpose: 'REGISTER' | 'FORGOT_PASSWORD'): { inCooldown: boolean; remainingSeconds: number } => {
-    const key = `${email.toLowerCase().trim()}_${purpose}`;
-    const existing = otpStore.get(key);
+
+  // Kiểm tra gửi OTP
+  isInCooldown: async (
+    email: string,
+    purpose: OtpPurpose
+  ): Promise<{ inCooldown: boolean; remainingSeconds: number }> => {
+    const mucDich = purposeToMucDich(purpose);
+    const existing = await MaXacThucModel.findOne({
+      email: email.toLowerCase().trim(),
+      muc_dich: mucDich
+    }).sort({ gui_luc: -1 }).lean();
+
     if (!existing) return { inCooldown: false, remainingSeconds: 0 };
 
-    const elapsed = Date.now() - existing.lastSentAt;
-    const cooldownMs = 60 * 1000; // 60s
-    if (elapsed < cooldownMs) {
-      const remainingSeconds = Math.ceil((cooldownMs - elapsed) / 1000);
+    const elapsed = Date.now() - new Date(existing.gui_luc).getTime();
+    if (elapsed < OTP_COOLDOWN_MS) {
+      const remainingSeconds = Math.ceil((OTP_COOLDOWN_MS - elapsed) / 1000);
       return { inCooldown: true, remainingSeconds };
     }
+
     return { inCooldown: false, remainingSeconds: 0 };
   },
 
-  // Generate 6-digit random OTP
   generateOtp: (): string => {
     return Math.floor(100000 + Math.random() * 900000).toString();
   },
 
-  // Save or update OTP
-  saveOtp: (
+  saveOtp: async (
     email: string,
     otp: string,
-    purpose: 'REGISTER' | 'FORGOT_PASSWORD',
+    purpose: OtpPurpose,
     registrationPayload?: Record<string, unknown>
-  ): IOtpData => {
-    const key = `${email.toLowerCase().trim()}_${purpose}`;
-    const otpData: IOtpData = {
-      email: email.toLowerCase().trim(),
-      otp,
-      purpose,
-      expiresAt: Date.now() + 5 * 60 * 1000, // 5 minutes
-      lastSentAt: Date.now(),
-      attempts: 0,
-      used: false,
-      registrationPayload
-    };
-    otpStore.set(key, otpData);
-    return otpData;
+  ): Promise<void> => {
+    const mucDich = purposeToMucDich(purpose);
+    const normalizedEmail = email.toLowerCase().trim();
+
+    await MaXacThucModel.deleteMany({
+      email: normalizedEmail,
+      muc_dich: mucDich
+    });
+
+    // Tạo OTP mới: het_han_luc cho MongoDB TTL index là 10 phút để tránh bị MongoDB xóa sớm trước khi check
+    const doc = await MaXacThucModel.create({
+      email: normalizedEmail,
+      ma_otp: otp,
+      muc_dich: mucDich,
+      het_han_luc: new Date(Date.now() + 10 * 60 * 1000), // 10 phút MongoDB mới tự động xóa
+      gui_luc: new Date(),
+      so_lan_thu: 0,
+      da_su_dung: false,
+      du_lieu_dang_ky: registrationPayload || undefined
+    });
+
+    console.log(`💾 [SAVE OTP SUCCESS] Đã lưu OTP [${otp}] vào DB cho email: ${normalizedEmail} (mục đích: ${mucDich}, ID: ${doc._id})`);
   },
 
-  // Verify OTP
-  verifyOtp: (
+  // Xác thực OTP
+  verifyOtp: async (
     email: string,
     inputOtp: string,
-    purpose: 'REGISTER' | 'FORGOT_PASSWORD'
-  ): { valid: boolean; message: string; registrationPayload?: Record<string, unknown> } => {
-    const key = `${email.toLowerCase().trim()}_${purpose}`;
-    const data = otpStore.get(key);
+    purpose: OtpPurpose
+  ): Promise<{ valid: boolean; message: string; registrationPayload?: Record<string, unknown> }> => {
+    const mucDich = purposeToMucDich(purpose);
+    const normalizedEmail = email.toLowerCase().trim();
+    const cleanInputOtp = String(inputOtp || '').trim();
 
-    if (!data) {
-      return { valid: false, message: 'Mã OTP không tồn tại hoặc chưa được yêu cầu. Vui lòng bấm gửi lại mã.' };
+    // Luôn sắp xếp gui_luc: -1 để lấy mã OTP mới nhất vừa gửi
+    const otpDoc = await MaXacThucModel.findOne({
+      email: normalizedEmail,
+      muc_dich: mucDich
+    }).sort({ gui_luc: -1 });
+
+    // Không tìm thấy OTP
+    if (!otpDoc) {
+      console.warn(`⚠️ [VERIFY OTP] Không tìm thấy OTP trong DB cho email: ${normalizedEmail}, mục đích: ${mucDich}`);
+      return {
+        valid: false,
+        message: 'Mã OTP không tồn tại hoặc bạn chưa bấm gửi mã. Vui lòng bấm "Gửi lại mã OTP"!'
+      };
     }
 
-    if (data.used) {
-      return { valid: false, message: 'Mã OTP này đã được sử dụng. Mỗi mã chỉ được dùng 1 lần duy nhất.' };
+    // Đã sử dụng rồi
+    if (otpDoc.da_su_dung) {
+      return {
+        valid: false,
+        message: 'Mã OTP này đã được sử dụng. Mỗi mã chỉ dùng được 1 lần.'
+      };
     }
 
-    if (Date.now() > data.expiresAt) {
-      otpStore.delete(key);
-      return { valid: false, message: 'Mã OTP đã hết hạn (quá 5 phút). Vui lòng yêu cầu mã mới.' };
+    // Kiểm tra thời gian hết hạn (1 phút = 60s + 30s buffer cho độ trễ mạng/mở mail)
+    const elapsedMs = Date.now() - new Date(otpDoc.gui_luc).getTime();
+    const maxAllowedMs = OTP_EXPIRY_MS + 30000; // 60s + 30s buffer = 90s
+    if (elapsedMs > maxAllowedMs) {
+      console.warn(`⚠️ [VERIFY OTP] Mã OTP của ${normalizedEmail} đã hết hạn (đã gửi ${Math.round(elapsedMs / 1000)}s trước, tối đa cho phép ${Math.round(maxAllowedMs / 1000)}s).`);
+      await MaXacThucModel.deleteOne({ _id: otpDoc._id });
+      return {
+        valid: false,
+        message: 'Mã OTP đã hết hạn (quá 1 phút). Vui lòng bấm gửi lại mã mới!'
+      };
     }
 
-    if (data.attempts >= 5) {
-      otpStore.delete(key);
-      return { valid: false, message: 'Bạn đã nhập sai mã OTP quá 5 lần. Mã này đã bị hủy vì lý do bảo mật, vui lòng yêu cầu mã mới.' };
+    // Quá số lần thử
+    if (otpDoc.so_lan_thu >= OTP_MAX_ATTEMPTS) {
+      await MaXacThucModel.deleteOne({ _id: otpDoc._id });
+      return {
+        valid: false,
+        message: 'Bạn đã nhập sai mã OTP quá 5 lần. Mã này đã bị hủy, vui lòng yêu cầu mã mới.'
+      };
     }
 
-    if (data.otp !== inputOtp.trim()) {
-      data.attempts += 1;
-      const remaining = 5 - data.attempts;
-      return { valid: false, message: `Mã OTP không chính xác. Bạn còn ${remaining} lần thử.` };
+    const expectedOtp = String(otpDoc.ma_otp || '').trim();
+    console.log(`🔍 [VERIFY OTP] Email: ${normalizedEmail} | Nhập: "${cleanInputOtp}" | Trong DB: "${expectedOtp}"`);
+
+    // Sai mã OTP
+    if (cleanInputOtp !== expectedOtp) {
+      otpDoc.so_lan_thu += 1;
+      await otpDoc.save();
+      const remaining = OTP_MAX_ATTEMPTS - otpDoc.so_lan_thu;
+      return {
+        valid: false,
+        message: `Mã OTP không chính xác. Bạn còn ${remaining} lần thử.`
+      };
     }
 
-    // Mark as used & remove
-    data.used = true;
-    const payload = data.registrationPayload;
-    otpStore.delete(key);
+    // Xác thực thành công — xóa sạch OTP mục đích này trong DB
+    const payload = otpDoc.du_lieu_dang_ky;
+    await MaXacThucModel.deleteMany({
+      email: normalizedEmail,
+      muc_dich: mucDich
+    });
 
-    return { valid: true, message: 'Xác thực OTP thành công!', registrationPayload: payload };
+    console.log(`✅ [VERIFY OTP SUCCESS] Xác thực OTP thành công cho: ${normalizedEmail}`);
+
+    return {
+      valid: true,
+      message: 'Xác thực OTP thành công!',
+      registrationPayload: payload as Record<string, unknown> | undefined
+    };
   }
 };
 
@@ -113,20 +171,31 @@ let transporter: Transporter | null = null;
 const getTransporter = async (): Promise<Transporter> => {
   if (transporter) return transporter;
 
-  const host = process.env.SMTP_HOST;
-  const port = Number(process.env.SMTP_PORT) || 587;
-  const user = process.env.SMTP_USER;
-  const pass = process.env.SMTP_PASS;
+  const host = (process.env.MAIL_HOST || process.env.SMTP_HOST || '').trim();
+  const port = Number(process.env.MAIL_PORT || process.env.SMTP_PORT) || 587;
+  const user = (process.env.MAIL_USER || process.env.SMTP_USER || '').trim();
+  const rawPass = (process.env.MAIL_PASS || process.env.SMTP_PASS || '').trim();
+  // Strip whitespace if present (Gmail app passwords usually have spaces like "lwpa pkma myww ylli")
+  const pass = rawPass.replace(/\s+/g, '');
 
-  if (host && user && pass) {
-    transporter = nodemailer.createTransport({
-      host,
-      port,
-      secure: port === 465,
-      auth: { user, pass }
-    });
+  if (user && pass) {
+    if (host.includes('gmail.com') || user.endsWith('@gmail.com') || host === '') {
+      transporter = nodemailer.createTransport({
+        service: 'gmail',
+        auth: { user, pass }
+      });
+      console.log(`📧 [Nodemailer] Configured Gmail service for: ${user}`);
+    } else {
+      transporter = nodemailer.createTransport({
+        host,
+        port,
+        secure: port === 465,
+        auth: { user, pass }
+      });
+      console.log(`📧 [Nodemailer] Configured SMTP (${host}:${port}) for: ${user}`);
+    }
   } else {
-    // Development fallback transporter (create ethereal or mock)
+    // Development fallback transporter
     try {
       const testAccount = await nodemailer.createTestAccount();
       transporter = nodemailer.createTransport({
@@ -138,8 +207,8 @@ const getTransporter = async (): Promise<Transporter> => {
           pass: testAccount.pass
         }
       });
+      console.warn('⚠️ [Nodemailer] No MAIL_USER/MAIL_PASS found in .env, falling back to Ethereal test account.');
     } catch {
-      // Mock transport
       transporter = nodemailer.createTransport({
         streamTransport: true,
         newline: 'unix',
@@ -150,6 +219,8 @@ const getTransporter = async (): Promise<Transporter> => {
 
   return transporter;
 };
+
+// ========================= SEND OTP EMAIL =========================
 
 export const sendOtpEmail = async ({ to, otp, purpose, userName }: SendOtpOptions): Promise<boolean> => {
   const isRegister = purpose === 'REGISTER';
@@ -191,8 +262,8 @@ export const sendOtpEmail = async ({ to, otp, purpose, userName }: SendOtpOption
     <body>
       <div class="container">
         <div class="header">
-          <h1>⚽ FOOTBALL CONNECT VIETNAM</h1>
-          <p>Nền tảng kết nối bóng đá phong trào số 1</p>
+          <h1>⚽ FOOTBALL CONNECT</h1>
+          <p>Nền tảng kết nối bóng đá phong trào số 1 Việt Nam với sự đầu tư của chủ tịch TĂNG VĂN MINH</p>
         </div>
         <div class="content">
           <div class="title">${title}</div>
@@ -204,8 +275,8 @@ export const sendOtpEmail = async ({ to, otp, purpose, userName }: SendOtpOption
           </div>
 
           <div class="note">
-            ⏱️ <strong>Lưu ý bảo mật quan trọng:</strong><br/>
-            • Mã OTP này có hiệu lực trong vòng <strong>5 phút</strong>.<br/>
+            <strong>Lưu ý bảo mật quan trọng:</strong><br/>
+            • Mã OTP này có hiệu lực trong vòng <strong>1 phút</strong>.<br/>
             • Mỗi mã chỉ sử dụng được <strong>1 lần duy nhất</strong>.<br/>
             • Tuyệt đối không chia sẻ mã này cho bất kỳ ai để bảo vệ an toàn cho tài khoản của bạn.
           </div>
@@ -219,25 +290,26 @@ export const sendOtpEmail = async ({ to, otp, purpose, userName }: SendOtpOption
     </html>
   `;
 
-  // Always log to console with styled output so developer can see instantly
-  console.log('\n' + '='.repeat(60));
-  console.log(`📨 [FOOTBALL CONNECT OTP EMAIL]`);
-  console.log(`   To: ${to}`);
-  console.log(`   Purpose: ${purpose}`);
-  console.log(`   OTP Code: >>> ${otp} <<< (Valid for 5 minutes)`);
-  console.log('='.repeat(60) + '\n');
+  const senderUser = (process.env.MAIL_USER || process.env.SMTP_USER || '').trim();
+  const customFrom = (process.env.MAIL_FROM || process.env.SMTP_FROM || '').trim();
+  const fromAddress = customFrom
+    ? (customFrom.includes('<') ? customFrom : `"Football Connect Vietnam" <${customFrom}>`)
+    : senderUser
+    ? `"Football Connect Vietnam" <${senderUser}>`
+    : '"Football Connect Vietnam" <no-reply@footballconnect.vn>';
 
   try {
     const client = await getTransporter();
-    await client.sendMail({
-      from: process.env.SMTP_FROM || '"Football Connect Vietnam" <no-reply@footballconnect.vn>',
+    const info = await client.sendMail({
+      from: fromAddress,
       to,
       subject,
       html: htmlContent
     });
+    console.log(`✅ [EMAIL SENT] OTP successfully sent to: ${to} (MessageId: ${info.messageId})`);
     return true;
   } catch (err) {
-    console.error('Failed to dispatch email via transporter (Console fallback available):', err);
-    return true; // Still return true since OTP is logged and verified via server
+    console.error(`❌ [EMAIL ERROR] Failed to dispatch email to ${to}:`, err);
+    return false;
   }
 };
