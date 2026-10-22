@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { IBooking } from '../../types/index.js';
 import { Badge } from '../common/Badge.js';
+import { paymentLabel } from './PaymentTicket.js';
 
 interface BookingCardProps {
   booking: IBooking;
@@ -61,9 +62,9 @@ export const BookingCard: React.FC<BookingCardProps> = ({
 
   const statusBadge = {
     CONFIRMED: { variant: 'emerald' as const, label: 'Đã xác nhận', icon: CheckCircle2 },
-    PENDING: { variant: 'amber' as const, label: 'Chờ duyệt', icon: AlertCircle },
+    PENDING: { variant: 'amber' as const, label: 'Chờ thanh toán', icon: AlertCircle },
     CANCELLED: { variant: 'rose' as const, label: 'Đã hủy', icon: XCircle },
-    COMPLETED: { variant: 'blue' as const, label: 'Hoàn thành', icon: CheckCircle2 }
+    COMPLETED: { variant: 'blue' as const, label: 'Đã hoàn thành', icon: CheckCircle2 }
   }[booking.status];
 
   return (
@@ -145,11 +146,13 @@ export const BookingCard: React.FC<BookingCardProps> = ({
       </div>
 
       {/* Footer Actions */}
+      {booking.cancellationReason && <p className="text-xs text-slate-500">{booking.cancellationReason}</p>}
+      {booking.refund && <p className="text-xs text-amber-800">{booking.refund.status === 'PENDING' ? 'Chờ hoàn tiền' : 'Chủ sân xác nhận đã hoàn tiền'}: {(booking.refund.status === 'PENDING' ? booking.refund.amount - (booking.refund.refundedAmount || 0) : booking.refund.amount).toLocaleString('vi-VN')} đ{booking.refund.reference && ` · Mã giao dịch: ${booking.refund.reference}`}</p>}
       <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
         <div className="text-[11px] text-slate-500 font-medium">
           Trạng thái:{' '}
           <span className={booking.paymentStatus === 'PAID' ? 'text-green-500 font-bold' : 'text-red-500 font-bold'}>
-            {booking.paymentStatus === 'PAID' ? '✓ Đã thanh toán' : ' Đã hủy'}
+            {paymentLabel(booking)}
           </span>
           {booking.createdAt && (
             <span className="text-slate-500 text-[11px] ml-2 font-medium">
@@ -159,16 +162,17 @@ export const BookingCard: React.FC<BookingCardProps> = ({
         </div>
 
         <div className="flex items-center gap-2">
-          {booking.status === 'PENDING' || booking.status === 'CONFIRMED' ? (
+          {booking.status === 'PENDING' && booking.payment && <Link to={`/booking/create?bookingId=${encodeURIComponent(booking.id)}`} className="px-3 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold">Tiếp tục thanh toán</Link>}
+          {booking.status !== 'CANCELLED' ? (
             <button
               onClick={() => onCancel && onCancel(booking)}
               className="px-3 py-1.5 rounded-xl text-xs font-semibold text-rose-700 hover:bg-rose-50 border border-rose-200 transition-colors cursor-pointer"
             >
-              Hủy đặt sân
+              {booking.paymentStatus === 'PAID' || booking.payment?.receipts.length ? 'Liên hệ hủy / hoàn tiền' : 'Hủy giữ chỗ'}
             </button>
           ) : null}
 
-          {(booking.status === 'COMPLETED' || booking.status === 'CONFIRMED') && !booking.hasReviewed && (
+          {(booking.status === 'COMPLETED' || booking.status === 'CONFIRMED') && Date.parse(`${booking.bookingDate}T${booking.endTime}:00+07:00`) < Date.now() && !booking.hasReviewed && (
             <button
               onClick={() => onReview && onReview(booking)}
               className="px-3 py-1.5 rounded-xl text-xs font-bold bg-amber-50 text-amber-800 hover:bg-amber-100 border border-amber-200 transition-colors flex items-center gap-1 cursor-pointer"

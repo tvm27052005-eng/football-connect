@@ -51,6 +51,11 @@ export const reviewController = {
 
       // If bookingId is provided, verify it belongs to user and hasn't been reviewed yet
       if (bookingId) {
+        const booking = db.bookings.find(b => b.id === bookingId && b.userId === req.user!.id && b.venueId === venueId);
+        if (!booking || booking.status === 'CANCELLED' || booking.paymentStatus !== 'PAID' || Date.parse(`${booking.bookingDate}T${booking.endTime}:00+07:00`) > Date.now()) {
+          res.status(400).json({ success: false, message: 'Chỉ đánh giá sau khi ca sân đã thanh toán kết thúc.' });
+          return;
+        }
         const existingReview = db.reviews.find(r => r.bookingId === bookingId && r.userId === req.user?.id);
         if (existingReview) {
           res.status(400).json({ success: false, message: 'Bạn đã đánh giá cho lượt đặt sân này rồi' });

@@ -24,6 +24,15 @@ export interface INguoiDung {
   trang_thai: boolean;
   ten_doanh_nghiep?: string;
   ma_so_thue?: string;
+  payos?: {
+    clientId: string;
+    apiKeyEncrypted: string;
+    checksumKeyEncrypted: string;
+    accountNumber?: string;
+    accountName?: string;
+    bankBin?: string;
+    connectedAt: Date;
+  };
 }
 
 const NguoiDungSchema = new Schema<INguoiDung>({
@@ -46,7 +55,16 @@ const NguoiDungSchema = new Schema<INguoiDung>({
   vi_tri_so_truong: { type: String, default: 'Tiền vệ (CM)' },
   trang_thai: { type: Boolean, default: true, index: true },
   ten_doanh_nghiep: { type: String },
-  ma_so_thue: { type: String }
+  ma_so_thue: { type: String },
+  payos: {
+    clientId: { type: String },
+    apiKeyEncrypted: { type: String },
+    checksumKeyEncrypted: { type: String },
+    accountNumber: { type: String },
+    accountName: { type: String },
+    bankBin: { type: String },
+    connectedAt: { type: Date }
+  }
 }, {
   collection: 'nguoi_dung',
   timestamps: { createdAt: 'ngay_tao', updatedAt: 'ngay_cap_nhat' }
@@ -146,6 +164,9 @@ const SanChiTietSchema = new Schema<ISanChiTiet>({
    4. DON_DAT_SAN MODEL (Booking)
    ========================================================================= */
 export interface IDonDatSan {
+  payment?: import('../../shared/booking-payment.js').BookingPayment;
+  refund?: import('../../shared/booking-payment.js').BookingRefund;
+  audit?: import('../../shared/booking-payment.js').BookingAudit[];
   ma_don_dat: string;
   ma_khach_hang: string;
   ten_khach_hang: string;
@@ -170,6 +191,9 @@ export interface IDonDatSan {
 }
 
 const DonDatSanSchema = new Schema<IDonDatSan>({
+  payment: { type: Schema.Types.Mixed },
+  refund: { type: Schema.Types.Mixed },
+  audit: { type: Schema.Types.Mixed },
   ma_don_dat: { type: String, required: true, unique: true, index: true },
   ma_khach_hang: { type: String, required: true, index: true },
   ten_khach_hang: { type: String, required: true },

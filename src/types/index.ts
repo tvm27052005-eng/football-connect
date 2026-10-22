@@ -35,6 +35,13 @@ export interface IUser {
   status?: 'ACTIVE' | 'LOCKED' | 'SUSPENDED';
   businessName?: string;
   businessTaxId?: string;
+  payos?: {
+    connected: boolean;
+    accountNumber?: string;
+    accountName?: string;
+    bankBin?: string;
+    connectedAt?: string;
+  };
   createdAt: string;
   updatedAt: string;
 }
@@ -105,6 +112,9 @@ export interface ITimeSlot {
 }
 
 export interface IBooking {
+  payment?: import('../../shared/booking-payment.js').BookingPayment;
+  refund?: import('../../shared/booking-payment.js').BookingRefund;
+  audit?: import('../../shared/booking-payment.js').BookingAudit[];
   id: string;
   userId: string;
   userName?: string;

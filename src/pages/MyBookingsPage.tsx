@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Calendar,
@@ -43,62 +43,34 @@ export const MyBookingsPage: React.FC = () => {
   const [isSubmittingReview, setIsSubmittingReview] = useState(false);
   const [reviewError, setReviewError] = useState('');
 
-  const fetchMyBookings = async () => {
+  const fetching = useRef(false);
+  const [loadError, setLoadError] = useState('');
+  const fetchMyBookings = async (silent = false) => {
+    if (fetching.current) return;
+    fetching.current = true;
     try {
-      setIsLoading(true);
+      if (!silent) setIsLoading(true);
       const res = await api.get('/bookings');
       setBookings(res.data.data);
+      setLoadError('');
     } catch (e) {
-      console.error('Failed to load bookings:', e);
+      setLoadError('Chưa cập nhật được lịch đặt. Vui lòng kiểm tra kết nối.');
     } finally {
       setIsLoading(false);
+      fetching.current = false;
     }
   };
 
   useEffect(() => {
-    fetchMyBookings();
+    void fetchMyBookings();
+    const timer = setInterval(() => { if (!document.hidden) void fetchMyBookings(true); }, 5000);
+    return () => clearInterval(timer);
   }, []);
 
   // Cancel Modal State
   const [cancelBookingTarget, setCancelBookingTarget] = useState<IBooking | null>(null);
   const [isCancelling, setIsCancelling] = useState(false);
   const [cancelError, setCancelError] = useState('');
-
-  const getCancelInfo = (booking: IBooking) => {
-    const now = new Date();
-
-    let isTooCloseToMatch = false;
-    let hoursUntilMatch = 999;
-    if (booking.bookingDate && booking.startTime) {
-      const matchStart = new Date(`${booking.bookingDate}T${booking.startTime}:00`);
-      hoursUntilMatch = (matchStart.getTime() - now.getTime()) / (1000 * 60 * 60);
-      if (hoursUntilMatch <= 2) {
-        isTooCloseToMatch = true;
-      }
-    }
-
-    let isOverOneHour = false;
-    let minutesSinceBooking = 0;
-    if (booking.createdAt) {
-      const createdTime = new Date(booking.createdAt).getTime();
-      minutesSinceBooking = Math.max(0, Math.floor((now.getTime() - createdTime) / (1000 * 60)));
-      if (minutesSinceBooking > 60) {
-        isOverOneHour = true;
-      }
-    } else {
-      isOverOneHour = true;
-    }
-
-    const ownerPhone = booking.ownerPhone;
-
-    return {
-      isTooCloseToMatch,
-      hoursUntilMatch,
-      isOverOneHour,
-      minutesSinceBooking,
-      ownerPhone
-    };
-  };
 
   const handleOpenCancelModal = (booking: IBooking) => {
     setCancelBookingTarget(booking);
@@ -110,12 +82,7 @@ export const MyBookingsPage: React.FC = () => {
     try {
       setIsCancelling(true);
       setCancelError('');
-      const info = getCancelInfo(cancelBookingTarget);
-      const reason = info.isOverOneHour
-        ? 'Người dùng hủy sau 1 giờ (không hoàn tiền sân)'
-        : 'Người dùng hủy trong vòng 1 giờ cho phép';
-
-      await api.put(`/bookings/${cancelBookingTarget.id}/cancel`, { reason });
+      await api.put(`/bookings/${cancelBookingTarget.id}/cancel`, { reason: 'Khách hủy giữ chỗ chưa thanh toán' });
       setCancelBookingTarget(null);
       await fetchMyBookings();
     } catch (err: unknown) {
@@ -173,7 +140,7 @@ export const MyBookingsPage: React.FC = () => {
     } else if (timelineFilter === 'TODAY') {
       result = result.filter((b) => b.bookingDate === todayStr && b.status !== 'CANCELLED');
     } else if (timelineFilter === 'PAST') {
-      result = result.filter((b) => b.bookingDate < todayStr || b.status === 'COMPLETED');
+      result = result.filter((b) => b.bookingDate < todayStr);
     }
 
     // Date filter
@@ -232,6 +199,7 @@ export const MyBookingsPage: React.FC = () => {
 
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 space-y-6">
+      {loadError && <p role="alert" className="rounded-xl p-3 bg-amber-50 text-amber-900 text-sm">{loadError}</p>}
       {/* Top Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
@@ -356,6 +324,7 @@ export const MyBookingsPage: React.FC = () => {
       <div className="flex gap-2 overflow-x-auto pb-1 border-b border-slate-200">
         {[
           { key: 'ALL', label: 'Tất cả trạng thái' },
+          { key: 'PENDING', label: 'Chờ thanh toán' },
           { key: 'CONFIRMED', label: 'Đã xác nhận' },
           { key: 'CANCELLED', label: 'Đã hủy' }
         ].map((tab) => (
@@ -471,168 +440,20 @@ export const MyBookingsPage: React.FC = () => {
         </form>
       </Modal>
 
-      {/* Cancellation Modal (Message Box) */}
-      <Modal
-        isOpen={!!cancelBookingTarget}
-        onClose={() => {
-          if (!isCancelling) {
-            setCancelBookingTarget(null);
-            setCancelError('');
-          }
-        }}
-        title="Thông Báo Hủy Đặt Sân"
-      >
-        {cancelBookingTarget && (() => {
-          const { isTooCloseToMatch, isOverOneHour, ownerPhone, minutesSinceBooking } = getCancelInfo(cancelBookingTarget);
-
-          return (
-            <div className="space-y-4 text-xs">
-              {cancelError && (
-                <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold flex items-center gap-2">
-                  <AlertCircle className="w-4 h-4 shrink-0" />
-                  <span>{cancelError}</span>
-                </div>
-              )}
-
-              {/* Thông tin tóm tắt đơn đặt sân */}
-              <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
-                <div className="flex items-start justify-between gap-2">
-                  <div>
-                    <div className="font-bold text-slate-900 text-sm">{cancelBookingTarget.venueName}</div>
-                    <div className="text-slate-600 text-xs font-medium">
-                      {cancelBookingTarget.fieldName} ({cancelBookingTarget.fieldType === '5_vs_5' ? 'Sân 5 người' : 'Sân 7 người'})
-                    </div>
-                  </div>
-                  <span className="font-extrabold text-emerald-700 text-sm">
-                    {cancelBookingTarget.totalPrice?.toLocaleString('vi-VN')} đ
-                  </span>
-                </div>
-
-                <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-200 text-[11px] text-slate-600">
-                  <div className="flex items-center gap-1.5">
-                    <Calendar className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                    <span>Ngày: <strong>{cancelBookingTarget.bookingDate}</strong></span>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <Clock className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                    <span>Giờ: <strong>{cancelBookingTarget.startTime} - {cancelBookingTarget.endTime}</strong></span>
-                  </div>
-                </div>
-
-                {cancelBookingTarget.createdAt && (
-                  <div className="text-[11px] text-slate-500 pt-1 flex items-center justify-between border-t border-slate-200/60">
-                    <span>Thời gian đặt:</span>
-                    <span className="font-medium text-slate-700">
-                      {formatBookingCreationTime(cancelBookingTarget.createdAt)}
-                      {minutesSinceBooking > 0 && ` (${minutesSinceBooking} phút trước)`}
-                    </span>
-                  </div>
-                )}
-              </div>
-
-              {/* check giờ đặt */}
-              {isTooCloseToMatch ? (
-                /* Sát giờ thi đấu */
-                <div className="p-4 rounded-xl bg-amber-50 border border-amber-300 text-amber-900 space-y-3">
-                  <div className="flex items-start gap-2.5">
-                    <Ban className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
-                    <div>
-                      <div className="font-extrabold text-rose-800 text-sm leading-snug">
-                        Không thể hủy sân!
-                      </div>
-                      <p className="text-slate-700 text-xs mt-1 leading-relaxed">
-                        Bạn đang đặt sân sát giờ thi đấu (dưới 2 tiếng trước giờ bóng lăn hoặc trận đấu đang diễn ra). Theo quy định, đơn đặt sân này <strong>không thể hủy</strong> trên hệ thống.
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="p-3 bg-white/90 rounded-lg border border-amber-200 flex items-center justify-between gap-3">
-                    <div>
-                      <div className="text-slate-500 text-[11px]">Hotline chủ sân hỗ trợ:</div>
-                      <div className="text-slate-900 font-extrabold text-sm">{ownerPhone}</div>
-                    </div>
-                  </div>
-                </div>
-              ) : isOverOneHour ? (
-                /* Quá thời gian trong vòng 1 tiếng từ lúc đặt sân */
-                <div className="p-4 rounded-xl bg-rose-50 border border-rose-300 text-rose-900 space-y-3">
-                  <div className="flex items-start gap-2.5">
-                    <AlertTriangle className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
-                    <div>
-                      <div className="font-extrabold text-rose-800 text-sm leading-snug">
-                        Bạn đã quá thời gian hủy sân cho phép, nếu ấn xác nhận hủy sân sẽ không được hoàn tiền sân
-                      </div>
-                      <p className="text-rose-700/90 text-[11px] mt-1 leading-relaxed">
-                        Quy định hoàn tiền: Hệ thống chỉ hỗ trợ hoàn tiền sân khi quý khách thực hiện yêu cầu hủy trong vòng 1 tiếng kể từ lúc đặt sân.
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="bg-white/80 p-2.5 rounded-lg border border-rose-200 text-[11px] text-slate-700 flex items-center justify-between">
-                    <span>Số điện thoại chủ sân:</span>
-                    <a href={`tel:${ownerPhone}`} className="font-bold text-emerald-700 flex items-center gap-1 hover:underline">
-                      <Phone className="w-3 h-3" /> {ownerPhone}
-                    </a>
-                  </div>
-                </div>
-              ) : (
-                /* TRƯỜNG HỢP 2: Khi trong thời gian 1 tiếng cho phép */
-                <div className="p-4 rounded-xl bg-sky-50 border border-sky-300 text-sky-950 space-y-3">
-                  <div className="flex items-start gap-2.5">
-                    <AlertCircle className="w-5 h-5 text-sky-600 shrink-0 mt-0.5" />
-                    <div>
-                      <div className="font-extrabold text-sky-900 text-sm leading-snug">
-                        Bạn có chắc chắn muốn hủy sân. Liên hệ số chủ sân &quot;{ownerPhone}&quot; để nhận lại tiền sân
-                      </div>
-                      <p className="text-sky-800/90 text-[11px] mt-1 leading-relaxed">
-                        Đơn đặt vẫn nằm trong thời gian 1 tiếng cho phép. Quý khách vui lòng liên hệ trực tiếp với chủ sân để làm thủ tục nhận lại tiền sân.
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="p-3 bg-white/90 rounded-lg border border-sky-200 flex items-center justify-between gap-3">
-                    <div>
-                      <span className="text-[11px] text-slate-500 block">Số điện thoại chủ sân:</span>
-                      <strong className="text-slate-900 text-sm">{ownerPhone}</strong>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Action Buttons: Xác nhận & Không xác nhận */}
-              <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-200">
-                {isTooCloseToMatch ? (
-                  <button
-                    type="button"
-                    onClick={() => setCancelBookingTarget(null)}
-                    className="px-4 py-2 rounded-xl text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors cursor-pointer"
-                  >
-                    Đóng
-                  </button>
-                ) : (
-                  <>
-                    <button
-                      type="button"
-                      disabled={isCancelling}
-                      onClick={() => setCancelBookingTarget(null)}
-                      className="px-4 py-2 rounded-xl text-xs font-bold text-slate-700 hover:bg-slate-100 border border-slate-300 transition-colors cursor-pointer disabled:opacity-50"
-                    >
-                      Không xác nhận
-                    </button>
-                    <button
-                      type="button"
-                      disabled={isCancelling}
-                      onClick={handleConfirmCancelBooking}
-                      className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 transition-all shadow-sm cursor-pointer disabled:opacity-50 flex items-center gap-1.5"
-                    >
-                      {isCancelling ? 'Đang xử lý...' : 'Xác nhận'}
-                    </button>
-                  </>
-                )}
-              </div>
-            </div>
-          );
-        })()}
+      <Modal isOpen={!!cancelBookingTarget} onClose={() => { if (!isCancelling) setCancelBookingTarget(null); }} title="Hủy đặt sân">
+        {cancelBookingTarget && <div className="space-y-4 text-sm">
+          <p className="font-bold">{cancelBookingTarget.venueName} · {cancelBookingTarget.fieldName}</p>
+          <p>{cancelBookingTarget.bookingDate} · {cancelBookingTarget.startTime} – {cancelBookingTarget.endTime}</p>
+          {cancelBookingTarget.paymentStatus === 'PAID' || cancelBookingTarget.payment?.receipts.length ? <>
+            <p>Đơn đã nhận tiền. Liên hệ chủ sân để thống nhất hủy sân và nhận lại tiền trước hạn: <strong>{new Date(cancelBookingTarget.payment?.cancelBefore || Date.parse(`${cancelBookingTarget.bookingDate}T${cancelBookingTarget.startTime}:00+07:00`) - 2 * 3600000).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })}</strong> (giờ Việt Nam).</p>
+            <p className="text-slate-500">Chủ sân sẽ cập nhật trạng thái hủy và xác nhận hoàn tiền sau khi chuyển lại tiền. Nếu đã qua hạn, đơn không còn đủ điều kiện hủy có hoàn tiền.</p>
+            {cancelBookingTarget.ownerPhone ? <a href={`tel:${cancelBookingTarget.ownerPhone}`} className="inline-flex rounded-xl bg-emerald-600 text-white px-4 py-3 font-bold">Gọi chủ sân: {cancelBookingTarget.ownerPhone}</a> : <Link to={`/venues/${cancelBookingTarget.venueId}`} className="text-emerald-700 font-bold">Xem thông tin liên hệ của sân</Link>}
+          </> : <>
+            <p>Hủy giữ chỗ sẽ nhả ca sân và ngừng sử dụng mã QR của đơn này.</p>
+            {cancelError && <p role="alert" className="text-rose-700">{cancelError}</p>}
+            <button disabled={isCancelling} onClick={handleConfirmCancelBooking} className="rounded-xl bg-rose-600 text-white px-4 py-3 font-bold disabled:opacity-50">{isCancelling ? 'Đang hủy…' : 'Xác nhận hủy giữ chỗ'}</button>
+          </>}
+        </div>}
       </Modal>
     </div>
   );

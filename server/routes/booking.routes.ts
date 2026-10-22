@@ -9,6 +9,9 @@ router.get('/admin/all', authenticateToken, bookingController.getBookings);
 router.get('/', authenticateToken, bookingController.getBookings);
 router.get('/:id', authenticateToken, bookingController.getBookingById);
 router.post('/', authenticateToken, bookingController.createBooking);
+router.post('/:id/payment', authenticateToken, bookingController.createPayment);
+router.get('/:id/payment', authenticateToken, bookingController.checkPayment);
+router.post('/:id/refund', authenticateToken, bookingController.confirmRefund);
 router.put('/:id/cancel', authenticateToken, bookingController.cancelBooking);
 router.put('/:id/status', authenticateToken, bookingController.updateBookingStatus);
 

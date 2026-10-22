@@ -10,11 +10,13 @@
     "preview": "vite preview",
     "seed": "tsx server/scripts/seed.ts",
     "lint": "tsc --noEmit",
-    "test:assistant": "tsx --test server/tests/assistant.test.ts"
+    "test:assistant": "tsx --test server/tests/assistant.test.ts",
+    "test:payments": "tsx --test server/tests/payments.test.ts"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",
     "@hookform/resolvers": "^5.9.1",
+    "@payos/node": "^2.0.5",
     "@tailwindcss/vite": "^4.1.14",
     "@types/bcryptjs": "^3.0.0",
     "@types/canvas-confetti": "^1.9.0",
@@ -38,6 +40,7 @@
     "motion": "^12.23.24",
     "multer": "^2.4.0",
     "nodemailer": "^10.1.7",
+    "qrcode": "^1.5.4",
     "react": "^19.0.1",
     "react-dom": "^19.0.1",
     "react-hook-form": "^7.85.0",
@@ -52,6 +55,7 @@
   "devDependencies": {
     "@types/express": "^4.17.21",
     "@types/node": "^22.14.0",
+    "@types/qrcode": "^1.5.6",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "autoprefixer": "^10.4.21",

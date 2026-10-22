@@ -5,10 +5,12 @@ import { createApp } from './server/app.js';
 import { initSocketService } from './server/sockets/socket.service.js';
 import { connectDB } from './server/config/db.config.js';
 import { createServer as createViteServer } from 'vite';
+import { startPaymentWorker } from './server/services/booking-payment.service.js';
 
 async function startServer() {
   // Connect to MongoDB
   await connectDB();
+  startPaymentWorker();
 
   const app = createApp();
   const PORT = 3000;

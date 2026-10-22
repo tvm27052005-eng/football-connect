@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   Calendar,
   Clock,
@@ -15,6 +15,8 @@ import {
 import { api } from '../../services/api.js';
 import { IBooking } from '../../types/index.js';
 import { OwnerSidebar } from '../../components/layout/OwnerSidebar.js';
+import { Modal } from '../../components/common/Modal.js';
+import { bookingLabels, paymentLabel } from '../../components/booking/PaymentTicket.js';
 import { Badge } from '../../components/common/Badge.js';
 import { LoadingSkeleton, EmptyState } from '../../components/common/LoadingSkeleton.js';
 import { formatBookingDate, formatBookingCreationTime } from '../../components/booking/BookingCard.js';
@@ -35,21 +37,47 @@ export const OwnerBookingsPage: React.FC = () => {
   const [selectedDate, setSelectedDate] = useState('');
   const [sortBy, setSortBy] = useState<OwnerSortOption>('time_asc');
 
-  const fetchBookings = async () => {
+  const [action, setAction] = useState<{ booking: IBooking; kind: 'CANCEL' | 'REFUND' } | null>(null);
+  const [actionText, setActionText] = useState('');
+  const [actionError, setActionError] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [loadError, setLoadError] = useState('');
+  const fetching = useRef(false);
+  const openAction = (booking: IBooking, kind: 'CANCEL' | 'REFUND') => { setAction({ booking, kind }); setActionText(''); setActionError(''); };
+  const cancelDeadline = (b: IBooking) => b.payment?.cancelBefore || new Date(Date.parse(`${b.bookingDate}T${b.startTime}:00+07:00`) - 2 * 3600000).toISOString();
+  const canCancel = (b: IBooking) => b.status !== 'CANCELLED' && ((b.paymentStatus === 'UNPAID' && !b.payment?.receipts.length) || Date.parse(cancelDeadline(b)) > Date.now());
+  const submitAction = async () => {
+    if (!action || saving) return;
+    setSaving(true); setActionError('');
     try {
-      setIsLoading(true);
+      if (action.kind === 'REFUND') await api.post(`/bookings/${action.booking.id}/refund`, { reference: actionText });
+      else await api.put(`/bookings/${action.booking.id}/cancel`, { reason: actionText });
+      setAction(null); await fetchBookings(true);
+    } catch (err: any) { setActionError(err.response?.data?.message || 'Không thể cập nhật đơn.'); }
+    finally { setSaving(false); }
+  };
+
+  const fetchBookings = async (silent = false) => {
+    if (fetching.current) return;
+    fetching.current = true;
+    try {
+      if (!silent) setIsLoading(true);
       const res = await api.get('/bookings/owner/all');
       setBookings(Array.isArray(res.data?.data) ? res.data.data : []);
+      setLoadError('');
     } catch (e) {
       console.error(e);
-      setBookings([]);
+      setLoadError('Không cập nhật được lịch. Dữ liệu đang hiển thị có thể chưa mới nhất.');
     } finally {
       setIsLoading(false);
+      fetching.current = false;
     }
   };
 
   useEffect(() => {
-    fetchBookings();
+    void fetchBookings();
+    const timer = setInterval(() => { if (!document.hidden) void fetchBookings(true); }, 5000);
+    return () => clearInterval(timer);
   }, []);
 
   const handleUpdateStatus = async (
@@ -143,7 +171,7 @@ export const OwnerBookingsPage: React.FC = () => {
               Quản Lý Lịch Đặt & Lượt Khách
             </h1>
             <p className="text-xs text-slate-500 mt-1">
-              Phê duyệt lượt đặt sân, sắp xếp lịch ca đá theo giờ/ngày và quản lý khách thi đấu.
+              Thanh toán tự xác nhận • Lịch cập nhật mỗi 5 giây • Chủ sân xử lý hủy và hoàn tiền.
             </p>
           </div>
 
@@ -161,6 +189,10 @@ export const OwnerBookingsPage: React.FC = () => {
           </div>
         </div>
 
+        {loadError && <p role="alert" className="rounded-xl bg-amber-50 p-3 text-sm text-amber-900">{loadError}</p>}
+        <div className="grid grid-cols-3 gap-3">
+          {(['PENDING', 'COMPLETED', 'CANCELLED'] as const).map(status => <button key={status} onClick={() => setStatusFilter(status)} className="rounded-2xl border border-slate-200 bg-white p-4 text-left"><span className="block text-xs text-slate-500">{bookingLabels[status]}</span><strong className="block mt-1 text-2xl text-slate-900">{bookings.filter(b => b.status === status).length}</strong></button>)}
+        </div>
         {/* Search, Filter & Sort Controls */}
         <div className="bg-white border border-slate-200/90 rounded-2xl p-4 shadow-xs space-y-3">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3">
@@ -211,10 +243,10 @@ export const OwnerBookingsPage: React.FC = () => {
                 className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 font-semibold focus:outline-none focus:bg-white focus:border-emerald-600 focus:ring-2 focus:ring-emerald-600/20 cursor-pointer"
               >
                 <option value="ALL">Tất cả trạng thái</option>
-                <option value="PENDING">Chờ duyệt (PENDING)</option>
-                <option value="CONFIRMED">Đã xác nhận (CONFIRMED)</option>
-                <option value="COMPLETED">Đã hoàn thành (COMPLETED)</option>
-                <option value="CANCELLED">Đã hủy (CANCELLED)</option>
+                <option value="PENDING">Chờ thanh toán</option>
+                <option value="CONFIRMED">Đã xác nhận</option>
+                <option value="COMPLETED">Đã hoàn thành</option>
+                <option value="CANCELLED">Đã hủy</option>
               </select>
             </div>
 
@@ -313,7 +345,7 @@ export const OwnerBookingsPage: React.FC = () => {
                             b.paymentStatus === 'PAID' ? 'text-emerald-700' : 'text-amber-700'
                           }`}
                         >
-                          {b.paymentStatus === 'PAID' ? '✓ Đã thanh toán' : '⏳ Chưa thanh toán'}
+                          {paymentLabel(b)}
                         </span>
                       </td>
                       <td className="p-4">
@@ -329,35 +361,18 @@ export const OwnerBookingsPage: React.FC = () => {
                           }
                           size="sm"
                         >
-                          {b.status}
+                          {bookingLabels[b.status]}
                         </Badge>
+                        {b.status === 'PENDING' && b.payment && <p className="mt-2 text-[10px] text-amber-700">Hạn: {new Date(b.payment.expiresAt).toLocaleTimeString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })}</p>}
+                        {b.cancellationReason && <p className="mt-2 text-[10px] text-slate-500 max-w-48">{b.cancellationReason}</p>}
+                        {b.payment?.exception && <p className="mt-2 text-[10px] text-amber-800 max-w-48">{b.payment.exception}</p>}
                       </td>
                       <td className="p-4 text-right">
                         <div className="flex items-center justify-end gap-1.5">
-                          {b.status === 'PENDING' && (
-                            <>
-                              <button
-                                onClick={() => handleUpdateStatus(b.id, 'CONFIRMED')}
-                                className="px-2.5 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 font-bold transition-all cursor-pointer shadow-xs"
-                              >
-                                Xác nhận
-                              </button>
-                              <button
-                                onClick={() => handleUpdateStatus(b.id, 'CANCELLED')}
-                                className="px-2.5 py-1.5 rounded-lg bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200 font-bold transition-all cursor-pointer shadow-xs"
-                              >
-                                Từ chối
-                              </button>
-                            </>
-                          )}
-                          {b.status === 'CONFIRMED' && (
-                            <button
-                              onClick={() => handleUpdateStatus(b.id, 'COMPLETED')}
-                              className="px-2.5 py-1.5 rounded-lg bg-sky-50 text-sky-700 hover:bg-sky-100 border border-sky-200 font-bold transition-all cursor-pointer shadow-xs"
-                            >
-                              Xong trận
-                            </button>
-                          )}
+                          {canCancel(b) && <button onClick={() => openAction(b, 'CANCEL')} className="px-3 py-2 rounded-lg border border-rose-200 bg-rose-50 text-rose-700 font-bold">Hủy đơn</button>}
+                          {b.refund?.status === 'PENDING' && <button onClick={() => openAction(b, 'REFUND')} className="px-3 py-2 rounded-lg border border-emerald-200 bg-emerald-50 text-emerald-800 font-bold">Xác nhận đã hoàn tiền</button>}
+                          {b.status === 'CONFIRMED' && b.paymentStatus === 'PAID' && <button onClick={() => handleUpdateStatus(b.id, 'COMPLETED')} className="px-3 py-2 rounded-lg bg-sky-50 text-sky-700 font-bold">Hoàn thành</button>}
+                          {!canCancel(b) && b.status !== 'CANCELLED' && <span className="text-slate-400">Đã qua hạn hủy</span>}
                         </div>
                       </td>
                     </tr>
@@ -368,6 +383,16 @@ export const OwnerBookingsPage: React.FC = () => {
           </div>
         )}
       </main>
+      <Modal isOpen={!!action} onClose={() => { if (!saving) setAction(null); }} title={action?.kind === 'REFUND' ? 'Xác nhận đã hoàn tiền' : 'Hủy đơn đặt sân'}>
+        {action && <div className="space-y-4 text-sm">
+          <p className="font-bold">{action.booking.userName} · {action.booking.fieldName}<span className="block text-xs text-slate-500 mt-1">{action.booking.bookingDate} · {action.booking.startTime} – {action.booking.endTime}</span></p>
+          {action.kind === 'REFUND' ? <p className="rounded-xl bg-amber-50 p-4 text-amber-900">Chỉ xác nhận sau khi đã chuyển lại <strong>{((action.booking.refund?.amount || 0) - (action.booking.refund?.refundedAmount || 0)).toLocaleString('vi-VN')} đ</strong> cho khách. Thao tác này ghi nhận giao dịch hoàn tiền, không tự chuyển tiền ngân hàng.</p> : <p className="rounded-xl bg-slate-50 p-4">{action.booking.paymentStatus === 'PAID' || action.booking.payment?.receipts.length ? 'Đơn sẽ chuyển sang Đã hủy / Chờ hoàn tiền. Sau khi chuyển lại tiền, nhập mã giao dịch để xác nhận hoàn tiền.' : 'Đơn sẽ chuyển sang Đã hủy và nhả ca sân.'}</p>}
+          <label className="block font-semibold" htmlFor="booking-action-note">{action.kind === 'REFUND' ? 'Mã giao dịch hoàn tiền' : 'Lý do hủy / nội dung đã thống nhất với khách'}</label>
+          <input id="booking-action-note" value={actionText} onChange={e => setActionText(e.target.value)} maxLength={action.kind === 'REFUND' ? 150 : 500} className="w-full rounded-xl border border-slate-300 p-3" />
+          {actionError && <p role="alert" className="text-rose-700">{actionError}</p>}
+          <button disabled={saving || actionText.trim().length < (action.kind === 'REFUND' ? 4 : 1)} onClick={submitAction} className="w-full rounded-xl bg-slate-950 text-white p-3 font-bold disabled:opacity-40">{saving ? 'Đang lưu…' : action.kind === 'REFUND' ? 'Tôi đã chuyển hoàn tiền cho khách' : 'Xác nhận hủy đơn'}</button>
+        </div>}
+      </Modal>
     </div>
   );
 };
