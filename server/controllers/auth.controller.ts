@@ -247,10 +247,11 @@ export const authController = {
       }
 
       const otp = otpManager.generateOtp();
+      const passwordHash = await hashPassword(password);
       await otpManager.saveOtp(email, otp, 'REGISTER', {
         name,
         email,
-        password,
+        passwordHash,
         phone,
         role,
         city,
@@ -266,9 +267,10 @@ export const authController = {
         userName: name
       });
       if (!sent) {
+        await otpManager.deleteOtp(email, 'REGISTER');
         res.status(503).json({
           success: false,
-          message: 'Không thể gửi email xác thực lúc này. Vui lòng kiểm tra cấu hình SMTP hoặc thử lại sau.'
+          message: 'Không thể gửi email xác thực lúc này. Vui lòng thử lại sau.'
         });
         return;
       }
@@ -311,7 +313,8 @@ export const authController = {
         return;
       }
 
-      const hashedPassword = await hashPassword(payload.password);
+      // Tương thích với OTP cũ được tạo trước khi mật khẩu tạm được băm.
+      const hashedPassword = payload.passwordHash || await hashPassword(payload.password);
       const newUser: IUser = {
         id: db.generateId('user'),
         name: payload.name.trim(),
@@ -431,6 +434,7 @@ export const authController = {
         userName: user.name
       });
       if (!sent) {
+        await otpManager.deleteOtp(normalizedEmail, 'FORGOT_PASSWORD');
         res.status(503).json({
           success: false,
           message: 'Không thể gửi email đặt lại mật khẩu lúc này. Vui lòng thử lại sau.'

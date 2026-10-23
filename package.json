@@ -11,6 +11,8 @@
     "seed": "tsx server/scripts/seed.ts",
     "lint": "tsc --noEmit",
     "test:assistant": "tsx --test server/tests/assistant.test.ts",
+    "test:email": "tsx --test server/tests/email.test.ts",
+    "test:otp": "tsx --test server/tests/auth-otp.test.ts",
     "test:payments": "tsx --test server/tests/payments.test.ts"
   },
   "dependencies": {

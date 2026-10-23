@@ -6,11 +6,19 @@ import { initSocketService } from './server/sockets/socket.service.js';
 import { connectDB } from './server/config/db.config.js';
 import { createServer as createViteServer } from 'vite';
 import { startPaymentWorker } from './server/services/booking-payment.service.js';
+import { getEmailConfigurationStatus } from './server/services/email.service.js';
 
 async function startServer() {
   // Connect to MongoDB
   await connectDB();
   startPaymentWorker();
+
+  const emailConfiguration = getEmailConfigurationStatus();
+  if (emailConfiguration.configured) {
+    console.log(`📧 Email OTP đã cấu hình qua ${emailConfiguration.provider}`);
+  } else if ('reason' in emailConfiguration) {
+    console.warn(`⚠️ Email OTP chưa sẵn sàng (${emailConfiguration.provider}): ${emailConfiguration.reason}`);
+  }
 
   const app = createApp();
   const PORT = Number(process.env.PORT) || 3000;

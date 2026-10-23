@@ -9,6 +9,12 @@ interface SendOtpOptions {
   userName?: string;
 }
 
+type EmailProvider = 'brevo' | 'resend' | 'smtp';
+
+export type EmailConfigurationStatus =
+  | { configured: true; provider: EmailProvider; from: string }
+  | { configured: false; provider: EmailProvider; reason: string };
+
 
 type OtpPurpose = 'REGISTER' | 'FORGOT_PASSWORD';
 type DbMucDich = 'DANG_KY' | 'QUEN_MAT_KHAU';
@@ -77,7 +83,14 @@ export const otpManager = {
       du_lieu_dang_ky: registrationPayload || undefined
     });
 
-    console.log(`💾 [SAVE OTP SUCCESS] Đã lưu OTP [${otp}] vào DB cho email: ${normalizedEmail} (mục đích: ${mucDich}, ID: ${doc._id})`);
+    console.log(`💾 [SAVE OTP SUCCESS] Đã lưu yêu cầu OTP cho ${normalizedEmail} (mục đích: ${mucDich}, ID: ${doc._id})`);
+  },
+
+  deleteOtp: async (email: string, purpose: OtpPurpose): Promise<void> => {
+    await MaXacThucModel.deleteMany({
+      email: email.toLowerCase().trim(),
+      muc_dich: purposeToMucDich(purpose)
+    });
   },
 
   // Xác thực OTP
@@ -135,7 +148,6 @@ export const otpManager = {
     }
 
     const expectedOtp = String(otpDoc.ma_otp || '').trim();
-    console.log(`🔍 [VERIFY OTP] Email: ${normalizedEmail} | Nhập: "${cleanInputOtp}" | Trong DB: "${expectedOtp}"`);
 
     // Sai mã OTP
     if (cleanInputOtp !== expectedOtp) {
@@ -168,6 +180,56 @@ export const otpManager = {
 // Create nodemailer transporter
 let transporter: Transporter | null = null;
 
+const normalizeProvider = (value: string | undefined): EmailProvider | undefined => {
+  const provider = value?.trim().toLowerCase();
+  return provider === 'brevo' || provider === 'resend' || provider === 'smtp' ? provider : undefined;
+};
+
+export const getEmailConfigurationStatus = (
+  env: NodeJS.ProcessEnv = process.env
+): EmailConfigurationStatus => {
+  const requestedProvider = normalizeProvider(env.MAIL_PROVIDER);
+  const brevoApiKey = env.BREVO_API_KEY?.trim();
+  const resendApiKey = env.RESEND_API_KEY?.trim();
+  const smtpUser = (env.MAIL_USER || env.SMTP_USER || '').trim();
+  const smtpPass = (env.MAIL_PASS || env.SMTP_PASS || '').trim();
+  const provider = requestedProvider || (brevoApiKey ? 'brevo' : resendApiKey ? 'resend' : 'smtp');
+
+  if (provider === 'brevo') {
+    if (!brevoApiKey) {
+      return { configured: false, provider, reason: 'Thiếu BREVO_API_KEY' };
+    }
+
+    const from = (env.MAIL_FROM || env.BREVO_FROM || '').trim();
+    if (!from) {
+      return { configured: false, provider, reason: 'Thiếu MAIL_FROM' };
+    }
+
+    return { configured: true, provider, from };
+  }
+
+  if (provider === 'resend') {
+    if (!resendApiKey) {
+      return { configured: false, provider, reason: 'Thiếu RESEND_API_KEY' };
+    }
+
+    const from = (env.MAIL_FROM || env.RESEND_FROM || '').trim();
+    if (!from) {
+      return { configured: false, provider, reason: 'Thiếu MAIL_FROM' };
+    }
+
+    return { configured: true, provider, from };
+  }
+
+  if (!smtpUser || !smtpPass) {
+    return { configured: false, provider, reason: 'Thiếu MAIL_USER hoặc MAIL_PASS' };
+  }
+
+  const customFrom = (env.MAIL_FROM || env.SMTP_FROM || '').trim();
+  const from = customFrom || smtpUser;
+  return { configured: true, provider, from };
+};
+
 const getTransporter = async (): Promise<Transporter> => {
   if (transporter) return transporter;
 
@@ -179,10 +241,13 @@ const getTransporter = async (): Promise<Transporter> => {
   const pass = rawPass.replace(/\s+/g, '');
 
   if (user && pass) {
-    if (host.includes('gmail.com') || user.endsWith('@gmail.com') || host === '') {
+    if (host.includes('gmail.com') || (host === '' && user.endsWith('@gmail.com'))) {
       transporter = nodemailer.createTransport({
         service: 'gmail',
-        auth: { user, pass }
+        auth: { user, pass },
+        connectionTimeout: 10000,
+        greetingTimeout: 10000,
+        socketTimeout: 15000
       });
       console.log(`📧 [Nodemailer] Configured Gmail service for: ${user}`);
     } else {
@@ -190,7 +255,10 @@ const getTransporter = async (): Promise<Transporter> => {
         host,
         port,
         secure: port === 465,
-        auth: { user, pass }
+        auth: { user, pass },
+        connectionTimeout: 10000,
+        greetingTimeout: 10000,
+        socketTimeout: 15000
       });
       console.log(`📧 [Nodemailer] Configured SMTP (${host}:${port}) for: ${user}`);
     }
@@ -201,10 +269,113 @@ const getTransporter = async (): Promise<Transporter> => {
   return transporter;
 };
 
+const escapeHtml = (value: string): string => value.replace(/[&<>"']/g, character => ({
+  '&': '&amp;',
+  '<': '&lt;',
+  '>': '&gt;',
+  '"': '&quot;',
+  "'": '&#039;'
+}[character] || character));
+
+const formatFromAddress = (from: string): string => (
+  from.includes('<') ? from : `"Football Connect Vietnam" <${from}>`
+);
+
+const parseFromAddress = (from: string): { name: string; email: string } => {
+  const match = from.match(/^\s*(?:"?([^"<]+?)"?\s*)?<([^<>\s]+@[^<>\s]+)>\s*$/);
+  if (match) {
+    return {
+      name: match[1]?.trim() || 'Football Connect Vietnam',
+      email: match[2].trim()
+    };
+  }
+
+  return { name: 'Football Connect Vietnam', email: from.trim() };
+};
+
+const sendWithBrevo = async (options: {
+  apiKey: string;
+  from: string;
+  to: string;
+  subject: string;
+  html: string;
+}): Promise<void> => {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 10000);
+  const sender = parseFromAddress(options.from);
+
+  try {
+    const response = await fetch('https://api.brevo.com/v3/smtp/email', {
+      method: 'POST',
+      headers: {
+        Accept: 'application/json',
+        'api-key': options.apiKey,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        sender,
+        to: [{ email: options.to }],
+        subject: options.subject,
+        htmlContent: options.html
+      }),
+      signal: controller.signal
+    });
+
+    if (!response.ok) {
+      let providerMessage = '';
+      try {
+        const body = await response.json() as { message?: string };
+        providerMessage = body.message ? `: ${body.message}` : '';
+      } catch {
+        // Brevo can return an empty or non-JSON response for upstream errors.
+      }
+      throw new Error(`Brevo API trả về HTTP ${response.status}${providerMessage}`);
+    }
+  } finally {
+    clearTimeout(timeout);
+  }
+};
+
+const sendWithResend = async (options: {
+  apiKey: string;
+  from: string;
+  to: string;
+  subject: string;
+  html: string;
+}): Promise<void> => {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 10000);
+
+  try {
+    const response = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${options.apiKey}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        from: options.from,
+        to: [options.to],
+        subject: options.subject,
+        html: options.html
+      }),
+      signal: controller.signal
+    });
+
+    if (!response.ok) {
+      throw new Error(`Resend API trả về HTTP ${response.status}`);
+    }
+  } finally {
+    clearTimeout(timeout);
+  }
+};
+
 // ========================= SEND OTP EMAIL =========================
 
 export const sendOtpEmail = async ({ to, otp, purpose, userName }: SendOtpOptions): Promise<boolean> => {
   const isRegister = purpose === 'REGISTER';
+  const safeTo = escapeHtml(to.trim());
+  const safeUserName = escapeHtml(userName?.trim() || 'bạn');
   const subject = isRegister
     ? '[Football Connect] Mã xác thực đăng ký tài khoản'
     : '[Football Connect] Mã xác thực đặt lại mật khẩu';
@@ -214,8 +385,8 @@ export const sendOtpEmail = async ({ to, otp, purpose, userName }: SendOtpOption
     : 'Yêu Cầu Đặt Lại Mật Khẩu';
 
   const description = isRegister
-    ? `Chào mừng ${userName || 'bạn'} gia nhập <strong>Football Connect</strong>! Dưới đây là mã xác thực OTP để hoàn tất quá trình đăng ký tài khoản của bạn.`
-    : `Chúng tôi nhận được yêu cầu đặt lại mật khẩu cho tài khoản liên kết với email <strong>${to}</strong>. Nhập mã OTP bên dưới để tiến hành đổi mật khẩu mới.`;
+    ? `Chào mừng ${safeUserName} gia nhập <strong>Football Connect</strong>! Dưới đây là mã xác thực OTP để hoàn tất quá trình đăng ký tài khoản của bạn.`
+    : `Chúng tôi nhận được yêu cầu đặt lại mật khẩu cho tài khoản liên kết với email <strong>${safeTo}</strong>. Nhập mã OTP bên dưới để tiến hành đổi mật khẩu mới.`;
 
   const htmlContent = `
     <!DOCTYPE html>
@@ -271,26 +442,45 @@ export const sendOtpEmail = async ({ to, otp, purpose, userName }: SendOtpOption
     </html>
   `;
 
-  const senderUser = (process.env.MAIL_USER || process.env.SMTP_USER || '').trim();
-  const customFrom = (process.env.MAIL_FROM || process.env.SMTP_FROM || '').trim();
-  const fromAddress = customFrom
-    ? (customFrom.includes('<') ? customFrom : `"Football Connect Vietnam" <${customFrom}>`)
-    : senderUser
-    ? `"Football Connect Vietnam" <${senderUser}>`
-    : '"Football Connect Vietnam" <no-reply@footballconnect.vn>';
-
   try {
-    const client = await getTransporter();
-    const info = await client.sendMail({
-      from: fromAddress,
-      to,
-      subject,
-      html: htmlContent
-    });
-    console.log(`✅ [EMAIL SENT] OTP successfully sent to: ${to} (MessageId: ${info.messageId})`);
+    const configuration = getEmailConfigurationStatus();
+    if ('reason' in configuration) {
+      throw new Error(`${configuration.provider}: ${configuration.reason}`);
+    }
+
+    const fromAddress = formatFromAddress(configuration.from);
+    if (configuration.provider === 'brevo') {
+      await sendWithBrevo({
+        apiKey: process.env.BREVO_API_KEY!.trim(),
+        from: configuration.from,
+        to: to.trim(),
+        subject,
+        html: htmlContent
+      });
+    } else if (configuration.provider === 'resend') {
+      await sendWithResend({
+        apiKey: process.env.RESEND_API_KEY!.trim(),
+        from: fromAddress,
+        to: to.trim(),
+        subject,
+        html: htmlContent
+      });
+    } else {
+      const client = await getTransporter();
+      const info = await client.sendMail({
+        from: fromAddress,
+        to: to.trim(),
+        subject,
+        html: htmlContent
+      });
+      console.log(`✅ [EMAIL SENT] SMTP đã gửi thư (MessageId: ${info.messageId})`);
+    }
+
+    console.log(`✅ [EMAIL SENT] Nhà cung cấp ${configuration.provider} đã nhận email OTP cho ${to.trim()}`);
     return true;
   } catch (err) {
-    console.error(`❌ [EMAIL ERROR] Failed to dispatch email to ${to}:`, err);
+    const message = err instanceof Error ? err.message : 'Lỗi không xác định';
+    console.error(`❌ [EMAIL ERROR] Không thể gửi OTP cho ${to.trim()}: ${message}`);
     return false;
   }
 };
