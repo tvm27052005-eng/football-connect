@@ -39,7 +39,12 @@ export const PaymentTicket: React.FC<{ bookingId: string }> = ({ bookingId }) =>
   useEffect(() => {
     let cancelled = false;
     let timer: ReturnType<typeof setTimeout>;
+    let inFlight = false;
+    let terminal = false;
     const poll = async () => {
+      if (inFlight || cancelled || terminal) return;
+      inFlight = true;
+      clearTimeout(timer);
       try {
         const refresh = forceReconciliation.current;
         forceReconciliation.current = false;
@@ -51,17 +56,32 @@ export const PaymentTicket: React.FC<{ bookingId: string }> = ({ bookingId }) =>
           setError(confirmedPaid ? '' : res.data.reconciliationPending
             ? 'Đang đối soát giao dịch với ngân hàng. Hệ thống sẽ tự thử lại, bạn không cần thanh toán lần nữa.'
             : '');
-          if (next.status !== 'PENDING') return;
+          if (next.status !== 'PENDING') { terminal = true; return; }
         }
       } catch {
         if (!cancelled) setError(returnedPaid
           ? 'payOS đã ghi nhận thao tác thanh toán. Hệ thống đang xác minh giao dịch và sẽ tự cập nhật.'
           : 'Đang chờ xác nhận từ ngân hàng. Hệ thống sẽ tự thử lại, bạn không cần thanh toán lần nữa.');
+      } finally {
+        inFlight = false;
       }
       if (!cancelled) timer = setTimeout(poll, 5000);
     };
+    const onReturn = () => {
+      if (document.visibilityState === 'visible') {
+        forceReconciliation.current = true;
+        void poll();
+      }
+    };
+    window.addEventListener('focus', onReturn);
+    document.addEventListener('visibilitychange', onReturn);
     void poll();
-    return () => { cancelled = true; clearTimeout(timer); };
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+      window.removeEventListener('focus', onReturn);
+      document.removeEventListener('visibilitychange', onReturn);
+    };
   }, [bookingId, accept, returnedPaid]);
 
   useEffect(() => {

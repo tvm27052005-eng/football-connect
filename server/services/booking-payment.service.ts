@@ -34,8 +34,19 @@ export function preparePayment(booking: IBooking, ownerId: string) {
 }
 
 export async function expirePendingBookings() {
+  const overdue = db.bookings.filter(b => b.status === 'PENDING' && b.payment?.linkId &&
+    Date.parse(b.payment.expiresAt) <= Date.now());
+  // Render may wake after a bank transfer but before its webhook was delivered.
+  // Reconcile the provider first so a timely payment is not released as unpaid.
+  const checked = await Promise.allSettled(overdue.map(b => reconcilePayment(b.id, true)));
+  const unresolved = new Set(overdue.filter((b, index) => checked[index].status === 'rejected' ||
+    (checked[index].status === 'fulfilled' && checked[index].value?.status === 'PAID' &&
+      db.bookings.find(current => current.id === b.id)?.status === 'PENDING')).map(b => b.id));
   return withBookingLock(async () => {
     for (const existing of db.bookings) {
+      // A provider outage or a paid order missing transaction detail requires
+      // manual/retry reconciliation before we release a possibly paid slot.
+      if (unresolved.has(existing.id)) continue;
       const booking = structuredClone(existing);
       if (expireBooking(booking)) await db.syncBooking(booking);
     }
@@ -124,7 +135,6 @@ export async function reconcilePayment(id: string, force = false) {
   const elapsed = Date.now() - (lastChecked.get(id) || 0);
   // A payOS return requests one prompt refresh. Normal background checks use 30s.
   if (!current?.payment || (!force && elapsed < 30_000)) return;
-  lastChecked.set(id, Date.now());
   const payment = current.payment;
   const result = await getPayOS(payment.channelId).paymentRequests.get(payment.orderCode);
   if (result.orderCode !== payment.orderCode || result.amount !== current.totalPrice || (payment.linkId && result.id !== payment.linkId)) {
@@ -146,6 +156,7 @@ export async function reconcilePayment(id: string, force = false) {
       }
     });
   }
+  lastChecked.set(id, Date.now());
   return result;
 }
 

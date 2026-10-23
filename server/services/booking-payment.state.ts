@@ -45,8 +45,10 @@ export function applyReceipt(b: IBooking, receipt: { reference: string; amount: 
   if (!receipt.reference || !Number.isSafeInteger(receipt.amount) || receipt.amount <= 0 || !Number.isFinite(Date.parse(receipt.paidAt))) {
     throw new BookingError(400, 'Thông tin giao dịch không hợp lệ.');
   }
-  // A late confirmation must never reclaim a slot which may already be sold again.
-  expireBooking(b, now);
+  // Use the bank's verified payment time. A delayed webhook must not expire a
+  // still-held booking that was paid before its deadline. Never revive a slot
+  // already released by an earlier cancellation.
+  if (Date.parse(receipt.paidAt) >= Date.parse(b.payment.expiresAt)) expireBooking(b, now);
   b.payment.receipts.push(receipt);
   const late = Date.parse(receipt.paidAt) >= Date.parse(b.payment.expiresAt);
   if (b.status === 'PENDING' && late) {

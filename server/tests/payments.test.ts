@@ -41,11 +41,21 @@ test('expiry at the exact boundary releases unpaid bookings but never paid booki
   const paid = booking(); applyReceipt(paid, receipt(), now + 1000);
   assert.equal(expireBooking(paid, now + 16 * 60000), false);
 });
+test('a verified transfer before expiry completes a held booking despite delayed processing', () => {
+  const b = booking();
+  assert.equal(applyReceipt(b, { ...receipt(), paidAt: new Date(now + 14 * 60000).toISOString() }, now + 16 * 60000), true);
+  assert.equal(b.status, 'COMPLETED'); assert.equal(b.paymentStatus, 'PAID');
+  assert.equal(b.payment!.receipts.length, 1);
+});
 test('late confirmation never revives a released slot and tracks refund instead', () => {
   const b = booking();
+  expireBooking(b, now + 16 * 60000);
   applyReceipt(b, receipt(), now + 16 * 60000);
   assert.equal(b.status, 'CANCELLED'); assert.equal(b.paymentStatus, 'PAID');
   assert.equal(b.refund?.status, 'PENDING'); assert.equal(b.refund?.amount, 300000);
+  const late = booking();
+  applyReceipt(late, { ...receipt(), paidAt: new Date(now + 16 * 60000).toISOString() }, now + 16 * 60000);
+  assert.equal(late.status, 'CANCELLED'); assert.equal(late.refund?.status, 'PENDING');
 });
 test('partial payment holds until expiry, overpayment completes with excess refund', () => {
   const partial = booking(); applyReceipt(partial, receipt(100000), now + 1000);
@@ -241,6 +251,37 @@ test('HTTP booking/payment workflow with isolated durable repository and signed 
       assert.equal(refreshed.status, 200);
       assert.equal(refreshed.body.data.find((booking: IBooking) => booking.id === id)?.status, 'COMPLETED');
       assert.equal(db.bookings.find(b => b.id === id)!.status, 'COMPLETED');
+    });
+    await t.test('checkout polling recovers a transfer made before expiry while Render was asleep', async () => {
+      const res = await request('/bookings', 'POST', { ...input, bookingDate: '2099-01-04' });
+      assert.equal(res.status, 201); id = res.body.data.id;
+      await request(`/bookings/${id}/payment`, 'POST');
+      const b = structuredClone(db.bookings.find(item => item.id === id)!);
+      b.payment!.expiresAt = new Date(Date.now() - 1000).toISOString();
+      await db.syncBooking(b);
+      const remoteOrder = remote.get(b.payment!.orderCode);
+      remoteOrder.transactions = [{ reference: 'sleeping-render-bank-ref', amount: b.totalPrice,
+        accountNumber: 'test-account', description: 'FC', transactionDateTime: new Date(Date.now() - 2000).toISOString() }];
+      remoteOrder.status = 'PAID'; remoteOrder.amountPaid = b.totalPrice; remoteOrder.amountRemaining = 0;
+      const refreshed = await request(`/bookings/${id}/payment?refresh=1`);
+      assert.equal(refreshed.status, 200);
+      assert.equal(refreshed.body.data.status, 'COMPLETED');
+      assert.equal(refreshed.body.data.paymentStatus, 'PAID');
+      assert.equal(persisted.get(id)?.status, 'COMPLETED');
+    });
+    await t.test('expiry waits for provider recovery rather than cancelling an unverified transfer', async () => {
+      const res = await request('/bookings', 'POST', { ...input, bookingDate: '2099-01-05' });
+      assert.equal(res.status, 201); id = res.body.data.id;
+      await request(`/bookings/${id}/payment`, 'POST');
+      const b = structuredClone(db.bookings.find(item => item.id === id)!);
+      b.payment!.expiresAt = new Date(Date.now() - 1000).toISOString();
+      await db.syncBooking(b);
+      providerUnavailable = true;
+      await expirePendingBookings();
+      assert.equal(db.bookings.find(item => item.id === id)?.status, 'PENDING');
+      providerUnavailable = false;
+      await expirePendingBookings();
+      assert.equal(db.bookings.find(item => item.id === id)?.status, 'CANCELLED');
     });
     await t.test('unconfigured owner and field/venue mismatch fail before creating any hold', async () => {
       assert.equal((await request('/bookings', 'POST', { ...input, venueId: 'wrong' })).status, 404);
