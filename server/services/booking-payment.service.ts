@@ -121,7 +121,9 @@ const lastChecked = new Map<string, number>();
 /** Server-to-server reconciliation also recovers missed webhooks. */
 export async function reconcilePayment(id: string, force = false) {
   const current = db.bookings.find(b => b.id === id);
-  if (!current?.payment || (!force && Date.now() - (lastChecked.get(id) || 0) < 30_000)) return;
+  const elapsed = Date.now() - (lastChecked.get(id) || 0);
+  // A payOS return requests one prompt refresh. Normal background checks use 30s.
+  if (!current?.payment || (!force && elapsed < 30_000)) return;
   lastChecked.set(id, Date.now());
   const payment = current.payment;
   const result = await getPayOS(payment.channelId).paymentRequests.get(payment.orderCode);

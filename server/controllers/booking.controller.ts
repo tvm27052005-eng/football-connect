@@ -37,6 +37,11 @@ export const bookingController = {
     try {
       if (!req.user) throw new BookingError(401, 'Chưa đăng nhập.');
       await expirePendingBookings();
+      const visiblePending = db.bookings.filter(b => b.status === 'PENDING' && b.payment && (
+        req.user!.role === 'ADMIN' || (req.user!.role === 'OWNER' ? canManage(req, b) : b.userId === req.user!.id)
+      ));
+      const forceReconciliation = req.query.refresh === '1';
+      await Promise.allSettled(visiblePending.map(b => reconcilePayment(b.id, forceReconciliation)));
       let bookings = db.bookings.filter(b => req.user!.role === 'ADMIN' ||
         (req.user!.role === 'OWNER' ? canManage(req, b) : b.userId === req.user!.id));
       const { status, venueId, date, search, sort } = req.query;
@@ -124,7 +129,8 @@ export const bookingController = {
       authorize(req, bookingCopy(req.params.id));
       await expirePendingBookings();
       let reconciliationPending = false;
-      try { await reconcilePayment(req.params.id); } catch { reconciliationPending = true; }
+      const forceReconciliation = req.query.refresh === '1';
+      try { await reconcilePayment(req.params.id, forceReconciliation); } catch { reconciliationPending = true; }
       res.setHeader('Cache-Control', 'no-store');
       res.json({ success: true, reconciliationPending, serverTime: new Date().toISOString(), data: publicBooking(bookingCopy(req.params.id)) });
     } catch (error) { fail(res, error); }

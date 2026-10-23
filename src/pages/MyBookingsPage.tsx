@@ -44,13 +44,16 @@ export const MyBookingsPage: React.FC = () => {
   const [reviewError, setReviewError] = useState('');
 
   const fetching = useRef(false);
+  const forceReconciliation = useRef(true);
   const [loadError, setLoadError] = useState('');
   const fetchMyBookings = async (silent = false) => {
     if (fetching.current) return;
     fetching.current = true;
     try {
       if (!silent) setIsLoading(true);
-      const res = await api.get('/bookings');
+      const refresh = forceReconciliation.current;
+      forceReconciliation.current = false;
+      const res = await api.get(`/bookings${refresh ? '?refresh=1' : ''}`);
       setBookings(res.data.data);
       setLoadError('');
     } catch (e) {

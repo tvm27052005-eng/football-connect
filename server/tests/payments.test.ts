@@ -7,7 +7,7 @@ import { db } from '../models/db.js';
 import type { IBooking } from '../types/index.js';
 import { generateAccessToken } from '../utils/jwt.js';
 import { applyReceipt, cancelBookingState, confirmRefundState, expireBooking } from '../services/booking-payment.state.js';
-import { expirePendingBookings, reconcilePayment, syncCancelledPayment } from '../services/booking-payment.service.js';
+import { expirePendingBookings, syncCancelledPayment } from '../services/booking-payment.service.js';
 import { bankTimestamp } from '../services/payos.service.js';
 
 const now = Date.parse('2030-01-01T09:00:00+07:00');
@@ -237,7 +237,9 @@ test('HTTP booking/payment workflow with isolated durable repository and signed 
       const remoteOrder = remote.get(b.payment!.orderCode);
       remoteOrder.transactions = [{ reference: 'reconciled-bank-ref', amount: b.totalPrice, accountNumber: 'test-account', description: 'FC', transactionDateTime: new Date().toISOString() }];
       remoteOrder.status = 'PAID'; remoteOrder.amountPaid = b.totalPrice; remoteOrder.amountRemaining = 0;
-      await reconcilePayment(id, true);
+      const refreshed = await request('/bookings?refresh=1');
+      assert.equal(refreshed.status, 200);
+      assert.equal(refreshed.body.data.find((booking: IBooking) => booking.id === id)?.status, 'COMPLETED');
       assert.equal(db.bookings.find(b => b.id === id)!.status, 'COMPLETED');
     });
     await t.test('unconfigured owner and field/venue mismatch fail before creating any hold', async () => {
