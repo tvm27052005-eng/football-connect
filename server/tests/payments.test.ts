@@ -82,7 +82,7 @@ function signature(data: Record<string, unknown>, secret = 'test-checksum-owner'
 }
 
 test('HTTP booking/payment workflow with isolated durable repository and signed provider fixtures', async t => {
-  const original = { users: db.users, venues: db.venues, fields: db.fields, bookings: db.bookings, mongo: db.isMongoConnected, sync: db.syncBooking };
+  const original = { users: db.users, venues: db.venues, fields: db.fields, bookings: db.bookings, mongo: db.isMongoConnected, sync: db.syncBooking, syncUser: db.syncUser };
   const env = { channels: process.env.PAYOS_CHANNELS_JSON, url: process.env.APP_URL };
   process.env.PAYOS_CHANNELS_JSON = JSON.stringify({ owner: { clientId: 'client-owner', apiKey: 'test-key-owner', checksumKey: 'test-checksum-owner' }, other: { clientId: 'client-other', apiKey: 'test-key-other', checksumKey: 'test-checksum-other' } });
   process.env.APP_URL = 'http://localhost:3000';
@@ -97,6 +97,9 @@ test('HTTP booking/payment workflow with isolated durable repository and signed 
     const saved = structuredClone(b); persisted.set(b.id, saved);
     db.bookings = [...db.bookings.filter(x => x.id !== b.id), structuredClone(saved)];
   };
+  db.syncUser = async user => {
+    db.users = [...db.users.filter(item => item.id !== user.id), structuredClone(user)];
+  };
   const realFetch = globalThis.fetch;
   let providerCreates = 0;
   let providerUnavailable = false;
@@ -107,7 +110,11 @@ test('HTTP booking/payment workflow with isolated durable repository and signed 
     if (providerUnavailable) return Response.json({ code: '99', desc: 'test unavailable' }, { status: 503 });
     const body = init?.body ? JSON.parse(String(init.body)) : {};
     let data;
-    if (url.endsWith('/v2/payment-requests')) {
+    if (url.endsWith('/confirm-webhook')) {
+      assert.equal(new Headers(init?.headers).get('x-client-id'), 'client-owner');
+      assert.equal(body.webhookUrl, `${base}/payments/payos/webhook/owner`);
+      data = { webhookUrl: body.webhookUrl, accountNumber: 'test-account', accountName: 'TEST OWNER', name: 'Test channel', shortName: 'TEST' };
+    } else if (url.endsWith('/v2/payment-requests')) {
       providerCreates++;
       assert.equal(new Headers(init?.headers).get('x-client-id'), 'client-owner');
       assert.equal(body.amount, 300000); assert.ok(body.expiredAt > Date.now() / 1000);
@@ -135,6 +142,25 @@ test('HTTP booking/payment workflow with isolated durable repository and signed 
   const event = (b: IBooking, reference = 'http-bank-ref', amount = b.totalPrice) => ({ orderCode: b.payment!.orderCode, paymentLinkId: b.payment!.linkId!, amount, reference, transactionDateTime: new Date().toISOString(), currency: 'VND', accountNumber: 'test-account', code: '00' });
   const webhook = (data: ReturnType<typeof event>, channel = 'owner', sig = signature(data)) => request(`/payments/payos/webhook/${channel}`, 'POST', { code: '00', success: true, data, signature: sig }, 'anonymous');
   try {
+    await t.test('owner connection validates the payment channel via webhook without payout access', async () => {
+      process.env.APP_URL = base.replace(/\/api$/, '');
+      const connected = await request('/payments/owner/config', 'PUT', {
+        clientId: 'client-owner', apiKey: 'test-key-owner', checksumKey: 'test-checksum-owner', bankBin: '970452'
+      }, 'owner');
+      assert.equal(connected.status, 200);
+      assert.equal(connected.body.data.connected, true);
+      assert.equal(connected.body.data.accountNumber, 'test-account');
+      assert.equal(db.users.find(user => user.id === 'owner')?.payos?.accountName, 'TEST OWNER');
+
+      providerUnavailable = true;
+      const rejected = await request('/payments/owner/config', 'PUT', {
+        clientId: 'client-owner', apiKey: 'wrong-key', checksumKey: 'wrong-checksum'
+      }, 'owner');
+      assert.equal(rejected.status, 502);
+      assert.equal(db.users.find(user => user.id === 'owner')?.payos?.accountName, 'TEST OWNER');
+      providerUnavailable = false;
+    });
+
     await t.test('concurrent creates reserve one slot, ignore client price/payment claims', async () => {
       const results = await Promise.all([request('/bookings', 'POST', input), request('/bookings', 'POST', input)]);
       assert.deepEqual(results.map(r => r.status).sort(), [201, 409]);
@@ -231,7 +257,7 @@ test('HTTP booking/payment workflow with isolated durable repository and signed 
     });
   } finally {
     globalThis.fetch = realFetch; db.users = original.users; db.venues = original.venues; db.fields = original.fields;
-    db.bookings = original.bookings; db.isMongoConnected = original.mongo; db.syncBooking = original.sync;
+    db.bookings = original.bookings; db.isMongoConnected = original.mongo; db.syncBooking = original.sync; db.syncUser = original.syncUser;
     if (env.channels === undefined) delete process.env.PAYOS_CHANNELS_JSON; else process.env.PAYOS_CHANNELS_JSON = env.channels;
     if (env.url === undefined) delete process.env.APP_URL; else process.env.APP_URL = env.url;
     server.close(); await once(server, 'close');

@@ -59,7 +59,7 @@ Nếu Brevo từ chối request, API đăng ký trả `503` và hệ thống xó
 Luồng đặt sân dùng **payOS** và chuyển tiền thẳng vào tài khoản của từng chủ sân:
 
 1. Mỗi chủ sân tạo một tài khoản/kênh thanh toán payOS, liên kết tài khoản ngân hàng chính chủ và lấy `Client ID`, `API Key`, `Checksum Key`.
-   Chủ sân có thể đăng nhập cổng chủ sân, mở **Thanh toán & QR payOS**, nhập ba thông tin này và bấm **Kết nối và kiểm tra payOS**. Hệ thống sẽ xác thực tài khoản, lưu secret đã mã hóa ở server và tự dùng đúng tài khoản cho các đơn của chủ sân đó. Có thể mở liên kết đăng ký payOS ngay tại màn hình này.
+   Chủ sân có thể đăng nhập cổng chủ sân, mở **Thanh toán & QR payOS**, nhập ba thông tin này và bấm **Kết nối và kiểm tra payOS**. Hệ thống xác thực kênh bằng API webhook, tự đăng ký webhook riêng của chủ sân, lưu secret đã mã hóa ở server và dùng đúng tài khoản cho các đơn của chủ sân đó. Có thể mở liên kết đăng ký payOS ngay tại màn hình này.
 2. Đặt `APP_URL` thành địa chỉ HTTPS công khai của website. `localhost` chỉ dùng khi phát triển và không thể nhận webhook từ payOS.
 3. Cách khuyến nghị là kết nối trong cổng chủ sân. Cách cấu hình `.env` dưới đây vẫn được hỗ trợ để tương thích các kênh cũ:
 
@@ -70,13 +70,13 @@ Luồng đặt sân dùng **payOS** và chuyển tiền thẳng vào tài khoả
    BOOKING_CANCEL_BEFORE_HOURS="2"
    ```
 
-4. Trong từng kênh payOS, đăng ký webhook HTTPS theo mẫu:
+4. Khi chủ sân bấm kết nối, hệ thống tự đăng ký webhook HTTPS theo mẫu:
 
    ```text
    https://football-connect.example/api/payments/payos/webhook/owner_001
    ```
 
-   Phần cuối URL phải đúng ID của chủ sân sở hữu kênh. Server dùng `Checksum Key` của chính kênh đó để xác minh chữ ký; không đưa ba khóa payOS vào biến `VITE_*` hoặc mã front-end.
+   Phần cuối URL là ID của chủ sân sở hữu kênh. Không cần nhập URL này thủ công trong payOS. Server dùng `Checksum Key` của chính kênh đó để xác minh chữ ký; không đưa ba khóa payOS vào biến `VITE_*` hoặc mã front-end.
 
 Đơn mới ở trạng thái `Chờ thanh toán`. Server giữ ca trong thời gian cấu hình, tự hủy đơn chưa trả đủ tiền, đồng thời đối soát lại với payOS nếu webhook bị chậm. Chỉ webhook có chữ ký hợp lệ hoặc kết quả đối soát server-to-server mới được chuyển đơn sang `Đã hoàn thành`.
 

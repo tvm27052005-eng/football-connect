@@ -5,7 +5,8 @@ import { db } from '../models/db.js';
 import { AuthenticatedRequest } from '../middlewares/auth.middleware.js';
 import {
   encryptPayOSSecret,
-  ownerPaymentSummary
+  ownerPaymentSummary,
+  paymentAppUrl
 } from '../services/payos.service.js';
 
 const configSchema = z.object({
@@ -44,40 +45,70 @@ export const ownerPaymentController = {
         return;
       }
 
+      const webhookUrl = `${paymentAppUrl()}/api/payments/payos/webhook/${encodeURIComponent(id)}`;
       const client = new PayOS({
         ...parsed.data,
         timeout: 10_000,
         maxRetries: 0
       });
-      const account = await client.payoutsAccount.balance();
-      if (!account.accountNumber || !account.accountName) {
-        res.status(422).json({ success: false, message: 'payOS chưa trả về tài khoản nhận tiền hợp lệ.' });
-        return;
-      }
 
-      const updatedUser = {
+      // payOS validates a webhook by calling it before returning. Persist a
+      // provisional encrypted channel so that callback can verify its signature.
+      const previousPayos = user.payos;
+      const provisionalUser = {
         ...user,
         payos: {
           clientId: parsed.data.clientId,
           apiKeyEncrypted: encryptPayOSSecret(parsed.data.apiKey),
           checksumKeyEncrypted: encryptPayOSSecret(parsed.data.checksumKey),
-          accountNumber: account.accountNumber,
-          accountName: account.accountName,
           bankBin: parsed.data.bankBin || undefined,
           connectedAt: new Date().toISOString()
         }
       };
-      await db.syncUser(updatedUser);
+
+      await db.syncUser(provisionalUser);
+      let account;
+      try {
+        account = await client.webhooks.confirm(webhookUrl);
+      } catch (error) {
+        await db.syncUser({ ...user, payos: previousPayos }).catch(rollbackError => {
+          console.error('Không thể hoàn tác cấu hình payOS sau khi xác thực thất bại:', rollbackError);
+        });
+        throw error;
+      }
+
+      if (!account.accountNumber || !account.accountName) {
+        await db.syncUser({ ...user, payos: previousPayos });
+        res.status(422).json({ success: false, message: 'payOS chưa trả về tài khoản nhận tiền hợp lệ.' });
+        return;
+      }
+
+      await db.syncUser({
+        ...provisionalUser,
+        payos: {
+          ...provisionalUser.payos,
+          accountNumber: account.accountNumber,
+          accountName: account.accountName
+        }
+      });
       res.json({
         success: true,
-        message: 'Đã kết nối tài khoản payOS thành công.',
+        message: 'Đã kết nối tài khoản và đăng ký webhook payOS thành công.',
         data: ownerPaymentSummary(id)
       });
     } catch (error) {
       console.error('Lỗi kết nối payOS của chủ sân:', error);
+      const detail = error instanceof Error ? error.message : '';
+      const message = /HTTP 401|Unauthorized/i.test(detail)
+        ? 'Client ID hoặc API Key payOS không chính xác.'
+        : /signature|checksum/i.test(detail)
+          ? 'Checksum Key payOS không chính xác.'
+          : /webhook|APP_URL/i.test(detail)
+            ? 'Không thể xác thực webhook payOS. Kiểm tra APP_URL trên Render và thử lại.'
+            : 'Không thể xác thực kênh thanh toán payOS. Kiểm tra credential và trạng thái kênh rồi thử lại.';
       res.status(502).json({
         success: false,
-        message: 'Không thể xác thực thông tin payOS. Kiểm tra lại credential và thử lại.'
+        message
       });
     }
   },

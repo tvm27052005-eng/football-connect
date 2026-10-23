@@ -102,7 +102,7 @@ export const OwnerPaymentPage: React.FC = () => {
             </section>}
 
             {!config?.connected && <form onSubmit={save} className="rounded-2xl bg-white border border-slate-200 p-6 shadow-sm space-y-4">
-              <div><h2 className="font-bold text-slate-900">Kết nối tài khoản payOS</h2><p className="text-sm text-slate-500 mt-1">Đăng ký tài khoản merchant tại payOS, lấy 3 thông tin bên dưới rồi nhập vào đây.</p></div>
+              <div><h2 className="font-bold text-slate-900">Kết nối tài khoản payOS</h2><p className="text-sm text-slate-500 mt-1">Nhập thông tin của kênh thanh toán. Hệ thống sẽ xác thực tài khoản và tự đăng ký webhook cho chủ sân này.</p></div>
               {(['clientId', 'apiKey', 'checksumKey'] as const).map((field) => <label key={field} className="block text-sm font-semibold text-slate-700">{field === 'clientId' ? 'Client ID' : field === 'apiKey' ? 'API Key' : 'Checksum Key'}<input required type="password" value={form[field]} onChange={e => setForm(prev => ({ ...prev, [field]: e.target.value }))} className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-3 font-mono text-sm" /></label>)}
               <label className="block text-sm font-semibold text-slate-700">Mã BIN ngân hàng (tùy chọn, 6 chữ số)<input inputMode="numeric" maxLength={6} value={form.bankBin} onChange={e => setForm(prev => ({ ...prev, bankBin: e.target.value.replace(/\D/g, '') }))} className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-3 font-mono text-sm" /></label>
               <button disabled={saving} className="rounded-xl bg-emerald-600 text-white px-5 py-3 font-bold disabled:opacity-50">{saving ? 'Đang xác thực…' : 'Kết nối và kiểm tra payOS'}</button>
