@@ -3,6 +3,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import {
   Mail,
   Lock,
+  ArrowLeft,
   ArrowRight,
   AlertCircle,
   EyeOff,
@@ -106,7 +107,9 @@ export const LoginPage: React.FC = () => {
 
     try {
       setIsForgotLoading(true);
-      await api.post('/auth/forgot-password-otp', { email: forgotEmail.trim() });
+      const normalizedEmail = forgotEmail.trim().toLowerCase();
+      await api.post('/auth/forgot-password-otp', { email: normalizedEmail });
+      setForgotEmail(normalizedEmail);
       setForgotStep('OTP');
       setForgotOtpExpiresIn(60);
       setForgotResendCooldown(60);
@@ -406,11 +409,43 @@ export const LoginPage: React.FC = () => {
             setForgotError('');
           }
         }}
-        title="Quên mật khẩu"
+        title={forgotStep === 'EMAIL' ? 'Khôi phục tài khoản' : 'Xác thực và đặt mật khẩu mới'}
+        maxWidth="sm"
       >
-        <div className="space-y-4 text-xs">
+        <div className="space-y-5 text-xs">
+          <div className="overflow-hidden rounded-2xl bg-slate-950 p-5 text-white shadow-lg shadow-slate-950/10">
+            <div className="flex items-start gap-3">
+              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-lime-400 text-slate-950">
+                {forgotStep === 'EMAIL' ? <Mail className="h-5 w-5" /> : <KeyRound className="h-5 w-5" />}
+              </span>
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-[0.18em] text-lime-300">Football Connect Security</p>
+                <h4 className="mt-1 text-base font-black">
+                  {forgotStep === 'EMAIL' ? 'Nhận mã xác thực qua email' : 'Kiểm tra email của bạn'}
+                </h4>
+                <p className="mt-1 text-[11px] leading-5 text-slate-300">
+                  {forgotStep === 'EMAIL'
+                    ? 'Nhập email đã đăng ký. Hệ thống sẽ gửi mã OTP gồm 6 chữ số để xác minh tài khoản.'
+                    : <>Mã OTP đã được gửi đến <strong className="text-white">{forgotEmail}</strong> và có hiệu lực trong 1 phút.</>}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-[auto_1fr_auto] items-center gap-3 px-1">
+            <div className="flex items-center gap-2">
+              <span className="flex h-7 w-7 items-center justify-center rounded-full bg-emerald-600 text-[11px] font-black text-white">1</span>
+              <span className="font-bold text-slate-700">Email</span>
+            </div>
+            <div className={`h-0.5 rounded-full ${forgotStep === 'OTP' ? 'bg-emerald-500' : 'bg-slate-200'}`} />
+            <div className="flex items-center gap-2">
+              <span className={`flex h-7 w-7 items-center justify-center rounded-full text-[11px] font-black ${forgotStep === 'OTP' ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-400'}`}>2</span>
+              <span className={forgotStep === 'OTP' ? 'font-bold text-slate-700' : 'font-semibold text-slate-400'}>OTP & mật khẩu</span>
+            </div>
+          </div>
+
           {forgotError && (
-            <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-center gap-2 font-medium">
+            <div role="alert" className="flex items-start gap-2 rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs font-medium text-rose-700">
               <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
               <span>{forgotError}</span>
             </div>
@@ -420,87 +455,94 @@ export const LoginPage: React.FC = () => {
             /* STEP 1: Enter email */
             <form onSubmit={handleSendForgotOtp} className="space-y-4">
               <div>
-                <label className="block text-slate-700 font-bold mb-1.5">Email của bạn</label>
-                <div className="relative">
-                  <Mail className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                <label htmlFor="forgot-email" className="mb-2 block text-xs font-black uppercase tracking-wider text-slate-700">Email đã đăng ký</label>
+                <div className="group relative">
+                  <Mail className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 group-focus-within:text-emerald-600" />
                   <input
+                    id="forgot-email"
                     type="email"
                     required
+                    autoFocus
+                    autoComplete="email"
                     value={forgotEmail}
                     onChange={(e) => setForgotEmail(e.target.value)}
-                    placeholder="email@example.com"
-                    className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:bg-white focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
+                    placeholder="ban@footballconnect.vn"
+                    className="w-full rounded-2xl border border-slate-200 bg-slate-50 py-3.5 pl-11 pr-4 text-sm text-slate-900 outline-none transition focus:border-emerald-500 focus:bg-white focus:ring-4 focus:ring-emerald-500/10"
                   />
                 </div>
+                <p className="mt-2 flex items-center gap-1.5 text-[11px] text-slate-500"><ShieldCheck className="h-3.5 w-3.5 text-emerald-600" /> Mã xác thực chỉ được gửi đến email liên kết với tài khoản.</p>
               </div>
 
-              <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
-                <button
-                  type="button"
-                  onClick={() => setIsForgotModalOpen(false)}
-                  className="px-4 py-2 rounded-xl text-slate-600 hover:bg-slate-100 font-semibold cursor-pointer"
-                >
-                  Hủy bỏ
-                </button>
-                <button
-                  type="submit"
-                  disabled={isForgotLoading || !forgotEmail}
-                  className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-bold transition-all shadow-xs flex items-center gap-1.5 cursor-pointer"
-                >
-                  {isForgotLoading ? 'Đang gửi mã...' : 'Gửi Mã Xác Thực OTP'}
-                </button>
-              </div>
+              <button
+                type="submit"
+                disabled={isForgotLoading || !forgotEmail.trim()}
+                className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-2xl bg-emerald-600 py-3.5 text-sm font-black text-white shadow-md shadow-emerald-600/15 transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {isForgotLoading ? <><RotateCw className="h-4 w-4 animate-spin" /> Đang gửi mã…</> : <>Gửi mã OTP <ArrowRight className="h-4 w-4" /></>}
+              </button>
             </form>
           ) : (
 
             <form onSubmit={handleResetPassword} className="space-y-4">
               {/* OTP Field */}
               <div>
-                <div className="flex items-center justify-between mb-1">
-                  <label className="text-xs font-bold text-slate-700">Mã xác thực OTP (6 chữ số)</label>
-                  <span className={`text-[11px] font-extrabold ${forgotOtpExpiresIn < 60 ? 'text-rose-600 animate-pulse' : 'text-emerald-700'}`}>
-                    Còn {formatTime(forgotOtpExpiresIn)}
+                <div className="mb-2 flex items-center justify-between gap-3">
+                  <label htmlFor="forgot-otp" className="text-xs font-black uppercase tracking-wider text-slate-700">Mã OTP</label>
+                  <span className={`rounded-full px-2.5 py-1 text-[11px] font-extrabold ${forgotOtpExpiresIn <= 15 ? 'bg-rose-50 text-rose-600' : 'bg-emerald-50 text-emerald-700'}`}>
+                    {forgotOtpExpiresIn > 0 ? `Còn ${formatTime(forgotOtpExpiresIn)}` : 'Đã hết hạn'}
                   </span>
                 </div>
                 <div className="relative">
-                  <KeyRound className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <KeyRound className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-emerald-600" />
                   <input
+                    id="forgot-otp"
                     type="text"
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
                     maxLength={6}
                     autoFocus
                     required
                     value={forgotOtp}
                     onChange={(e) => setForgotOtp(e.target.value.replace(/\D/g, ''))}
-                    placeholder="XXXXXX"
-                    className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-center text-base font-mono font-bold tracking-widest text-slate-900 focus:outline-none focus:bg-white focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
+                    placeholder="000000"
+                    className="w-full rounded-2xl border border-slate-200 bg-slate-50 py-3.5 pl-12 pr-4 text-center font-mono text-xl font-black tracking-[0.45em] text-slate-950 outline-none transition focus:border-emerald-500 focus:bg-white focus:ring-4 focus:ring-emerald-500/10"
                   />
                 </div>
-                <div className="flex items-center justify-between text-[11px] text-slate-500 mt-1">
-                  <span>Chưa nhận được mã?</span>
+                <div className="mt-2 h-1 overflow-hidden rounded-full bg-slate-100">
+                  <div className={`h-full transition-all duration-1000 ${forgotOtpExpiresIn <= 15 ? 'bg-rose-500' : 'bg-emerald-500'}`} style={{ width: `${Math.max(0, Math.min(100, (forgotOtpExpiresIn / 60) * 100))}%` }} />
+                </div>
+                <div className="mt-2 flex items-center justify-between gap-3 text-[11px] text-slate-500">
+                  <button type="button" onClick={() => { setForgotStep('EMAIL'); setForgotOtp(''); setForgotError(''); }} className="flex cursor-pointer items-center gap-1 font-bold text-slate-600 hover:text-slate-900">
+                    <ArrowLeft className="h-3 w-3" /> Đổi email
+                  </button>
                   <button
                     type="button"
                     disabled={forgotResendCooldown > 0 || isForgotLoading}
                     onClick={handleResendForgotOtp}
-                    className="font-bold text-emerald-700 hover:underline disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1 cursor-pointer"
+                    className="flex cursor-pointer items-center gap-1 font-bold text-emerald-700 hover:underline disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     <RotateCw className="w-3 h-3" />
-                    {forgotResendCooldown > 0 ? `Gửi lại sau (${forgotResendCooldown}s)` : 'Gửi lại mã OTP'}
+                    {forgotResendCooldown > 0 ? `Gửi lại sau ${forgotResendCooldown}s` : 'Gửi lại mã OTP'}
                   </button>
                 </div>
               </div>
 
               {/* New Password */}
               <div>
-                <label className="block text-slate-700 font-bold mb-1">Mật khẩu mới (Tối thiểu 6 ký tự)</label>
+                <label htmlFor="forgot-new-password" className="mb-2 block text-xs font-black uppercase tracking-wider text-slate-700">Mật khẩu mới</label>
                 <div className="relative">
                   <Lock className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
                   <input
+                    id="forgot-new-password"
                     type={showNewPassword ? 'text' : 'password'}
                     required
+                    minLength={6}
+                    maxLength={128}
+                    autoComplete="new-password"
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
-                    placeholder="••••••••"
-                    className="w-full pl-10 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:bg-white focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
+                    placeholder="Tối thiểu 6 ký tự"
+                    className="w-full rounded-xl border border-slate-200 bg-slate-50 py-3 pl-10 pr-10 text-sm text-slate-900 outline-none focus:border-emerald-500 focus:bg-white focus:ring-2 focus:ring-emerald-500/20"
                   />
                   <button
                     type="button"
@@ -514,16 +556,20 @@ export const LoginPage: React.FC = () => {
 
               {/* Confirm Password */}
               <div>
-                <label className="block text-slate-700 font-bold mb-1">Nhập lại mật khẩu mới</label>
+                <label htmlFor="forgot-confirm-password" className="mb-2 block text-xs font-black uppercase tracking-wider text-slate-700">Xác nhận mật khẩu mới</label>
                 <div className="relative">
                   <Lock className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
                   <input
+                    id="forgot-confirm-password"
                     type={showConfirmPassword ? 'text' : 'password'}
                     required
+                    minLength={6}
+                    maxLength={128}
+                    autoComplete="new-password"
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     placeholder="••••••••"
-                    className="w-full pl-10 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:bg-white focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
+                    className="w-full rounded-xl border border-slate-200 bg-slate-50 py-3 pl-10 pr-10 text-sm text-slate-900 outline-none focus:border-emerald-500 focus:bg-white focus:ring-2 focus:ring-emerald-500/20"
                   />
                   <button
                     type="button"
@@ -535,17 +581,19 @@ export const LoginPage: React.FC = () => {
                 </div>
               </div>
 
-              <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
-                <button
-                  type="submit"
-                  disabled={isForgotLoading || forgotOtp.length !== 6 || forgotOtpExpiresIn <= 0}
-                  className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-bold transition-all shadow-xs flex items-center gap-1.5 cursor-pointer"
-                >
-                  {isForgotLoading ? 'Đang cập nhật...' : 'Xác Nhận'}
-                </button>
-              </div>
+              <button
+                type="submit"
+                disabled={isForgotLoading || forgotOtp.length !== 6 || forgotOtpExpiresIn <= 0 || newPassword.length < 6 || newPassword !== confirmPassword}
+                className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-2xl bg-lime-400 py-3.5 text-sm font-black text-slate-950 shadow-md shadow-lime-500/15 transition hover:bg-lime-300 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {isForgotLoading ? <><RotateCw className="h-4 w-4 animate-spin" /> Đang cập nhật…</> : <><CheckCircle2 className="h-4 w-4" /> Đặt lại mật khẩu</>}
+              </button>
             </form>
           )}
+
+          <p className="flex items-center justify-center gap-1.5 border-t border-slate-100 pt-4 text-center text-[10px] leading-4 text-slate-400">
+            <ShieldCheck className="h-3.5 w-3.5 shrink-0" /> Football Connect không bao giờ yêu cầu bạn cung cấp OTP qua điện thoại hoặc tin nhắn.
+          </p>
         </div>
       </Modal>
     </div>
