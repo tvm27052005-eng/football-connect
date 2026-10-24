@@ -15,8 +15,24 @@ export function audit(b: IBooking, action: string, actor: string, now: number, n
 }
 
 export function receivedAmount(b: IBooking) {
-  return b.payment ? b.payment.receipts.reduce((sum, r) => sum + r.amount, 0)
+  return b.payment ? Math.max(b.payment.providerConfirmedAmount || 0, b.payment.receipts.reduce((sum, r) => sum + r.amount, 0))
     : b.paymentStatus === 'PAID' || b.paymentStatus === 'REFUNDED' ? b.totalPrice : 0;
+}
+
+/** A signed, authenticated payOS link can be PAID before its transaction details appear. */
+export function applyProviderConfirmation(b: IBooking, amount: number, now = Date.now()): boolean {
+  if (!b.payment || !Number.isSafeInteger(amount) || amount < b.totalPrice) return false;
+  if (b.payment.providerConfirmedAmount === amount && b.paymentStatus === 'PAID') return false;
+  b.payment.providerConfirmedAmount = Math.max(amount, b.payment.providerConfirmedAmount || 0);
+  if (b.status === 'PENDING') b.status = 'COMPLETED';
+  if (b.status === 'CANCELLED') {
+    b.payment.exception = 'payOS đã xác nhận nhận tiền cho đơn bị hủy. Liên hệ chủ sân để đối soát và hoàn tiền; ca sân không được khôi phục.';
+  }
+  b.paymentStatus = 'PAID';
+  b.payment.paidAt ||= new Date(now).toISOString();
+  updateRefund(b);
+  audit(b, 'PAYMENT_CONFIRMED_BY_PAYOS', 'payos', now);
+  return true;
 }
 
 function updateRefund(b: IBooking) {

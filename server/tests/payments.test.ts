@@ -6,7 +6,7 @@ import { createApp } from '../app.js';
 import { db } from '../models/db.js';
 import type { IBooking } from '../types/index.js';
 import { generateAccessToken } from '../utils/jwt.js';
-import { applyReceipt, cancelBookingState, confirmRefundState, expireBooking } from '../services/booking-payment.state.js';
+import { applyProviderConfirmation, applyReceipt, cancelBookingState, confirmRefundState, expireBooking, receivedAmount } from '../services/booking-payment.state.js';
 import { expirePendingBookings, syncCancelledPayment } from '../services/booking-payment.service.js';
 import { bankTimestamp } from '../services/payos.service.js';
 
@@ -46,6 +46,20 @@ test('a verified transfer before expiry completes a held booking despite delayed
   assert.equal(applyReceipt(b, { ...receipt(), paidAt: new Date(now + 14 * 60000).toISOString() }, now + 16 * 60000), true);
   assert.equal(b.status, 'COMPLETED'); assert.equal(b.paymentStatus, 'PAID');
   assert.equal(b.payment!.receipts.length, 1);
+});
+test('signed payOS PAID status completes a booking before transaction detail arrives', () => {
+  const b = booking();
+  assert.equal(applyProviderConfirmation(b, 300000, now + 1000), true);
+  assert.equal(b.status, 'COMPLETED'); assert.equal(b.paymentStatus, 'PAID');
+  assert.equal(receivedAmount(b), 300000);
+  assert.equal(applyProviderConfirmation(b, 300000, now + 2000), false);
+  applyReceipt(b, receipt(), now + 3000);
+  assert.equal(receivedAmount(b), 300000);
+  assert.equal(b.refund, undefined);
+  const cancelled = booking();
+  expireBooking(cancelled, now + 16 * 60000);
+  applyProviderConfirmation(cancelled, 300000, now + 17 * 60000);
+  assert.equal(cancelled.status, 'CANCELLED'); assert.equal(cancelled.refund?.amount, 300000);
 });
 test('late confirmation never revives a released slot and tracks refund instead', () => {
   const b = booking();
@@ -268,6 +282,35 @@ test('HTTP booking/payment workflow with isolated durable repository and signed 
       assert.equal(refreshed.body.data.status, 'COMPLETED');
       assert.equal(refreshed.body.data.paymentStatus, 'PAID');
       assert.equal(persisted.get(id)?.status, 'COMPLETED');
+    });
+    await t.test('payOS PAID with no transaction list confirms checkout and a later webhook does not count twice', async () => {
+      const res = await request('/bookings', 'POST', { ...input, bookingDate: '2099-01-06' });
+      assert.equal(res.status, 201); id = res.body.data.id;
+      await request(`/bookings/${id}/payment`, 'POST');
+      const b = db.bookings.find(item => item.id === id)!;
+      const remoteOrder = remote.get(b.payment!.orderCode);
+      remoteOrder.status = 'PAID'; remoteOrder.amountPaid = b.totalPrice; remoteOrder.amountRemaining = 0;
+      remoteOrder.transactions = [];
+      const refreshed = await request(`/bookings/${id}/payment?refresh=1`);
+      assert.equal(refreshed.status, 200);
+      assert.equal(refreshed.body.data.status, 'COMPLETED');
+      assert.equal(refreshed.body.data.paymentStatus, 'PAID');
+      assert.equal(refreshed.body.data.payment.providerConfirmedAmount, b.totalPrice);
+      assert.equal((await webhook(event(b, 'later-bank-ref'))).status, 200);
+      assert.equal(db.bookings.find(item => item.id === id)?.refund, undefined);
+    });
+    await t.test('numeric-key transaction data from payOS also confirms payment', async () => {
+      const res = await request('/bookings', 'POST', { ...input, bookingDate: '2099-01-07' });
+      assert.equal(res.status, 201); id = res.body.data.id;
+      await request(`/bookings/${id}/payment`, 'POST');
+      const b = db.bookings.find(item => item.id === id)!;
+      const remoteOrder = remote.get(b.payment!.orderCode);
+      remoteOrder.transactions = { 0: { reference: 'object-bank-ref', amount: b.totalPrice,
+        accountNumber: 'test-account', description: 'FC', transactionDateTime: new Date().toISOString() } };
+      remoteOrder.status = 'PAID'; remoteOrder.amountPaid = b.totalPrice; remoteOrder.amountRemaining = 0;
+      const refreshed = await request(`/bookings/${id}/payment?refresh=1`);
+      assert.equal(refreshed.body.data.status, 'COMPLETED');
+      assert.equal(refreshed.body.data.payment.receipts.length, 1);
     });
     await t.test('expiry waits for provider recovery rather than cancelling an unverified transfer', async () => {
       const res = await request('/bookings', 'POST', { ...input, bookingDate: '2099-01-05' });

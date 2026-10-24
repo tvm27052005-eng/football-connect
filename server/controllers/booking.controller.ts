@@ -41,7 +41,11 @@ export const bookingController = {
         req.user!.role === 'ADMIN' || (req.user!.role === 'OWNER' ? canManage(req, b) : b.userId === req.user!.id)
       ));
       const forceReconciliation = req.query.refresh === '1';
-      await Promise.allSettled(visiblePending.map(b => reconcilePayment(b.id, forceReconciliation)));
+      const checks = await Promise.allSettled(visiblePending.map(b => reconcilePayment(b.id, forceReconciliation)));
+      checks.forEach((result, index) => {
+        if (result.status === 'rejected') console.warn('payOS booking reconciliation failed', visiblePending[index].id,
+          result.reason instanceof Error ? result.reason.message : 'unknown error');
+      });
       let bookings = db.bookings.filter(b => req.user!.role === 'ADMIN' ||
         (req.user!.role === 'OWNER' ? canManage(req, b) : b.userId === req.user!.id));
       const { status, venueId, date, search, sort } = req.query;
@@ -130,7 +134,11 @@ export const bookingController = {
       await expirePendingBookings();
       let reconciliationPending = false;
       const forceReconciliation = req.query.refresh === '1';
-      try { await reconcilePayment(req.params.id, forceReconciliation); } catch { reconciliationPending = true; }
+      try { await reconcilePayment(req.params.id, forceReconciliation); }
+      catch (error) {
+        reconciliationPending = true;
+        console.warn('payOS checkout reconciliation failed', req.params.id, error instanceof Error ? error.message : 'unknown error');
+      }
       res.setHeader('Cache-Control', 'no-store');
       res.json({ success: true, reconciliationPending, serverTime: new Date().toISOString(), data: publicBooking(bookingCopy(req.params.id)) });
     } catch (error) { fail(res, error); }

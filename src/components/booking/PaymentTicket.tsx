@@ -15,7 +15,7 @@ export const PaymentTicket: React.FC<{ bookingId: string }> = ({ bookingId }) =>
   const [searchParams] = useSearchParams();
   const [booking, setBooking] = useState<IBooking | null>(null);
   const [error, setError] = useState('');
-  const [redirectSeconds, setRedirectSeconds] = useState(5);
+  const [redirectSeconds, setRedirectSeconds] = useState(3);
   const [busy, setBusy] = useState(false);
   const [qr, setQr] = useState('');
   const [now, setNow] = useState(Date.now());
@@ -65,7 +65,7 @@ export const PaymentTicket: React.FC<{ bookingId: string }> = ({ bookingId }) =>
       } finally {
         inFlight = false;
       }
-      if (!cancelled) timer = setTimeout(poll, 5000);
+      if (!cancelled) timer = setTimeout(poll, 3000);
     };
     const onReturn = () => {
       if (document.visibilityState === 'visible') {
@@ -95,9 +95,9 @@ export const PaymentTicket: React.FC<{ bookingId: string }> = ({ bookingId }) =>
   useEffect(() => {
     if (!paid) return;
     setError('');
-    setRedirectSeconds(5);
+    setRedirectSeconds(3);
     const countdown = setInterval(() => setRedirectSeconds(value => Math.max(0, value - 1)), 1000);
-    const redirect = setTimeout(() => navigate('/bookings', { replace: true }), 5000);
+    const redirect = setTimeout(() => navigate('/bookings', { replace: true }), 3000);
     return () => { clearInterval(countdown); clearTimeout(redirect); };
   }, [paid, navigate]);
   useEffect(() => {
@@ -129,6 +129,7 @@ export const PaymentTicket: React.FC<{ bookingId: string }> = ({ bookingId }) =>
           <strong className="text-2xl text-emerald-700">{money(booking.totalPrice)}</strong>
         </div>
         {error && <p role="alert" className="text-sm rounded-xl p-3 bg-amber-50 text-amber-900">{error}</p>}
+        {returnedPaid && pending && !error && <p role="status" className="text-sm rounded-xl p-3 bg-amber-50 text-amber-900">payOS đã chuyển bạn về website. Đang xác nhận thanh toán với payOS; vui lòng chờ trong giây lát.</p>}
         {pending && remaining > 0 && <>
           <div className="flex justify-between items-center rounded-xl bg-amber-50 border border-amber-200 p-4">
             <div><p className="font-bold text-amber-900">Thời gian giữ chỗ còn lại</p><p className="text-xs text-amber-800 mt-1">Hết hạn, đơn chưa trả đủ tiền sẽ tự hủy.</p></div>
@@ -157,7 +158,7 @@ export const PaymentTicket: React.FC<{ bookingId: string }> = ({ bookingId }) =>
           {payment && <p>Có thể liên hệ chủ sân để hủy và hoàn tiền trước <strong>{new Date(payment.cancelBefore).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })}</strong> (giờ Việt Nam). Hoàn tiền do chủ sân thực hiện sau khi hai bên xác nhận.</p>}
           {booking.ownerPhone && <a className="inline-block font-bold text-emerald-700" href={`tel:${booking.ownerPhone}`}>Liên hệ chủ sân: {booking.ownerPhone}</a>}
         </div>
-        <div className="flex flex-wrap gap-3"><Link to="/bookings" className="rounded-xl bg-slate-950 text-white px-4 py-3 text-sm font-bold">Lịch đặt của tôi</Link>{booking.status === 'CANCELLED' && <Link to={`/venues/${booking.venueId}`} className="rounded-xl bg-slate-100 px-4 py-3 text-sm font-bold">Chọn ca sân khác</Link>}<span className="text-xs text-slate-400 self-center inline-flex gap-1 items-center"><RefreshCw className="w-3 h-3" /> Tự cập nhật mỗi 5 giây</span></div>
+        <div className="flex flex-wrap gap-3"><Link to="/bookings" className="rounded-xl bg-slate-950 text-white px-4 py-3 text-sm font-bold">Lịch đặt của tôi</Link>{booking.status === 'CANCELLED' && <Link to={`/venues/${booking.venueId}`} className="rounded-xl bg-slate-100 px-4 py-3 text-sm font-bold">Chọn ca sân khác</Link>}<span className="text-xs text-slate-400 self-center inline-flex gap-1 items-center"><RefreshCw className="w-3 h-3" /> Tự cập nhật mỗi 3 giây</span></div>
       </div>
     </div>
   </div>;

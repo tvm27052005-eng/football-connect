@@ -23,12 +23,19 @@ router.post('/payos/webhook/:channelId', async (req, res) => {
     const client = getPayOS(req.params.channelId);
     let verified;
     try { verified = await client.webhooks.verify(req.body); }
-    catch { res.status(401).json({ success: false, message: 'Chữ ký thanh toán không hợp lệ.' }); return; }
+    catch (error) {
+      console.warn('payOS webhook signature rejected', req.params.channelId, error instanceof Error ? error.message : 'unknown error');
+      res.status(401).json({ success: false, message: 'Chữ ký thanh toán không hợp lệ.' }); return;
+    }
     const parsed = eventData.safeParse(verified);
-    if (!parsed.success) { res.status(400).json({ success: false }); return; }
+    if (!parsed.success) {
+      console.warn('payOS webhook has invalid transaction shape', req.params.channelId, parsed.error.issues.map(issue => issue.path.join('.')));
+      res.status(400).json({ success: false }); return;
+    }
     await receivePayment(req.params.channelId, parsed.data);
     res.json({ success: true });
   } catch (error) {
+    console.warn('payOS webhook processing failed', req.params.channelId, error instanceof Error ? error.message : 'unknown error');
     res.status(error instanceof BookingError ? error.status : 503).json({ success: false, message: 'Chưa xử lý được giao dịch.' });
   }
 });

@@ -1,7 +1,7 @@
 import { randomInt } from 'node:crypto';
 import { db } from '../models/db.js';
 import type { IBooking } from '../types/index.js';
-import { applyReceipt, audit, BookingError, expireBooking, matchStart } from './booking-payment.state.js';
+import { applyProviderConfirmation, applyReceipt, audit, BookingError, expireBooking, matchStart } from './booking-payment.state.js';
 import { bankTimestamp, getPayOS, paymentAppUrl, paymentChannelForOwner, paymentPolicy } from './payos.service.js';
 
 // The application's database cache has one writer (one Node process). All booking
@@ -133,16 +133,33 @@ const lastChecked = new Map<string, number>();
 export async function reconcilePayment(id: string, force = false) {
   const current = db.bookings.find(b => b.id === id);
   const elapsed = Date.now() - (lastChecked.get(id) || 0);
-  // A payOS return requests one prompt refresh. Normal background checks use 30s.
-  if (!current?.payment || (!force && elapsed < 30_000)) return;
+  // A payOS return requests one prompt refresh. Checkout polling checks payOS
+  // at most once every five seconds, so a just-paid QR updates promptly.
+  if (!current?.payment || (!force && elapsed < 5_000)) return;
   const payment = current.payment;
   const result = await getPayOS(payment.channelId).paymentRequests.get(payment.orderCode);
   if (result.orderCode !== payment.orderCode || result.amount !== current.totalPrice || (payment.linkId && result.id !== payment.linkId)) {
     throw new BookingError(502, 'Không đối soát được giao dịch thanh toán.');
   }
-  for (const transaction of result.transactions || []) {
+  const transactions: unknown[] = Array.isArray(result.transactions) ? result.transactions
+    : result.transactions && typeof result.transactions === 'object' ? Object.values(result.transactions) : [];
+  for (const transaction of transactions) {
+    if (!transaction || typeof transaction !== 'object') throw new BookingError(502, 'Chi tiết giao dịch payOS không hợp lệ.');
+    const detail = transaction as Record<string, unknown>;
+    if (typeof detail.reference !== 'string' || !Number.isSafeInteger(detail.amount) ||
+      typeof detail.accountNumber !== 'string' || typeof detail.transactionDateTime !== 'string') {
+      throw new BookingError(502, 'Chi tiết giao dịch payOS không hợp lệ.');
+    }
     await receivePayment(payment.channelId, {
-      ...transaction, orderCode: payment.orderCode, paymentLinkId: result.id, currency: 'VND', code: '00'
+      reference: detail.reference, amount: detail.amount as number, accountNumber: detail.accountNumber,
+      transactionDateTime: detail.transactionDateTime,
+      orderCode: payment.orderCode, paymentLinkId: result.id, currency: 'VND', code: '00'
+    });
+  }
+  if (result.status === 'PAID' && result.amountPaid >= current.totalPrice && result.amountRemaining <= 0) {
+    await withBookingLock(async () => {
+      const booking = bookingCopy(id);
+      if (applyProviderConfirmation(booking, result.amountPaid)) await db.syncBooking(booking);
     });
   }
   if (result.status === 'CANCELLED' || result.status === 'EXPIRED' || result.status === 'FAILED') {

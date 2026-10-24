@@ -14,6 +14,8 @@ export interface BookingPayment {
   description?: string;
   cancelSyncPending?: boolean;
   paidAt?: string;
+  /** Amount confirmed by the signed payOS payment-link response, even if its transaction list is empty. */
+  providerConfirmedAmount?: number;
   exception?: string;
   receipts: { reference: string; amount: number; paidAt: string }[];
 }
