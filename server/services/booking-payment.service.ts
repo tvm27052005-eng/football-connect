@@ -109,9 +109,12 @@ export async function receivePayment(channelId: string, data: {
     const payment = booking.payment!;
     const reused = db.bookings.some(b => b.id !== booking.id && b.payment?.channelId === channelId && b.payment.receipts.some(r => r.reference === data.reference));
     if (reused) throw new BookingError(409, 'Giao dịch đã được ghi nhận cho đơn khác.');
-    if (data.currency !== 'VND' || (payment.linkId && payment.linkId !== data.paymentLinkId) ||
-        (payment.accountNumber && payment.accountNumber !== data.accountNumber)) {
-      throw new BookingError(400, 'Thông tin người nhận hoặc đơn thanh toán không khớp.');
+    // The account in a settled transaction can differ from the QR account
+    // (for example a virtual account). The payOS signature/channel and exact
+    // order + link ID are the binding checks; do not reject a valid receipt
+    // merely because its account number differs from the checkout response.
+    if (data.currency !== 'VND' || (payment.linkId && payment.linkId !== data.paymentLinkId)) {
+      throw new BookingError(400, 'Mã liên kết hoặc loại tiền thanh toán không khớp đơn đặt sân.');
     }
     // An event can arrive after creation succeeded remotely but before local save.
     if (!payment.linkId) {

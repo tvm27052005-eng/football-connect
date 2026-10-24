@@ -205,10 +205,10 @@ test('HTTP booking/payment workflow with isolated durable repository and signed 
       await request(`/bookings/${id}?status=PAID&code=00`);
       assert.equal(db.bookings[0].paymentStatus, 'UNPAID');
     });
-    await t.test('forged signature, wrong recipient and wrong channel cannot complete booking', async () => {
+    await t.test('forged signature, wrong link and wrong channel cannot complete booking', async () => {
       const data = event(db.bookings[0]);
       assert.equal((await webhook(data, 'owner', 'fake')).status, 401);
-      const wrong = { ...data, accountNumber: 'wrong-account' };
+      const wrong = { ...data, paymentLinkId: 'wrong-link' };
       assert.equal((await webhook(wrong)).status, 400);
       assert.equal((await webhook(data, 'other', signature(data, 'test-checksum-other'))).status, 200);
       assert.equal(db.bookings[0].paymentStatus, 'UNPAID');
@@ -259,7 +259,7 @@ test('HTTP booking/payment workflow with isolated durable repository and signed 
       await request(`/bookings/${id}/payment`, 'POST');
       const b = db.bookings.find(b => b.id === id)!;
       const remoteOrder = remote.get(b.payment!.orderCode);
-      remoteOrder.transactions = [{ reference: 'reconciled-bank-ref', amount: b.totalPrice, accountNumber: 'test-account', description: 'FC', transactionDateTime: new Date().toISOString() }];
+      remoteOrder.transactions = [{ reference: 'reconciled-bank-ref', amount: b.totalPrice, accountNumber: 'virtual-account-for-this-link', description: 'FC', transactionDateTime: new Date().toISOString() }];
       remoteOrder.status = 'PAID'; remoteOrder.amountPaid = b.totalPrice; remoteOrder.amountRemaining = 0;
       const refreshed = await request('/bookings?refresh=1');
       assert.equal(refreshed.status, 200);
@@ -296,7 +296,8 @@ test('HTTP booking/payment workflow with isolated durable repository and signed 
       assert.equal(refreshed.body.data.status, 'COMPLETED');
       assert.equal(refreshed.body.data.paymentStatus, 'PAID');
       assert.equal(refreshed.body.data.payment.providerConfirmedAmount, b.totalPrice);
-      assert.equal((await webhook(event(b, 'later-bank-ref'))).status, 200);
+      assert.equal((await webhook({ ...event(b, 'later-bank-ref'), accountNumber: 'virtual-account-for-this-link' })).status, 200);
+      assert.equal(db.bookings.find(item => item.id === id)?.payment?.receipts.length, 1);
       assert.equal(db.bookings.find(item => item.id === id)?.refund, undefined);
     });
     await t.test('numeric-key transaction data from payOS also confirms payment', async () => {
