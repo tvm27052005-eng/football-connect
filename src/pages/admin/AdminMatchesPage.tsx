@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Swords, Search, ShieldCheck, CalendarRange, Clock3, Users, MapPin, Ban, CheckCircle2 } from 'lucide-react';
+import { Swords, Search, ShieldCheck, CalendarRange, Clock3, MapPin, Ban, CheckCircle2 } from 'lucide-react';
 import { api } from '../../services/api.js';
 import { IMatch } from '../../types/index.js';
 import { AdminSidebar } from '../../components/layout/AdminSidebar.js';
@@ -194,9 +194,6 @@ export const AdminMatchesPage: React.FC = () => {
                       </td>
                       <td className="p-4">
                         <div className="font-bold text-slate-900">{m.creatorName}</div>
-                        <div className="text-[10px] text-slate-500 flex items-center gap-1 mt-1">
-                          <Users className="w-3 h-3" /> {m.currentPlayers}/{m.maxPlayers} người
-                        </div>
                         <div className="text-[10px] text-slate-500 flex items-center gap-1 mt-1">
                           <MapPin className="w-3 h-3" /> {m.venueAddress || 'Cập nhật địa chỉ'}
                         </div>

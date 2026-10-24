@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Calendar, Clock, MapPin, Users, ArrowRight, WalletCards, Activity } from 'lucide-react';
+import { Calendar, Clock, MapPin, ArrowRight, WalletCards, Activity } from 'lucide-react';
 import { IMatch } from '../../types/index.js';
 import { Badge } from '../common/Badge.js';
 
@@ -29,8 +29,6 @@ export const MatchCard: React.FC<MatchCardProps> = ({ match }) => {
           : 'Chia đôi 50 - 50';
 
 
-  const progressPercent = Math.min(100, Math.round(((match.currentPlayers || 1) / (match.maxPlayers || 14)) * 100));
-  const remainingPlayers = Math.max(0, (match.maxPlayers || 14) - (match.currentPlayers || 1));
   const formattedDate = new Date(`${match.matchDate}T00:00:00`).toLocaleDateString('vi-VN', {
     weekday: 'short',
     day: '2-digit',
@@ -38,7 +36,7 @@ export const MatchCard: React.FC<MatchCardProps> = ({ match }) => {
   });
 
   return (
-    <article className="group bg-white border border-slate-200 hover:border-emerald-400 rounded-2xl p-5 shadow-sm hover:shadow-lg transition-all duration-200 flex flex-col justify-between min-h-[310px]">
+    <article className="group bg-white border border-slate-200 hover:border-emerald-400 rounded-2xl p-5 shadow-sm hover:shadow-lg transition-all duration-200 flex flex-col justify-between min-h-[280px]">
       <div>
         <div className="flex items-center justify-between gap-3 mb-4">
           <div className="flex items-center gap-2">
@@ -93,15 +91,6 @@ export const MatchCard: React.FC<MatchCardProps> = ({ match }) => {
           </div>
         </div>
 
-        <div className="mt-4">
-          <div className="flex items-center justify-between text-[11px] mb-1.5">
-            <span className="font-bold text-slate-600 flex items-center gap-1.5"><Users className="w-3.5 h-3.5" /> Quân số</span>
-            <span className="font-bold text-slate-800">Còn {remainingPlayers} vị trí</span>
-          </div>
-          <div className="h-2 rounded-full bg-slate-100 overflow-hidden">
-            <div className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-teal-500" style={{ width: `${progressPercent}%` }} />
-          </div>
-        </div>
       </div>
 
       <div className="pt-4 mt-4 border-t border-slate-100 flex items-center justify-between gap-4">

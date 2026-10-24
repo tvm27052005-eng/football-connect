@@ -80,11 +80,10 @@ export function calculateMatchScore(user: IUser, match: IMatch, venue?: IVenue):
     fieldScore = 10;
   }
 
-  // 5. Other factors (10%) - Remaining open slots and venue rating
-  const remainingSlots = match.maxPlayers - match.currentPlayers;
-  if (remainingSlots >= 2 && remainingSlots <= 6) {
+  // 5. Other factors (10%) - Opponent availability and venue rating
+  if (match.status === 'OPEN' && !match.teamBJoined) {
     otherScore += 3;
-    reasons.push(`Đang cần ${remainingSlots} cầu thủ`);
+    reasons.push('Đang tìm đội đối thủ');
   }
   if (venue && venue.rating >= 4.7) {
     otherScore += 2;
