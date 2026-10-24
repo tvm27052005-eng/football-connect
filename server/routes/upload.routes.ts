@@ -6,10 +6,10 @@ import { authenticateToken } from '../middlewares/auth.middleware.js';
 const router = Router();
 
 // Route tải lên 1 hình ảnh (Ảnh đại diện, biên lai, ảnh đánh giá)
-router.post('/single', uploadMiddleware.single('image'), uploadController.uploadSingle);
+router.post('/single', authenticateToken, uploadMiddleware.single('image'), uploadController.uploadSingle);
 
 // Route tải lên nhiều hình ảnh (Bộ sưu tập ảnh sân bóng, sân con)
-router.post('/multiple', uploadMiddleware.array('images', 10), uploadController.uploadMultiple);
+router.post('/multiple', authenticateToken, uploadMiddleware.array('images', 10), uploadController.uploadMultiple);
 router.post('/chat', authenticateToken, chatUploadMiddleware.single('file'), uploadController.uploadChatFile);
 
 export default router;

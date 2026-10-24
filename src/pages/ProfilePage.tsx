@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
-import { User, Phone, MapPin, Trophy, Shield, Save, CheckCircle2, AlertCircle } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { User, Phone, MapPin, Trophy, Shield, Save, CheckCircle2, AlertCircle, Camera, Upload, X } from 'lucide-react';
 import { useAuthStore } from '../stores/auth.store.js';
 import { api } from '../services/api.js';
+import { uploadApi } from '../services/upload.api.js';
 import { OwnerSidebar } from '../components/layout/OwnerSidebar.js';
 import { AdminSidebar } from '../components/layout/AdminSidebar.js';
 
@@ -21,8 +22,12 @@ export const ProfilePage: React.FC = () => {
   });
 
   const [isSaving, setIsSaving] = useState(false);
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const [successMsg, setSuccessMsg] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [avatarPreview, setAvatarPreview] = useState('');
+  const avatarInputRef = useRef<HTMLInputElement>(null);
   const isPortalProfile = user?.role === 'OWNER' || user?.role === 'ADMIN';
   const profileDescription = user?.role === 'OWNER'
     ? 'Cập nhật thông tin đại diện và khu vực hoạt động của cụm sân.'
@@ -46,6 +51,38 @@ export const ProfilePage: React.FC = () => {
     }
   }, [user]);
 
+  useEffect(() => {
+    return () => {
+      if (avatarPreview) URL.revokeObjectURL(avatarPreview);
+    };
+  }, [avatarPreview]);
+
+  const handleAvatarSelected = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+    if (!allowedTypes.includes(file.type)) {
+      setErrorMsg('Ảnh đại diện chỉ hỗ trợ định dạng JPG, PNG, WEBP hoặc GIF.');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setErrorMsg('Ảnh đại diện không được vượt quá 5 MB.');
+      return;
+    }
+
+    setErrorMsg('');
+    setSuccessMsg('');
+    setAvatarFile(file);
+    setAvatarPreview(URL.createObjectURL(file));
+  };
+
+  const discardSelectedAvatar = () => {
+    setAvatarFile(null);
+    setAvatarPreview('');
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSaving(true);
@@ -53,6 +90,12 @@ export const ProfilePage: React.FC = () => {
     setErrorMsg('');
 
     try {
+      let avatarUrl = formData.avatar;
+      if (avatarFile) {
+        setIsUploadingAvatar(true);
+        avatarUrl = await uploadApi.uploadSingle(avatarFile, 'football-connect/avatars');
+      }
+
       const res = await api.put('/users/profile', {
         name: formData.name,
         phone: formData.phone,
@@ -64,15 +107,19 @@ export const ProfilePage: React.FC = () => {
         preferredFieldType: formData.preferredFieldType,
         preferredPosition: formData.preferredPosition,
         bio: formData.bio,
-        avatar: formData.avatar
+        avatar: avatarUrl
       });
 
       updateUser(res.data.data);
+      setFormData((current) => ({ ...current, avatar: avatarUrl }));
+      setAvatarFile(null);
+      setAvatarPreview('');
       setSuccessMsg('Cập nhật hồ sơ thành công!');
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Không thể cập nhật hồ sơ';
       setErrorMsg(msg);
     } finally {
+      setIsUploadingAvatar(false);
       setIsSaving(false);
     }
   };
@@ -108,17 +155,58 @@ export const ProfilePage: React.FC = () => {
       <form onSubmit={handleSubmit} className="space-y-6 text-xs">
         {/* User Card */}
         <div className="bg-white border border-slate-200/90 rounded-3xl p-6 flex flex-col sm:flex-row items-center gap-6 shadow-xs">
-          <img
-            src={formData.avatar || 'https://api.dicebear.com/7.x/bottts/svg?seed=' + user?.id}
-            alt={formData.name}
-            className="w-20 h-20 rounded-2xl bg-slate-100 border-2 border-emerald-500/30 object-cover shadow-xs"
-          />
-          <div className="text-center sm:text-left space-y-1">
+          <div className="relative shrink-0">
+            <img
+              src={avatarPreview || formData.avatar || 'https://api.dicebear.com/7.x/bottts/svg?seed=' + user?.id}
+              alt={formData.name}
+              className="w-24 h-24 rounded-2xl bg-slate-100 border-2 border-emerald-500/30 object-cover shadow-xs"
+            />
+            <button
+              type="button"
+              onClick={() => avatarInputRef.current?.click()}
+              disabled={isSaving}
+              aria-label="Chọn ảnh đại diện mới"
+              className="absolute -bottom-2 -right-2 flex h-9 w-9 items-center justify-center rounded-xl border-2 border-white bg-emerald-600 text-white shadow-md transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <Camera className="h-4 w-4" />
+            </button>
+            <input
+              ref={avatarInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp,image/gif"
+              onChange={handleAvatarSelected}
+              className="hidden"
+            />
+          </div>
+          <div className="flex-1 text-center sm:text-left space-y-1">
             <h2 className="text-lg font-bold text-slate-900">{user?.name}</h2>
             <p className="text-slate-500">{user?.email}</p>
             <span className="inline-block px-2.5 py-0.5 rounded-full font-bold uppercase bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px]">
               Vai trò: {user?.role}
             </span>
+            <div className="flex flex-wrap items-center justify-center gap-2 pt-3 sm:justify-start">
+              <button
+                type="button"
+                onClick={() => avatarInputRef.current?.click()}
+                disabled={isSaving}
+                className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-bold text-slate-700 transition hover:border-emerald-300 hover:bg-emerald-50 hover:text-emerald-800 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <Upload className="h-3.5 w-3.5" /> {avatarFile ? 'Chọn ảnh khác' : 'Tải ảnh đại diện'}
+              </button>
+              {avatarFile && (
+                <button
+                  type="button"
+                  onClick={discardSelectedAvatar}
+                  disabled={isSaving}
+                  className="inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-bold text-rose-600 transition hover:bg-rose-50 disabled:opacity-50"
+                >
+                  <X className="h-3.5 w-3.5" /> Bỏ ảnh đã chọn
+                </button>
+              )}
+            </div>
+            <p className="pt-1 text-[10px] text-slate-400">
+              {avatarFile ? `Đã chọn: ${avatarFile.name}` : 'JPG, PNG, WEBP hoặc GIF · Tối đa 5 MB'}
+            </p>
           </div>
         </div>
 
@@ -248,7 +336,7 @@ export const ProfilePage: React.FC = () => {
             disabled={isSaving}
             className="px-6 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-bold transition-all shadow-xs flex items-center gap-2 cursor-pointer"
           >
-            <Save className="w-4 h-4" /> {isSaving ? 'Đang lưu...' : 'Lưu Thay Đổi Hồ Sơ'}
+            <Save className="w-4 h-4" /> {isUploadingAvatar ? 'Đang tải ảnh...' : isSaving ? 'Đang lưu...' : 'Lưu Thay Đổi Hồ Sơ'}
           </button>
         </div>
       </form>
