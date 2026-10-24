@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { User, Phone, MapPin, Trophy, Shield, Save, CheckCircle2, AlertCircle } from 'lucide-react';
 import { useAuthStore } from '../stores/auth.store.js';
 import { api } from '../services/api.js';
+import { OwnerSidebar } from '../components/layout/OwnerSidebar.js';
+import { AdminSidebar } from '../components/layout/AdminSidebar.js';
 
 export const ProfilePage: React.FC = () => {
   const { user, updateUser } = useAuthStore();
@@ -21,6 +23,12 @@ export const ProfilePage: React.FC = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [successMsg, setSuccessMsg] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
+  const isPortalProfile = user?.role === 'OWNER' || user?.role === 'ADMIN';
+  const profileDescription = user?.role === 'OWNER'
+    ? 'Cập nhật thông tin đại diện và khu vực hoạt động của cụm sân.'
+    : user?.role === 'ADMIN'
+      ? 'Cập nhật thông tin tài khoản quản trị hệ thống.'
+      : 'Cập nhật kỹ năng, vị trí thi đấu và khu vực để nhận gợi ý ghép kèo chuẩn xác nhất.';
 
   useEffect(() => {
     if (user) {
@@ -70,13 +78,16 @@ export const ProfilePage: React.FC = () => {
   };
 
   return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8 space-y-8">
+    <div className={isPortalProfile ? 'flex min-h-[calc(100vh-4rem)] flex-col md:flex-row' : ''}>
+      {user?.role === 'OWNER' && <OwnerSidebar />}
+      {user?.role === 'ADMIN' && <AdminSidebar />}
+      <div className={`w-full max-w-4xl px-4 py-8 sm:px-6 ${isPortalProfile ? 'flex-1 lg:mx-8' : 'mx-auto'} space-y-8`}>
       <div>
         <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
           Hồ Sơ & Cài Đặt
         </h1>
         <p className="text-xs text-slate-500 mt-1">
-          Cập nhật kỹ năng, vị trí thi đấu và khu vực để nhận gợi ý ghép kèo chuẩn xác nhất.
+          {profileDescription}
         </p>
       </div>
 
@@ -241,6 +252,7 @@ export const ProfilePage: React.FC = () => {
           </button>
         </div>
       </form>
+      </div>
     </div>
   );
 };

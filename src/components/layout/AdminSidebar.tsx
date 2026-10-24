@@ -6,7 +6,6 @@ import {
   Building2,
   CalendarCheck,
   Swords,
-  MessageSquare,
   ArrowLeft
 } from 'lucide-react';
 
@@ -18,8 +17,7 @@ export const AdminSidebar: React.FC = () => {
     { name: 'Quản lý Người Dùng', path: '/admin/users', icon: Users },
     { name: 'Phê Duyệt Cụm Sân', path: '/admin/venues', icon: Building2 },
     { name: 'Sổ Cái Đặt Sân', path: '/admin/bookings', icon: CalendarCheck },
-    { name: 'Quản lý Bài Đăng Kèo', path: '/admin/matches', icon: Swords },
-    { name: 'Phòng chat', path: '/chat', icon: MessageSquare }
+    { name: 'Quản lý Bài Đăng Kèo', path: '/admin/matches', icon: Swords }
   ];
 
   return (

@@ -44,8 +44,8 @@ const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const location = useLocation();
   const { user } = useAuthStore();
   const isOwnerChat = location.pathname === '/chat' && user?.role === 'OWNER';
-  const isAdminChat = location.pathname === '/chat' && user?.role === 'ADMIN';
-  const isPortal = location.pathname.startsWith('/owner') || location.pathname.startsWith('/admin') || isOwnerChat || isAdminChat;
+  const isRoleProfile = location.pathname === '/profile' && (user?.role === 'OWNER' || user?.role === 'ADMIN');
+  const isPortal = location.pathname.startsWith('/owner') || location.pathname.startsWith('/admin') || isOwnerChat || isRoleProfile;
   const isAdmin = user?.role === 'ADMIN';
 
   return (
@@ -118,6 +118,14 @@ export default function App() {
 
           {/* Owner Portal Routes */}
           <Route
+            path="/owner/profile"
+            element={
+              <RoleRoute allowedRoles={['OWNER']}>
+                <ProfilePage />
+              </RoleRoute>
+            }
+          />
+          <Route
             path="/owner/dashboard"
             element={
               <RoleRoute allowedRoles={['OWNER', 'ADMIN']}>
@@ -167,6 +175,14 @@ export default function App() {
           />
 
           {/* Admin Portal Routes */}
+          <Route
+            path="/admin/profile"
+            element={
+              <RoleRoute allowedRoles={['ADMIN']}>
+                <ProfilePage />
+              </RoleRoute>
+            }
+          />
           <Route
             path="/admin"
             element={

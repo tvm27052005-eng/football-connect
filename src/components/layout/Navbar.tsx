@@ -31,9 +31,9 @@ export const Navbar: React.FC = () => {
   const { notifications, unreadCount, fetchNotifications, markAllAsRead } = useNotificationStore();
   const { markAsRead } = useNotificationStore();
   const isOwnerPortal = user?.role === 'OWNER' &&
-    (location.pathname.startsWith('/owner') || location.pathname === '/chat');
+    (location.pathname.startsWith('/owner') || location.pathname === '/chat' || location.pathname === '/profile');
   const isAdminPortal = user?.role === 'ADMIN' &&
-    (location.pathname.startsWith('/admin') || location.pathname === '/chat');
+    (location.pathname.startsWith('/admin') || location.pathname === '/profile');
 
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showNotifMenu, setShowNotifMenu] = useState(false);
@@ -202,7 +202,7 @@ export const Navbar: React.FC = () => {
           <div className="flex items-center gap-2.5">
             {isAuthenticated ? (
               <>
-                {(isOwnerPortal || isAdminPortal) && (
+                {isOwnerPortal && (
                   <Link
                     to="/chat"
                     className={`hidden sm:inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition-all ${
@@ -355,26 +355,39 @@ export const Navbar: React.FC = () => {
 
                       <div className="py-1.5">
                         <Link
-                          to="/profile"
+                          to={user?.role === 'OWNER' ? '/owner/profile' : user?.role === 'ADMIN' ? '/admin/profile' : '/profile'}
                           onClick={() => setShowUserMenu(false)}
                           className="flex items-center gap-2.5 px-4 py-2 text-xs font-semibold text-slate-700 hover:text-emerald-700 hover:bg-emerald-50/50 transition-colors"
                         >
                           <User className="w-4 h-4 text-slate-400" /> Hồ sơ của tôi
                         </Link>
-                        <Link
-                          to="/bookings"
-                          onClick={() => setShowUserMenu(false)}
-                          className="flex items-center gap-2.5 px-4 py-2 text-xs font-semibold text-slate-700 hover:text-emerald-700 hover:bg-emerald-50/50 transition-colors"
-                        >
-                          <Calendar className="w-4 h-4 text-slate-400" /> Lịch đặt sân của tôi
-                        </Link>
-                        <Link
-                          to="/chat"
-                          onClick={() => setShowUserMenu(false)}
-                          className="flex items-center gap-2.5 px-4 py-2 text-xs font-semibold text-slate-700 hover:text-emerald-700 hover:bg-emerald-50/50 transition-colors"
-                        >
-                          <MessageSquare className="w-4 h-4 text-slate-400" /> Tin nhắn & Phòng chat
-                        </Link>
+                        {user?.role === 'USER' && (
+                          <Link
+                            to="/bookings"
+                            onClick={() => setShowUserMenu(false)}
+                            className="flex items-center gap-2.5 px-4 py-2 text-xs font-semibold text-slate-700 hover:text-emerald-700 hover:bg-emerald-50/50 transition-colors"
+                          >
+                            <Calendar className="w-4 h-4 text-slate-400" /> Lịch đặt sân của tôi
+                          </Link>
+                        )}
+                        {user?.role === 'OWNER' && (
+                          <Link
+                            to="/owner/bookings"
+                            onClick={() => setShowUserMenu(false)}
+                            className="flex items-center gap-2.5 px-4 py-2 text-xs font-semibold text-slate-700 hover:text-amber-800 hover:bg-amber-50 transition-colors"
+                          >
+                            <Calendar className="w-4 h-4 text-slate-400" /> Lịch & Duyệt đặt sân
+                          </Link>
+                        )}
+                        {user?.role !== 'ADMIN' && (
+                          <Link
+                            to="/chat"
+                            onClick={() => setShowUserMenu(false)}
+                            className="flex items-center gap-2.5 px-4 py-2 text-xs font-semibold text-slate-700 hover:text-emerald-700 hover:bg-emerald-50/50 transition-colors"
+                          >
+                            <MessageSquare className="w-4 h-4 text-slate-400" /> Tin nhắn & Phòng chat
+                          </Link>
+                        )}
 
                         <button
                           type="button"
