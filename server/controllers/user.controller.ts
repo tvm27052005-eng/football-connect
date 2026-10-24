@@ -103,8 +103,16 @@ export const userController = {
   changePassword: async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
       const { currentPassword, newPassword } = req.body;
-      if (!currentPassword || !newPassword) {
+      if (typeof currentPassword !== 'string' || typeof newPassword !== 'string' || !currentPassword || !newPassword) {
         res.status(400).json({ success: false, message: 'Vui lòng cung cấp mật khẩu hiện tại và mật khẩu mới' });
+        return;
+      }
+      if (newPassword.length < 6 || newPassword.length > 128) {
+        res.status(400).json({ success: false, message: 'Mật khẩu mới phải có từ 6 đến 128 ký tự' });
+        return;
+      }
+      if (currentPassword === newPassword) {
+        res.status(400).json({ success: false, message: 'Mật khẩu mới phải khác mật khẩu hiện tại' });
         return;
       }
 
@@ -120,9 +128,12 @@ export const userController = {
         return;
       }
 
-      user.password = await hashPassword(newPassword);
-      user.updatedAt = new Date().toISOString();
-      await db.syncUser(user);
+      const updatedUser = {
+        ...user,
+        password: await hashPassword(newPassword),
+        updatedAt: new Date().toISOString()
+      };
+      await db.syncUser(updatedUser);
 
       res.json({ success: true, message: 'Đổi mật khẩu thành công' });
     } catch {

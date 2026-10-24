@@ -14,10 +14,15 @@ import {
   ChevronDown,
   Sparkles,
   Zap,
-  Flame
+  Flame,
+  LockKeyhole,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 import { useAuthStore } from '../../stores/auth.store.js';
 import { useNotificationStore } from '../../stores/notification.store.js';
+import { api } from '../../services/api.js';
+import { Modal } from '../common/Modal.js';
 
 export const Navbar: React.FC = () => {
   const navigate = useNavigate();
@@ -32,6 +37,14 @@ export const Navbar: React.FC = () => {
 
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showNotifMenu, setShowNotifMenu] = useState(false);
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPasswords, setShowPasswords] = useState(false);
+  const [passwordError, setPasswordError] = useState('');
+  const [passwordSuccess, setPasswordSuccess] = useState('');
+  const [changingPassword, setChangingPassword] = useState(false);
 
   const notifRef = useRef<HTMLDivElement>(null);
   const userRef = useRef<HTMLDivElement>(null);
@@ -59,6 +72,51 @@ export const Navbar: React.FC = () => {
   const handleLogout = () => {
     logout();
     navigate('/login');
+  };
+
+  const closePasswordModal = () => {
+    if (changingPassword) return;
+    setShowPasswordModal(false);
+    setCurrentPassword('');
+    setNewPassword('');
+    setConfirmPassword('');
+    setPasswordError('');
+    setPasswordSuccess('');
+    setShowPasswords(false);
+  };
+
+  const handleChangePassword = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setPasswordError('');
+    setPasswordSuccess('');
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      setPasswordError('Vui lòng nhập đầy đủ ba trường mật khẩu.');
+      return;
+    }
+    if (newPassword.length < 6) {
+      setPasswordError('Mật khẩu mới phải có ít nhất 6 ký tự.');
+      return;
+    }
+    if (newPassword === currentPassword) {
+      setPasswordError('Mật khẩu mới phải khác mật khẩu hiện tại.');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setPasswordError('Xác nhận mật khẩu mới chưa khớp.');
+      return;
+    }
+    try {
+      setChangingPassword(true);
+      const response = await api.put('/users/change-password', { currentPassword, newPassword });
+      setPasswordSuccess(response.data?.message || 'Đổi mật khẩu thành công.');
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+    } catch (error: any) {
+      setPasswordError(error.response?.data?.message || 'Chưa thể đổi mật khẩu. Vui lòng thử lại.');
+    } finally {
+      setChangingPassword(false);
+    }
   };
 
   const formatNotificationTime = (createdAt: string): string => {
@@ -319,6 +377,19 @@ export const Navbar: React.FC = () => {
                         </Link>
 
                         {user?.role === 'OWNER' && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setShowUserMenu(false);
+                              setShowPasswordModal(true);
+                            }}
+                            className="w-full flex items-center gap-2.5 px-4 py-2 text-xs font-semibold text-slate-700 hover:text-emerald-700 hover:bg-emerald-50/50 text-left transition-colors cursor-pointer"
+                          >
+                            <LockKeyhole className="w-4 h-4 text-slate-400" /> Đổi mật khẩu
+                          </button>
+                        )}
+
+                        {user?.role === 'OWNER' && (
                           <Link
                             to="/owner/dashboard"
                             onClick={() => setShowUserMenu(false)}
@@ -370,6 +441,55 @@ export const Navbar: React.FC = () => {
           </div>
         </div>
       </div>
+
+      <Modal isOpen={showPasswordModal} onClose={closePasswordModal} title="Đổi mật khẩu tài khoản" maxWidth="sm">
+        <form onSubmit={handleChangePassword} className="space-y-4">
+          <div className="rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-3">
+            <p className="text-xs font-bold text-emerald-900">Bảo vệ tài khoản chủ sân</p>
+            <p className="mt-1 text-[11px] leading-5 text-emerald-800">Dùng mật khẩu mới khác mật khẩu hiện tại và không chia sẻ cho người khác.</p>
+          </div>
+
+          {[
+            { id: 'owner-current-password', label: 'Mật khẩu hiện tại', value: currentPassword, setValue: setCurrentPassword, autoComplete: 'current-password' },
+            { id: 'owner-new-password', label: 'Mật khẩu mới', value: newPassword, setValue: setNewPassword, autoComplete: 'new-password' },
+            { id: 'owner-confirm-password', label: 'Xác nhận mật khẩu mới', value: confirmPassword, setValue: setConfirmPassword, autoComplete: 'new-password' }
+          ].map(field => (
+            <label key={field.id} htmlFor={field.id} className="block">
+              <span className="mb-1.5 block text-xs font-bold text-slate-700">{field.label}</span>
+              <div className="relative">
+                <input
+                  id={field.id}
+                  type={showPasswords ? 'text' : 'password'}
+                  autoComplete={field.autoComplete}
+                  value={field.value}
+                  onChange={event => field.setValue(event.target.value)}
+                  disabled={changingPassword}
+                  maxLength={128}
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-3 pr-11 text-sm text-slate-900 outline-none transition focus:border-emerald-500 focus:bg-white focus:ring-2 focus:ring-emerald-500/15 disabled:opacity-60"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPasswords(value => !value)}
+                  className="absolute inset-y-0 right-0 flex w-11 items-center justify-center text-slate-400 hover:text-slate-700"
+                  aria-label={showPasswords ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
+                >
+                  {showPasswords ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
+            </label>
+          ))}
+
+          {passwordError && <p role="alert" className="rounded-xl bg-rose-50 px-4 py-3 text-xs font-semibold text-rose-700">{passwordError}</p>}
+          {passwordSuccess && <p role="status" className="rounded-xl bg-emerald-50 px-4 py-3 text-xs font-semibold text-emerald-700">{passwordSuccess}</p>}
+
+          <div className="flex justify-end gap-2 pt-1">
+            <button type="button" onClick={closePasswordModal} disabled={changingPassword} className="rounded-xl bg-slate-100 px-4 py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-200 disabled:opacity-50">Đóng</button>
+            <button type="submit" disabled={changingPassword || Boolean(passwordSuccess)} className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-xs font-black text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50">
+              <LockKeyhole className="h-4 w-4" /> {changingPassword ? 'Đang cập nhật…' : 'Cập nhật mật khẩu'}
+            </button>
+          </div>
+        </form>
+      </Modal>
     </header>
   );
 };
