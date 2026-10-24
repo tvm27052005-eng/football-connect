@@ -97,7 +97,8 @@ export const otpManager = {
   verifyOtp: async (
     email: string,
     inputOtp: string,
-    purpose: OtpPurpose
+    purpose: OtpPurpose,
+    consumeOnSuccess = true
   ): Promise<{ valid: boolean; message: string; registrationPayload?: Record<string, unknown> }> => {
     const mucDich = purposeToMucDich(purpose);
     const normalizedEmail = email.toLowerCase().trim();
@@ -160,12 +161,16 @@ export const otpManager = {
       };
     }
 
-    // Xác thực thành công — xóa sạch OTP mục đích này trong DB
+    // Registration consumes immediately. Password reset may keep the verified
+    // OTP briefly so it can reject the current password without forcing the
+    // user to request another email.
     const payload = otpDoc.du_lieu_dang_ky;
-    await MaXacThucModel.deleteMany({
-      email: normalizedEmail,
-      muc_dich: mucDich
-    });
+    if (consumeOnSuccess) {
+      await MaXacThucModel.deleteMany({
+        email: normalizedEmail,
+        muc_dich: mucDich
+      });
+    }
 
     console.log(`✅ [VERIFY OTP SUCCESS] Xác thực OTP thành công cho: ${normalizedEmail}`);
 

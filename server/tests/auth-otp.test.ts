@@ -5,6 +5,7 @@ import mongoose from 'mongoose';
 import { createApp } from '../app.js';
 import { db } from '../models/db.js';
 import { MaXacThucModel, NguoiDungModel } from '../models/mongoose.models.js';
+import { comparePassword } from '../utils/bcrypt.js';
 
 test('luồng đăng ký gửi OTP và xác thực tạo tài khoản', async () => {
   const databaseName = `football-connect-otp-test-${process.pid}-${Date.now()}`;
@@ -78,6 +79,31 @@ test('luồng đăng ký gửi OTP và xác thực tạo tài khoản', async ()
 
     const storedUser = await NguoiDungModel.findOne({ email }).lean() as { mat_khau?: string } | null;
     assert.match(String(storedUser?.mat_khau), /^\$2[aby]\$/);
+
+    const forgotSendResponse = await fetch(`${baseUrl}/api/auth/forgot-password-otp`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email })
+    });
+    assert.equal(forgotSendResponse.status, 200);
+    const forgotOtp = await MaXacThucModel.findOne({ email, muc_dich: 'QUEN_MAT_KHAU' }).lean() as { ma_otp?: string } | null;
+    assert.match(String(forgotOtp?.ma_otp), /^\d{6}$/);
+
+    const samePasswordResponse = await fetch(`${baseUrl}/api/auth/reset-password`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, otp: forgotOtp?.ma_otp, newPassword: 'Password123!' })
+    });
+    const samePasswordBody = await samePasswordResponse.json() as { success: boolean; message: string };
+    assert.equal(samePasswordResponse.status, 400);
+    assert.match(samePasswordBody.message, /không được trùng/);
+    assert.equal(await MaXacThucModel.countDocuments({ email, muc_dich: 'QUEN_MAT_KHAU' }), 1);
+
+    const resetResponse = await fetch(`${baseUrl}/api/auth/reset-password`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, otp: forgotOtp?.ma_otp, newPassword: 'DifferentPassword456!' })
+    });
+    assert.equal(resetResponse.status, 200);
+    assert.equal(await MaXacThucModel.countDocuments({ email, muc_dich: 'QUEN_MAT_KHAU' }), 0);
+    const resetUser = await NguoiDungModel.findOne({ email }).lean() as { mat_khau?: string } | null;
+    assert.equal(await comparePassword('DifferentPassword456!', String(resetUser?.mat_khau)), true);
 
     brevoStatus = 401;
     const failedResponse = await fetch(`${baseUrl}/api/auth/register-otp`, {

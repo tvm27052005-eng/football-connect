@@ -459,13 +459,13 @@ export const authController = {
     try {
       const { email, otp, newPassword } = req.body;
 
-      if (!email || !otp || !newPassword) {
+      if (typeof email !== 'string' || typeof otp !== 'string' || typeof newPassword !== 'string' || !email || !otp || !newPassword) {
         res.status(400).json({ success: false, message: 'Vui lòng cung cấp đầy đủ email, mã OTP và mật khẩu mới' });
         return;
       }
 
-      if (newPassword.length < 6) {
-        res.status(400).json({ success: false, message: 'Mật khẩu mới phải có ít nhất 6 ký tự' });
+      if (newPassword.length < 6 || newPassword.length > 128) {
+        res.status(400).json({ success: false, message: 'Mật khẩu mới phải có từ 6 đến 128 ký tự' });
         return;
       }
 
@@ -498,21 +498,33 @@ export const authController = {
         return;
       }
 
-      const verification = await otpManager.verifyOtp(normalizedEmail, otp, 'FORGOT_PASSWORD');
+      const verification = await otpManager.verifyOtp(normalizedEmail, otp, 'FORGOT_PASSWORD', false);
       if (!verification.valid) {
         res.status(400).json({ success: false, message: verification.message });
         return;
       }
 
+      const matchesCurrentPassword = await comparePassword(newPassword, user.password || '');
+      if (matchesCurrentPassword) {
+        res.status(400).json({
+          success: false,
+          message: 'Mật khẩu mới không được trùng với mật khẩu hiện tại. Vui lòng chọn mật khẩu khác.'
+        });
+        return;
+      }
+
+      // Consume only after both OTP and the new password have passed validation.
+      await otpManager.deleteOtp(normalizedEmail, 'FORGOT_PASSWORD');
+
       const hashedPassword = await hashPassword(newPassword);
-      user.password = hashedPassword;
-      user.updatedAt = new Date().toISOString();
-      await db.syncUser(user);
+      const updatedAt = new Date();
+      const updatedUser = { ...user, password: hashedPassword, updatedAt: updatedAt.toISOString() };
+      await db.syncUser(updatedUser);
 
       // Cập nhật trực tiếp vào MongoDB để đảm bảo 100% mật khẩu được lưu bền vững
       await (NguoiDungModel as any).updateOne(
         { email: normalizedEmail },
-        { $set: { mat_khau: hashedPassword, ngay_cap_nhat: new Date() } }
+        { $set: { mat_khau: hashedPassword, ngay_cap_nhat: updatedAt } }
       );
 
       // Notification
