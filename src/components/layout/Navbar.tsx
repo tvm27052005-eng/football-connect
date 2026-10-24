@@ -376,18 +376,16 @@ export const Navbar: React.FC = () => {
                           <MessageSquare className="w-4 h-4 text-slate-400" /> Tin nhắn & Phòng chat
                         </Link>
 
-                        {user?.role === 'OWNER' && (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setShowUserMenu(false);
-                              setShowPasswordModal(true);
-                            }}
-                            className="w-full flex items-center gap-2.5 px-4 py-2 text-xs font-semibold text-slate-700 hover:text-emerald-700 hover:bg-emerald-50/50 text-left transition-colors cursor-pointer"
-                          >
-                            <LockKeyhole className="w-4 h-4 text-slate-400" /> Đổi mật khẩu
-                          </button>
-                        )}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowUserMenu(false);
+                            setShowPasswordModal(true);
+                          }}
+                          className="w-full flex items-center gap-2.5 px-4 py-2 text-xs font-semibold text-slate-700 hover:text-emerald-700 hover:bg-emerald-50/50 text-left transition-colors cursor-pointer"
+                        >
+                          <LockKeyhole className="w-4 h-4 text-slate-400" /> Đổi mật khẩu
+                        </button>
 
                         {user?.role === 'OWNER' && (
                           <Link
@@ -445,14 +443,14 @@ export const Navbar: React.FC = () => {
       <Modal isOpen={showPasswordModal} onClose={closePasswordModal} title="Đổi mật khẩu tài khoản" maxWidth="sm">
         <form onSubmit={handleChangePassword} className="space-y-4">
           <div className="rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-3">
-            <p className="text-xs font-bold text-emerald-900">Bảo vệ tài khoản chủ sân</p>
+            <p className="text-xs font-bold text-emerald-900">Bảo vệ tài khoản của bạn</p>
             <p className="mt-1 text-[11px] leading-5 text-emerald-800">Dùng mật khẩu mới khác mật khẩu hiện tại và không chia sẻ cho người khác.</p>
           </div>
 
           {[
-            { id: 'owner-current-password', label: 'Mật khẩu hiện tại', value: currentPassword, setValue: setCurrentPassword, autoComplete: 'current-password' },
-            { id: 'owner-new-password', label: 'Mật khẩu mới', value: newPassword, setValue: setNewPassword, autoComplete: 'new-password' },
-            { id: 'owner-confirm-password', label: 'Xác nhận mật khẩu mới', value: confirmPassword, setValue: setConfirmPassword, autoComplete: 'new-password' }
+            { id: 'account-current-password', label: 'Mật khẩu hiện tại', value: currentPassword, setValue: setCurrentPassword, autoComplete: 'current-password' },
+            { id: 'account-new-password', label: 'Mật khẩu mới', value: newPassword, setValue: setNewPassword, autoComplete: 'new-password' },
+            { id: 'account-confirm-password', label: 'Xác nhận mật khẩu mới', value: confirmPassword, setValue: setConfirmPassword, autoComplete: 'new-password' }
           ].map(field => (
             <label key={field.id} htmlFor={field.id} className="block">
               <span className="mb-1.5 block text-xs font-bold text-slate-700">{field.label}</span>
