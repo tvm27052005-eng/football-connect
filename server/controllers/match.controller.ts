@@ -123,6 +123,49 @@ export const matchController = {
     }
   },
 
+  // GET /api/matches/joined - Kèo người dùng đã nhận với vai trò Đội B
+  getJoinedMatches: async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+    try {
+      if (!req.user) {
+        res.status(401).json({ success: false, message: 'Chưa đăng nhập' });
+        return;
+      }
+
+      const joinedMatchIds = new Set(
+        db.matchParticipants
+          .filter(participant => (
+            participant.userId === req.user?.id &&
+            participant.team === 'B' &&
+            participant.status === 'CONFIRMED'
+          ))
+          .map(participant => participant.matchId)
+      );
+
+      const matches = db.matches
+        .filter(match => joinedMatchIds.has(match.id))
+        .sort((a, b) => {
+          const timeA = new Date(`${a.matchDate}T${a.startTime}`).getTime();
+          const timeB = new Date(`${b.matchDate}T${b.startTime}`).getTime();
+          return timeA - timeB;
+        })
+        .map(match => {
+          const participants = db.matchParticipants.filter(
+            participant => participant.matchId === match.id && participant.status === 'CONFIRMED'
+          );
+
+          return {
+            ...match,
+            currentPlayers: participants.length,
+            participants
+          };
+        });
+
+      res.json({ success: true, count: matches.length, data: matches });
+    } catch {
+      res.status(500).json({ success: false, message: 'Lỗi server khi tải kèo đã bắt' });
+    }
+  },
+
   // GET /api/matches/recommendations (Smart Match AI Recommendation algorithm)
   getMatchRecommendations: async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {

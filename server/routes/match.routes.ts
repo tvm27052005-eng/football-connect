@@ -9,6 +9,7 @@ router.get('/', matchController.getAllMatches);
 router.get('/recommendations', authenticateToken, matchController.getMatchRecommendations);
 router.get('/admin/all', authenticateToken, requireRole('ADMIN'), matchController.getAllMatches);
 router.get('/mine', authenticateToken, matchController.getMyMatches);
+router.get('/joined', authenticateToken, matchController.getJoinedMatches);
 // Keep named collection routes before the dynamic /:id route.
 router.get('/:id', matchController.getMatchById);
 

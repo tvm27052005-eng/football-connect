@@ -54,8 +54,6 @@ export const MatchDetailPage: React.FC = () => {
     fetchMatch();
   }, [id]);
 
-  const isUserTeamB = match?.teamBJoined && (match?.creatorId !== user?.id);
-
   const handleJoinMatch = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!isAuthenticated) {
@@ -70,7 +68,7 @@ export const MatchDetailPage: React.FC = () => {
         teamBCaptain: user?.name
       });
       setShowJoinModal(false);
-      fetchMatch();
+      navigate('/matches?view=joined');
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Không thể nhận bắt kèo';
       alert(msg);

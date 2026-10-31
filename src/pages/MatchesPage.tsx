@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import {
   Users,
   Plus,
@@ -13,7 +13,9 @@ import {
   RotateCcw,
   Target,
   Trophy,
-  ChevronRight
+  ChevronRight,
+  Handshake,
+  MessageSquare
 } from 'lucide-react';
 import { api } from '../services/api.js';
 import { IMatch, IMatchRecommendation, IVenue } from '../types/index.js';
@@ -24,10 +26,15 @@ import { useAuthStore } from '../stores/auth.store.js';
 
 export const MatchesPage: React.FC = () => {
   const { user, isAuthenticated } = useAuthStore();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const [matches, setMatches] = useState<IMatch[]>([]);
   const [myMatches, setMyMatches] = useState<IMatch[]>([]);
-  const [showMyMatches, setShowMyMatches] = useState(false);
+  const [joinedMatches, setJoinedMatches] = useState<IMatch[]>([]);
+  const requestedView = searchParams.get('view');
+  const [activeView, setActiveView] = useState<'public' | 'joined' | 'created'>(
+    requestedView === 'joined' || requestedView === 'created' ? requestedView : 'public'
+  );
   const [recommendations, setRecommendations] = useState<IMatchRecommendation[]>([]);
   const [venues, setVenues] = useState<IVenue[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -94,6 +101,20 @@ export const MatchesPage: React.FC = () => {
     }
   };
 
+  const fetchJoinedMatches = async () => {
+    if (!isAuthenticated) {
+      setJoinedMatches([]);
+      return;
+    }
+
+    try {
+      const res = await api.get('/matches/joined');
+      setJoinedMatches(Array.isArray(res.data?.data) ? res.data.data : []);
+    } catch (error) {
+      console.error('Failed to load joined matches:', error);
+    }
+  };
+
   const fetchVenues = async () => {
     try {
       const res = await api.get('/venues');
@@ -110,8 +131,16 @@ export const MatchesPage: React.FC = () => {
     fetchMatches();
     fetchRecommendations();
     fetchMyMatches();
+    fetchJoinedMatches();
     fetchVenues();
   }, [isAuthenticated]);
+
+  useEffect(() => {
+    if (!isAuthenticated && activeView !== 'public') {
+      setActiveView('public');
+      setSearchParams({}, { replace: true });
+    }
+  }, [activeView, isAuthenticated, setSearchParams]);
 
   const handleCreateMatch = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -142,8 +171,8 @@ export const MatchesPage: React.FC = () => {
       setIsSubmitting(true);
       const response = await api.post<{ data?: IMatch }>('/matches', createForm);
       setShowCreateModal(false);
-      setShowMyMatches(true);
-      setCreateSuccess('Đã gửi kèo thành công. Kèo đang chờ Admin duyệt và được hiển thị trong mục Kèo của tôi.');
+      switchView('created');
+      setCreateSuccess('Đã gửi kèo thành công. Kèo đang chờ Admin duyệt và được hiển thị trong mục Kèo đã đăng.');
       fetchMatches();
       await fetchMyMatches();
       const createdMatch = response.data.data;
@@ -178,6 +207,12 @@ export const MatchesPage: React.FC = () => {
 
   const hasActiveFilters = Boolean(searchQuery || fieldType || skillLevel);
   const openMatchesCount = matches.filter((match) => match.status === 'OPEN').length;
+
+  const switchView = (view: 'public' | 'joined' | 'created') => {
+    setActiveView(view);
+    setCreateSuccess('');
+    setSearchParams(view === 'public' ? {} : { view }, { replace: true });
+  };
 
   const openCreateMatch = () => {
     if (!isAuthenticated) {
@@ -254,14 +289,23 @@ export const MatchesPage: React.FC = () => {
       </section>
 
       {isAuthenticated && (
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-4 gap-3">
           <button
-            onClick={() => setShowMyMatches(false)}
-            className={`rounded-2xl border p-4 text-left transition-all cursor-pointer ${!showMyMatches ? 'bg-emerald-50 border-emerald-300 ring-2 ring-emerald-500/10' : 'bg-white border-slate-200 hover:border-slate-300'}`}
+            onClick={() => switchView('public')}
+            className={`rounded-2xl border p-4 text-left transition-all cursor-pointer ${activeView === 'public' ? 'bg-emerald-50 border-emerald-300 ring-2 ring-emerald-500/10' : 'bg-white border-slate-200 hover:border-slate-300'}`}
           >
             <span className="flex items-center justify-between"><span className="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center"><Users className="w-4 h-4" /></span><ChevronRight className="w-4 h-4 text-slate-400" /></span>
             <strong className="block text-sm text-slate-900 mt-3">Khám phá kèo công khai</strong>
             <span className="block text-[11px] text-slate-500 mt-1">{openMatchesCount} kèo đang chờ đối thủ</span>
+          </button>
+          <button
+            onClick={() => switchView('joined')}
+            className={`relative rounded-2xl border p-4 text-left transition-all cursor-pointer ${activeView === 'joined' ? 'bg-sky-50 border-sky-400 ring-2 ring-sky-500/10' : 'bg-white border-sky-200 hover:border-sky-400'}`}
+          >
+            {joinedMatches.length > 0 && <span className="absolute right-3 top-3 min-w-6 h-6 px-1.5 rounded-full bg-sky-600 text-white text-[11px] font-black flex items-center justify-center">{joinedMatches.length}</span>}
+            <span className="flex items-center justify-between"><span className="w-9 h-9 rounded-xl bg-sky-100 text-sky-700 flex items-center justify-center"><Handshake className="w-4 h-4" /></span><ChevronRight className="w-4 h-4 text-slate-400" /></span>
+            <strong className="block text-sm text-slate-900 mt-3">Kèo đã bắt</strong>
+            <span className="block text-[11px] text-slate-500 mt-1">{joinedMatches.length} kèo bạn đã nhận làm Đội B</span>
           </button>
           <button onClick={() => setShowSmartModal(true)} className="rounded-2xl border border-slate-200 bg-white hover:border-emerald-300 p-4 text-left transition-all cursor-pointer">
             <span className="flex items-center justify-between"><span className="w-9 h-9 rounded-xl bg-violet-100 text-violet-700 flex items-center justify-center"><Sparkles className="w-4 h-4" /></span><ChevronRight className="w-4 h-4 text-slate-400" /></span>
@@ -269,21 +313,42 @@ export const MatchesPage: React.FC = () => {
             <span className="block text-[11px] text-slate-500 mt-1">{recommendations.length} kèo dựa trên hồ sơ thi đấu</span>
           </button>
           <button
-            onClick={() => { setCreateSuccess(''); setShowMyMatches(true); }}
-            className={`rounded-2xl border p-4 text-left transition-all cursor-pointer ${showMyMatches ? 'bg-amber-50 border-amber-300 ring-2 ring-amber-500/10' : 'bg-white border-slate-200 hover:border-amber-300'}`}
+            onClick={() => switchView('created')}
+            className={`rounded-2xl border p-4 text-left transition-all cursor-pointer ${activeView === 'created' ? 'bg-amber-50 border-amber-300 ring-2 ring-amber-500/10' : 'bg-white border-slate-200 hover:border-amber-300'}`}
           >
             <span className="flex items-center justify-between"><span className="w-9 h-9 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center"><ClipboardList className="w-4 h-4" /></span><ChevronRight className="w-4 h-4 text-slate-400" /></span>
-            <strong className="block text-sm text-slate-900 mt-3">Quản lý kèo của tôi</strong>
+            <strong className="block text-sm text-slate-900 mt-3">Kèo đã đăng</strong>
             <span className="block text-[11px] text-slate-500 mt-1">{myMatches.length} kèo đã đăng</span>
           </button>
         </div>
       )}
 
-      {isAuthenticated && showMyMatches && (
+      {isAuthenticated && activeView === 'joined' && (
+        <section className="bg-white border border-sky-200 rounded-2xl p-6 shadow-sm space-y-5">
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-sky-700">Đội B của bạn</p>
+              <h2 className="text-xl font-black text-slate-900 mt-1">Kèo đã bắt</h2>
+              <p className="text-xs text-slate-500 mt-1">Xem lại đối thủ, lịch thi đấu và mở chi tiết để trao đổi với Đội A.</p>
+            </div>
+            <Link to="/chat" className="px-4 py-2.5 rounded-xl bg-sky-50 hover:bg-sky-100 text-sky-800 border border-sky-200 text-xs font-bold flex items-center gap-2"><MessageSquare className="w-4 h-4" /> Phòng chat đội trưởng</Link>
+          </div>
+
+          {joinedMatches.length === 0 ? (
+            <EmptyState title="Bạn chưa bắt kèo nào" description="Quay lại danh sách công khai, chọn một đối thủ phù hợp rồi bấm Xác nhận bắt kèo." icon={Handshake} action={{ label: 'Khám phá kèo đang mở', onClick: () => switchView('public') }} />
+          ) : (
+            <div className="grid grid-cols-2 gap-5">
+              {joinedMatches.map((match) => <MatchCard key={match.id} match={match} />)}
+            </div>
+          )}
+        </section>
+      )}
+
+      {isAuthenticated && activeView === 'created' && (
         <section className="bg-white border border-amber-200 rounded-2xl p-6 shadow-sm space-y-5">
           <div className="flex items-center justify-between gap-2">
             <div>
-              <h2 className="text-xl font-black text-slate-900">Kèo của tôi</h2>
+              <h2 className="text-xl font-black text-slate-900">Kèo đã đăng</h2>
               <p className="text-xs text-slate-500 mt-1">
                 Theo dõi các kèo bạn đã đăng và trạng thái kiểm duyệt của Admin.
               </p>
@@ -311,7 +376,7 @@ export const MatchesPage: React.FC = () => {
         </section>
       )}
 
-      {!showMyMatches && (
+      {activeView === 'public' && (
         <section className="grid grid-cols-[280px_1fr] gap-6 items-start">
           <aside className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm sticky top-24">
             <div className="flex items-center justify-between mb-5">
