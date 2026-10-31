@@ -2,11 +2,13 @@ import { Response } from 'express';
 import { db } from '../models/db.js';
 import { AuthenticatedRequest } from '../middlewares/auth.middleware.js';
 import { hashPassword, comparePassword } from '../utils/bcrypt.js';
+import { disconnectUserSessions } from '../sockets/socket.service.js';
 
 function publicUser(user: import('../types/index.js').IUser) {
   const { password: _, payos, ...safeUser } = user;
   return {
     ...safeUser,
+    status: user.isActive ? 'ACTIVE' : 'LOCKED',
     payos: payos ? {
       connected: true,
       accountNumber: payos.accountNumber,
@@ -186,14 +188,30 @@ export const userController = {
         return;
       }
 
-      user.isActive = !user.isActive;
-      user.updatedAt = new Date().toISOString();
-      await db.syncUser(user);
+      const requestedStatus = req.body?.status;
+      if (requestedStatus !== undefined && !['ACTIVE', 'LOCKED'].includes(requestedStatus)) {
+        res.status(400).json({ success: false, message: 'Trạng thái tài khoản không hợp lệ' });
+        return;
+      }
+
+      const isActive = requestedStatus === undefined
+        ? !user.isActive
+        : requestedStatus === 'ACTIVE';
+      const updatedUser = {
+        ...user,
+        isActive,
+        updatedAt: new Date().toISOString()
+      };
+
+      await db.syncUser(updatedUser);
+      if (!isActive) {
+        disconnectUserSessions(user.id);
+      }
 
       res.json({
         success: true,
-        message: `Đã ${user.isActive ? 'mở khóa' : 'khóa'} tài khoản ${user.name}`,
-        data: { id: user.id, isActive: user.isActive }
+        message: `Đã ${isActive ? 'mở khóa' : 'khóa'} tài khoản ${user.name}`,
+        data: { id: user.id, isActive, status: isActive ? 'ACTIVE' : 'LOCKED' }
       });
     } catch {
       res.status(500).json({ success: false, message: 'Lỗi server' });

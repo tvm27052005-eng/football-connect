@@ -61,12 +61,31 @@ const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
 // Global App Root
 export default function App() {
-  const { fetchCurrentUser } = useAuthStore();
+  const { fetchCurrentUser, logout } = useAuthStore();
   useSocket(); // Hook up real-time notifications & chat listeners
 
   useEffect(() => {
     fetchCurrentUser();
   }, [fetchCurrentUser]);
+
+  useEffect(() => {
+    const handleInvalidSession = () => logout();
+    const verifySessionWhenReturning = () => {
+      if (document.visibilityState === 'visible') {
+        void fetchCurrentUser();
+      }
+    };
+
+    window.addEventListener('fc:auth-invalidated', handleInvalidSession);
+    window.addEventListener('focus', verifySessionWhenReturning);
+    document.addEventListener('visibilitychange', verifySessionWhenReturning);
+
+    return () => {
+      window.removeEventListener('fc:auth-invalidated', handleInvalidSession);
+      window.removeEventListener('focus', verifySessionWhenReturning);
+      document.removeEventListener('visibilitychange', verifySessionWhenReturning);
+    };
+  }, [fetchCurrentUser, logout]);
 
   return (
     <BrowserRouter>

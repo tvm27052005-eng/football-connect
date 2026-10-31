@@ -49,6 +49,9 @@ export const LoginPage: React.FC = () => {
   const [forgotError, setForgotError] = useState('');
 
   const from = (location.state as { from?: { pathname: string } })?.from?.pathname || '/';
+  const accountLockedMessage = new URLSearchParams(location.search).get('reason') === 'account-locked'
+    ? 'Tài khoản của bạn đã bị khóa bởi Quản trị viên. Vui lòng liên hệ hỗ trợ nếu cần mở lại tài khoản.'
+    : '';
 
   // Countdown timer for forgot password OTP
   useEffect(() => {
@@ -325,10 +328,10 @@ export const LoginPage: React.FC = () => {
               </motion.div>
             )}
 
-            {(localError || error) && (
+            {(localError || error || accountLockedMessage) && (
               <motion.div key="error" initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 8 }} className="mb-4 flex items-center gap-2 rounded-2xl border border-rose-200 bg-rose-50 p-3 text-xs font-medium text-rose-700">
                 <AlertCircle className="h-4 w-4 shrink-0 text-rose-600" />
-                <span>{localError || error}</span>
+                <span>{localError || error || accountLockedMessage}</span>
               </motion.div>
             )}
           </AnimatePresence>

@@ -5,6 +5,16 @@ import { db } from '../models/db.js';
 
 let socketServer: SocketIOServer | null = null;
 
+export function disconnectUserSessions(userId: string): void {
+  if (!socketServer) return;
+
+  const room = `user:${userId}`;
+  socketServer.to(room).emit('account_locked', {
+    message: 'Tài khoản của bạn đã bị khóa bởi Quản trị viên'
+  });
+  socketServer.in(room).disconnectSockets(true);
+}
+
 export function emitConversationMessage(message: IMessage, participantIds: string[]): void {
   if (!socketServer) return;
 
@@ -32,9 +42,15 @@ export function initSocketService(io: SocketIOServer): void {
     if (token && typeof token === 'string') {
       try {
         const payload = verifyToken(token);
+        const user = db.users.find(item => item.id === payload.id);
+        if (!user || !user.isActive) {
+          next(new Error('ACCOUNT_LOCKED'));
+          return;
+        }
         (socket as unknown as { user: typeof payload }).user = payload;
       } catch {
-        // Allow guest or handle invalid gracefully
+        next(new Error('UNAUTHORIZED'));
+        return;
       }
     }
     next();

@@ -7,7 +7,7 @@ import { IMessage, INotification } from '../types/index.js';
 
 export function useSocket() {
   const socketRef = useRef<Socket | null>(null);
-  const { user, token } = useAuthStore();
+  const { user, token, logout } = useAuthStore();
   const { addIncomingMessage, setUserTyping, clearUserTyping } = useChatStore();
   const { addRealtimeNotification } = useNotificationStore();
 
@@ -39,6 +39,11 @@ export function useSocket() {
       addRealtimeNotification(notification);
     });
 
+    socket.on('account_locked', () => {
+      logout();
+      window.location.replace('/login?reason=account-locked');
+    });
+
     socket.on('user_typing', ({ conversationId, userName }: { conversationId: string; userName: string }) => {
       setUserTyping(conversationId, userName);
     });
@@ -51,7 +56,7 @@ export function useSocket() {
       socket.disconnect();
       socketRef.current = null;
     };
-  }, [token, user?.id]);
+  }, [token, user?.id, logout]);
 
   const joinConversation = (conversationId: string) => {
     socketRef.current?.emit('join_conversation', conversationId);

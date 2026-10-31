@@ -16,6 +16,7 @@ export const AdminUsersPage: React.FC = () => {
   const [users, setUsers] = useState<IUser[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [updatingUserId, setUpdatingUserId] = useState<string | null>(null);
 
   const fetchUsers = async () => {
     try {
@@ -35,13 +36,19 @@ export const AdminUsersPage: React.FC = () => {
   }, []);
 
   const handleToggleStatus = async (user: IUser) => {
-    const newStatus = user.status === 'ACTIVE' ? 'LOCKED' : 'ACTIVE';
+    const newStatus = user.isActive ? 'LOCKED' : 'ACTIVE';
     try {
-      await api.put(`/users/admin/${user.id}/status`, { status: newStatus });
-      fetchUsers();
+      setUpdatingUserId(user.id);
+      const response = await api.put(`/users/admin/${user.id}/status`, { status: newStatus });
+      const isActive = Boolean(response.data?.data?.isActive);
+      setUsers(currentUsers => currentUsers.map(item => (
+        item.id === user.id ? { ...item, isActive, status: isActive ? 'ACTIVE' : 'LOCKED' } : item
+      )));
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Lỗi khi cập nhật trạng thái';
       alert(msg);
+    } finally {
+      setUpdatingUserId(null);
     }
   };
 
@@ -134,22 +141,23 @@ export const AdminUsersPage: React.FC = () => {
                         </td>
                         <td className="p-4">
                           <Badge
-                            variant={u.status === 'ACTIVE' ? 'emerald' : 'rose'}
+                            variant={u.isActive ? 'emerald' : 'rose'}
                             size="sm"
                           >
-                            {u.status === 'ACTIVE' ? 'Hoạt động' : 'Đã khóa'}
+                            {u.isActive ? 'Hoạt động' : 'Đã khóa'}
                           </Badge>
                         </td>
                         <td className="p-4 text-right">
                           <button
                             onClick={() => handleToggleStatus(u)}
+                            disabled={updatingUserId === u.id}
                             className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all border cursor-pointer ${
-                              u.status === 'ACTIVE'
+                              u.isActive
                                 ? 'bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100'
                                 : 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
-                            }`}
+                            } disabled:opacity-50 disabled:cursor-wait`}
                           >
-                            {u.status === 'ACTIVE' ? 'Khóa tài khoản' : 'Mở khóa'}
+                            {updatingUserId === u.id ? 'Đang cập nhật...' : u.isActive ? 'Khóa tài khoản' : 'Mở khóa'}
                           </button>
                         </td>
                       </tr>

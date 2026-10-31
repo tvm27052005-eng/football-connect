@@ -22,13 +22,18 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
+    const responseMessage = String(error.response?.data?.message || '');
+    const isLockedAccount = error.response?.status === 403 && responseMessage.toLowerCase().includes('khóa');
+
+    if (error.response?.status === 401 || isLockedAccount) {
       // Don't auto-redirect if checking /api/auth/me during initial mount
       const isAuthCheck = error.config?.url?.includes('/auth/me');
       if (!isAuthCheck) {
-        // Token expired or invalid
         localStorage.removeItem('fc_token');
         localStorage.removeItem('fc_user');
+        window.dispatchEvent(new CustomEvent('fc:auth-invalidated', {
+          detail: { reason: isLockedAccount ? 'ACCOUNT_LOCKED' : 'SESSION_EXPIRED' }
+        }));
       }
     }
     return Promise.reject(error);
