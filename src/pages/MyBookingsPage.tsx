@@ -26,10 +26,18 @@ type SortOption =
   | 'venue_desc'
 
 type TimelineOption = 'ALL' | 'UPCOMING' | 'TODAY' | 'PAST';
+type BookingTab = 'ALL' | 'PENDING' | 'CONFIRMED' | 'CANCELLED';
+
+// A payment confirmed by payOS is persisted as COMPLETED. For users, both
+// CONFIRMED and COMPLETED mean that the pitch has been booked successfully.
+const matchesBookingTab = (booking: IBooking, tab: BookingTab): boolean =>
+  tab === 'ALL'
+    || (tab === 'CONFIRMED' && (booking.status === 'CONFIRMED' || booking.status === 'COMPLETED'))
+    || booking.status === tab;
 
 export const MyBookingsPage: React.FC = () => {
   const [bookings, setBookings] = useState<IBooking[]>([]);
-  const [activeTab, setActiveTab] = useState<'ALL' | 'CONFIRMED' | 'PENDING' | 'COMPLETED' | 'CANCELLED'>('ALL');
+  const [activeTab, setActiveTab] = useState<BookingTab>('ALL');
   const [timelineFilter, setTimelineFilter] = useState<TimelineOption>('ALL');
   const [sortBy, setSortBy] = useState<SortOption>('date_asc');
   const [searchQuery, setSearchQuery] = useState('');
@@ -134,7 +142,7 @@ export const MyBookingsPage: React.FC = () => {
 
     // Status filter
     if (activeTab !== 'ALL') {
-      result = result.filter((b) => b.status === activeTab);
+      result = result.filter((booking) => matchesBookingTab(booking, activeTab));
     }
 
     // Timeline filter (Upcoming / Today / Past)
@@ -328,12 +336,12 @@ export const MyBookingsPage: React.FC = () => {
         {[
           { key: 'ALL', label: 'Tất cả trạng thái' },
           { key: 'PENDING', label: 'Chờ thanh toán' },
-          { key: 'CONFIRMED', label: 'Đã xác nhận' },
+          { key: 'CONFIRMED', label: 'Đã đặt thành công' },
           { key: 'CANCELLED', label: 'Đã hủy' }
         ].map((tab) => (
           <button
             key={tab.key}
-            onClick={() => setActiveTab(tab.key as typeof activeTab)}
+            onClick={() => setActiveTab(tab.key as BookingTab)}
             className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer ${activeTab === tab.key
               ? 'bg-slate-900 text-white font-extrabold shadow-xs'
               : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'

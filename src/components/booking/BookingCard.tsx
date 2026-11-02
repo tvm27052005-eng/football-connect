@@ -64,12 +64,12 @@ export const BookingCard: React.FC<BookingCardProps> = ({
     CONFIRMED: { variant: 'emerald' as const, label: 'Đã xác nhận', icon: CheckCircle2 },
     PENDING: { variant: 'amber' as const, label: 'Chờ thanh toán', icon: AlertCircle },
     CANCELLED: { variant: 'rose' as const, label: 'Đã hủy', icon: XCircle },
-    COMPLETED: { variant: 'blue' as const, label: 'Đã hoàn thành', icon: CheckCircle2 }
+    COMPLETED: { variant: 'emerald' as const, label: 'Đã đặt thành công', icon: CheckCircle2 }
   }[booking.status];
 
   return (
     <div
-      className={`bg-white border rounded-2xl p-5 shadow-xs hover:shadow-md space-y-4 transition-all ${isToday && booking.status === 'CONFIRMED'
+      className={`bg-white border rounded-2xl p-5 shadow-xs hover:shadow-md space-y-4 transition-all ${isToday && (booking.status === 'CONFIRMED' || booking.status === 'COMPLETED')
         ? 'border-emerald-500/70 ring-1 ring-emerald-500/20'
         : 'border-slate-200/90 hover:border-slate-300'
         }`}
