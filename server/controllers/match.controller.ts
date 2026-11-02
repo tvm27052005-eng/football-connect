@@ -4,6 +4,29 @@ import { AuthenticatedRequest } from '../middlewares/auth.middleware.js';
 import { calculateMatchScore } from '../utils/recommendation.js';
 import { IMatch, IMatchParticipant } from '../types/index.js';
 
+const SIX_HOURS_MS = 6 * 60 * 60 * 1000;
+
+const getMatchStartTime = (match: IMatch): number =>
+  Date.parse(`${match.matchDate}T${match.startTime}:00+07:00`);
+
+const getTimeUntilMatch = (match: IMatch): number => getMatchStartTime(match) - Date.now();
+
+const removeUserFromMatchConversation = async (matchId: string, userId: string): Promise<void> => {
+  const conversation = db.conversations.find(item => item.matchId === matchId);
+  if (!conversation) return;
+  conversation.participantIds = conversation.participantIds.filter(id => id !== userId);
+  conversation.updatedAt = new Date().toISOString();
+  await db.syncConversation(conversation);
+};
+
+const resetTeamB = (match: IMatch): void => {
+  match.teamBName = 'Đang tìm Đội B đối thủ...';
+  match.teamBCaptain = undefined;
+  match.teamBPhone = undefined;
+  match.teamBJoined = false;
+  match.cancelRequest = undefined;
+};
+
 export const matchController = {
   // GET /api/matches
   getAllMatches: async (req: Request, res: Response): Promise<void> => {
@@ -492,7 +515,7 @@ export const matchController = {
     }
   },
 
-  // DELETE /api/matches/:id/leave
+  // DELETE /api/matches/:id/leave - Đội B hủy nhận kèo khi còn ít nhất 6 giờ
   leaveMatch: async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
       if (!req.user) {
@@ -513,28 +536,225 @@ export const matchController = {
         return;
       }
 
-      const part = db.matchParticipants.find(p => p.matchId === id && p.userId === req.user?.id && p.status === 'CONFIRMED');
+      const part = db.matchParticipants.find(p => p.matchId === id && p.userId === req.user?.id && p.team === 'B' && p.status === 'CONFIRMED');
       if (!part) {
-        res.status(400).json({ success: false, message: 'Bạn chưa tham gia trận đấu này' });
+        res.status(400).json({ success: false, message: 'Bạn không phải Đội B đang nhận kèo này' });
+        return;
+      }
+
+      const timeUntilMatch = getTimeUntilMatch(match);
+      if (timeUntilMatch <= 0) {
+        res.status(400).json({ success: false, message: 'Trận đấu đã bắt đầu, bạn không thể hủy bắt kèo' });
+        return;
+      }
+      if (timeUntilMatch < SIX_HOURS_MS) {
+        res.status(409).json({
+          success: false,
+          code: 'CANCEL_REQUEST_REQUIRED',
+          message: 'Trận đấu còn dưới 6 giờ. Vui lòng nhập lý do và gửi yêu cầu hủy cho người đăng kèo xác nhận.'
+        });
         return;
       }
 
       await db.deleteMatchParticipant(part.id);
+      await removeUserFromMatchConversation(match.id, req.user.id);
 
       const activeParticipants = db.matchParticipants.filter(p => p.matchId === match.id && p.status === 'CONFIRMED');
       match.currentPlayers = activeParticipants.length;
-      if (match.status === 'FULL' && match.currentPlayers < match.maxPlayers) {
-        match.status = 'OPEN';
-      }
+      match.status = 'OPEN';
+      resetTeamB(match);
       match.updatedAt = new Date().toISOString();
       await db.syncMatch(match);
 
+      await db.syncNotification({
+        id: db.generateId('notif'),
+        userId: match.creatorId,
+        title: 'Đội B đã hủy bắt kèo',
+        message: `${req.user.name} đã hủy nhận kèo "${match.title}". Bài đăng đã được mở lại để tìm đối thủ mới.`,
+        type: 'SYSTEM',
+        link: `/matches/${match.id}`,
+        isRead: false,
+        createdAt: new Date().toISOString()
+      });
+
       res.json({
         success: true,
-        message: 'Bạn đã rời khỏi trận đấu'
+        message: 'Đã hủy bắt kèo. Bài đăng được mở lại để tìm đối thủ mới.',
+        data: match
       });
     } catch {
       res.status(500).json({ success: false, message: 'Lỗi server' });
+    }
+  },
+
+  // POST /api/matches/:id/cancel-request - Đội B gửi yêu cầu hủy khi còn dưới 6 giờ
+  requestCancelMatch: async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+    try {
+      if (!req.user) {
+        res.status(401).json({ success: false, message: 'Chưa đăng nhập' });
+        return;
+      }
+      const match = db.matches.find(m => m.id === req.params.id);
+      if (!match) {
+        res.status(404).json({ success: false, message: 'Trận đấu không tồn tại' });
+        return;
+      }
+      const participant = db.matchParticipants.find(p => p.matchId === match.id && p.userId === req.user?.id && p.team === 'B' && p.status === 'CONFIRMED');
+      if (!participant) {
+        res.status(403).json({ success: false, message: 'Chỉ Đội B đang nhận kèo mới được gửi yêu cầu hủy' });
+        return;
+      }
+      if (match.status !== 'FULL' || !match.teamBJoined) {
+        res.status(400).json({ success: false, message: 'Kèo này hiện không ở trạng thái đã ghép đội' });
+        return;
+      }
+      const timeUntilMatch = getTimeUntilMatch(match);
+      if (timeUntilMatch <= 0) {
+        res.status(400).json({ success: false, message: 'Trận đấu đã bắt đầu, không thể gửi yêu cầu hủy' });
+        return;
+      }
+      if (timeUntilMatch >= SIX_HOURS_MS) {
+        res.status(400).json({ success: false, message: 'Trận đấu còn từ 6 giờ trở lên. Bạn có thể dùng chức năng Hủy bắt kèo trực tiếp.' });
+        return;
+      }
+      const reason = String(req.body.reason || '').trim();
+      if (reason.length < 5) {
+        res.status(400).json({ success: false, message: 'Vui lòng nhập lý do hủy ít nhất 5 ký tự' });
+        return;
+      }
+      if (match.cancelRequest?.status === 'PENDING') {
+        res.status(409).json({ success: false, message: 'Yêu cầu hủy đang chờ người đăng kèo xử lý' });
+        return;
+      }
+
+      match.cancelRequest = {
+        requestedBy: req.user.id,
+        requestedByName: req.user.name,
+        reason,
+        status: 'PENDING',
+        createdAt: new Date().toISOString()
+      };
+      match.updatedAt = new Date().toISOString();
+      await db.syncMatch(match);
+      await db.syncNotification({
+        id: db.generateId('notif'),
+        userId: match.creatorId,
+        title: 'Yêu cầu hủy bắt kèo cần xác nhận',
+        message: `${req.user.name} xin hủy kèo "${match.title}" vì: ${reason}`,
+        type: 'SYSTEM',
+        link: `/matches/${match.id}`,
+        isRead: false,
+        createdAt: new Date().toISOString()
+      });
+      res.json({ success: true, message: 'Đã gửi yêu cầu hủy cho người đăng kèo xác nhận', data: match });
+    } catch {
+      res.status(500).json({ success: false, message: 'Lỗi server khi gửi yêu cầu hủy' });
+    }
+  },
+
+  // PUT /api/matches/:id/cancel-request/respond - Người đăng duyệt hoặc từ chối yêu cầu
+  respondCancelRequest: async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+    try {
+      if (!req.user) {
+        res.status(401).json({ success: false, message: 'Chưa đăng nhập' });
+        return;
+      }
+      const match = db.matches.find(m => m.id === req.params.id);
+      if (!match) {
+        res.status(404).json({ success: false, message: 'Trận đấu không tồn tại' });
+        return;
+      }
+      if (match.creatorId !== req.user.id) {
+        res.status(403).json({ success: false, message: 'Chỉ người đăng kèo mới được xử lý yêu cầu này' });
+        return;
+      }
+      if (!match.cancelRequest || match.cancelRequest.status !== 'PENDING') {
+        res.status(400).json({ success: false, message: 'Kèo không có yêu cầu hủy đang chờ xử lý' });
+        return;
+      }
+      const action = String(req.body.action || '').toUpperCase();
+      if (action !== 'APPROVE' && action !== 'REJECT') {
+        res.status(400).json({ success: false, message: 'Thao tác xử lý không hợp lệ' });
+        return;
+      }
+
+      const requesterId = match.cancelRequest.requestedBy;
+      if (action === 'REJECT') {
+        match.cancelRequest.status = 'REJECTED';
+        match.cancelRequest.resolvedAt = new Date().toISOString();
+        match.cancelRequest.resolvedBy = req.user.id;
+        match.updatedAt = new Date().toISOString();
+        await db.syncMatch(match);
+        await db.syncNotification({
+          id: db.generateId('notif'),
+          userId: requesterId,
+          title: 'Yêu cầu hủy kèo bị từ chối',
+          message: `Người đăng đã từ chối yêu cầu hủy kèo "${match.title}".`,
+          type: 'SYSTEM',
+          link: `/matches/${match.id}`,
+          isRead: false,
+          createdAt: new Date().toISOString()
+        });
+        res.json({ success: true, message: 'Đã từ chối yêu cầu hủy', data: match });
+        return;
+      }
+
+      const reason = match.cancelRequest.reason;
+      const participant = db.matchParticipants.find(p => p.matchId === match.id && p.userId === requesterId && p.team === 'B' && p.status === 'CONFIRMED');
+      if (participant) await db.deleteMatchParticipant(participant.id);
+      await removeUserFromMatchConversation(match.id, requesterId);
+      match.status = 'CANCELLED';
+      match.cancellationReason = reason;
+      match.cancelledBy = requesterId;
+      match.cancelledAt = new Date().toISOString();
+      match.currentPlayers = db.matchParticipants.filter(p => p.matchId === match.id && p.status === 'CONFIRMED').length;
+      resetTeamB(match);
+      match.updatedAt = new Date().toISOString();
+      await db.syncMatch(match);
+      await db.syncNotification({
+        id: db.generateId('notif'),
+        userId: requesterId,
+        title: 'Yêu cầu hủy kèo đã được chấp nhận',
+        message: `Kèo "${match.title}" đã được hủy theo yêu cầu của bạn.`,
+        type: 'SYSTEM',
+        link: `/matches/${match.id}`,
+        isRead: false,
+        createdAt: new Date().toISOString()
+      });
+      res.json({ success: true, message: 'Đã chấp nhận yêu cầu và hủy kèo', data: match });
+    } catch {
+      res.status(500).json({ success: false, message: 'Lỗi server khi xử lý yêu cầu hủy' });
+    }
+  },
+
+  // DELETE /api/matches/:id - Người đăng xóa kèo khi chưa có đối thủ
+  deleteMatch: async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+    try {
+      if (!req.user) {
+        res.status(401).json({ success: false, message: 'Chưa đăng nhập' });
+        return;
+      }
+      const match = db.matches.find(m => m.id === req.params.id);
+      if (!match) {
+        res.status(404).json({ success: false, message: 'Trận đấu không tồn tại' });
+        return;
+      }
+      if (match.creatorId !== req.user.id) {
+        res.status(403).json({ success: false, message: 'Bạn không có quyền xóa kèo này' });
+        return;
+      }
+      if (match.teamBJoined || match.status === 'FULL') {
+        res.status(400).json({ success: false, message: 'Kèo đã có đối thủ nên không thể xóa. Vui lòng dùng chức năng Hủy kèo.' });
+        return;
+      }
+      if (['STARTED', 'COMPLETED', 'CANCELLED'].includes(match.status)) {
+        res.status(400).json({ success: false, message: 'Trạng thái hiện tại không cho phép xóa kèo' });
+        return;
+      }
+      await db.deleteMatch(match.id);
+      res.json({ success: true, message: 'Đã xóa kèo thành công' });
+    } catch {
+      res.status(500).json({ success: false, message: 'Lỗi server khi xóa kèo' });
     }
   },
 
@@ -554,7 +774,25 @@ export const matchController = {
         return;
       }
 
+      if (match.status === 'CANCELLED') {
+        res.status(400).json({ success: false, message: 'Kèo này đã được hủy trước đó' });
+        return;
+      }
+      if (req.user?.role !== 'ADMIN' && !match.teamBJoined && match.status !== 'FULL') {
+        res.status(400).json({ success: false, message: 'Kèo chưa có đối thủ. Vui lòng dùng chức năng Xóa kèo.' });
+        return;
+      }
+      const reason = String(req.body.reason || '').trim();
+      if (req.user?.role !== 'ADMIN' && reason.length < 5) {
+        res.status(400).json({ success: false, message: 'Vui lòng nhập lý do hủy ít nhất 5 ký tự' });
+        return;
+      }
+
       match.status = 'CANCELLED';
+      match.cancellationReason = reason || 'Quản trị viên hủy kèo';
+      match.cancelledBy = req.user?.id;
+      match.cancelledAt = new Date().toISOString();
+      match.cancelRequest = undefined;
       match.updatedAt = new Date().toISOString();
       await db.syncMatch(match);
 
@@ -566,7 +804,7 @@ export const matchController = {
             id: db.generateId('notif'),
             userId: p.userId,
             title: 'Trận đấu đã bị hủy',
-            message: `Trận đấu "${match.title}" vào ngày ${match.matchDate} đã bị hủy bởi người tạo.`,
+            message: `Trận đấu "${match.title}" vào ngày ${match.matchDate} đã bị hủy. Lý do: ${match.cancellationReason}.`,
             type: 'SYSTEM',
             link: '/matches',
             isRead: false,

@@ -254,6 +254,18 @@ export interface IKeoGiaoHuu {
   sdt_doi_a?: string;
   sdt_doi_b?: string;
   doi_b_da_tham_gia?: boolean;
+  ly_do_huy?: string;
+  nguoi_huy?: string;
+  thoi_gian_huy?: string;
+  yeu_cau_huy?: {
+    nguoi_yeu_cau: string;
+    ten_nguoi_yeu_cau: string;
+    ly_do: string;
+    trang_thai: 'CHO_XAC_NHAN' | 'TU_CHOI';
+    thoi_gian_tao: string;
+    thoi_gian_xu_ly?: string;
+    nguoi_xu_ly?: string;
+  };
 }
 
 const KeoGiaoHuuSchema = new Schema<IKeoGiaoHuu>({
@@ -286,7 +298,19 @@ const KeoGiaoHuuSchema = new Schema<IKeoGiaoHuu>({
   doi_truong_doi_b: { type: String },
   sdt_doi_a: { type: String },
   sdt_doi_b: { type: String },
-  doi_b_da_tham_gia: { type: Boolean, default: false }
+  doi_b_da_tham_gia: { type: Boolean, default: false },
+  ly_do_huy: { type: String },
+  nguoi_huy: { type: String },
+  thoi_gian_huy: { type: String },
+  yeu_cau_huy: {
+    nguoi_yeu_cau: { type: String },
+    ten_nguoi_yeu_cau: { type: String },
+    ly_do: { type: String },
+    trang_thai: { type: String, enum: ['CHO_XAC_NHAN', 'TU_CHOI'] },
+    thoi_gian_tao: { type: String },
+    thoi_gian_xu_ly: { type: String },
+    nguoi_xu_ly: { type: String }
+  }
 }, {
   collection: 'keo_giao_huu',
   timestamps: { createdAt: 'ngay_tao', updatedAt: 'ngay_cap_nhat' }

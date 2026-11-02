@@ -17,6 +17,9 @@ router.get('/:id', matchController.getMatchById);
 router.post('/', authenticateToken, matchController.createMatch);
 router.post('/:id/join', authenticateToken, matchController.joinMatch);
 router.delete('/:id/leave', authenticateToken, matchController.leaveMatch);
+router.post('/:id/cancel-request', authenticateToken, matchController.requestCancelMatch);
+router.put('/:id/cancel-request/respond', authenticateToken, matchController.respondCancelRequest);
+router.delete('/:id', authenticateToken, matchController.deleteMatch);
 router.put('/:id/approve', authenticateToken, requireRole('ADMIN'), matchController.approveMatch);
 router.put('/:id/cancel', authenticateToken, matchController.cancelMatch);
 

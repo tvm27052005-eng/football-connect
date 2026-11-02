@@ -172,6 +172,18 @@ export interface IMatch {
   teamAPhone?: string;
   teamBPhone?: string;
   teamBJoined?: boolean;
+  cancellationReason?: string;
+  cancelledBy?: string;
+  cancelledAt?: string;
+  cancelRequest?: {
+    requestedBy: string;
+    requestedByName: string;
+    reason: string;
+    status: 'PENDING' | 'REJECTED';
+    createdAt: string;
+    resolvedAt?: string;
+    resolvedBy?: string;
+  };
   participants?: IMatchParticipant[];
   createdAt: string;
   updatedAt: string;

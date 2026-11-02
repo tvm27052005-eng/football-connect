@@ -13,7 +13,11 @@ import {
   AlertCircle,
   LogOut,
   UserPlus,
-  ArrowLeft
+  ArrowLeft,
+  Trash2,
+  XCircle,
+  Send,
+  AlertTriangle
 } from 'lucide-react';
 import { api } from '../services/api.js';
 import { IMatch } from '../types/index.js';
@@ -33,6 +37,9 @@ export const MatchDetailPage: React.FC = () => {
   const [teamBNameInput, setTeamBNameInput] = useState('');
   const [teamBPhoneInput, setTeamBPhoneInput] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
+  const [cancelMode, setCancelMode] = useState<'LEAVE' | 'REQUEST' | 'CANCEL' | 'DELETE' | null>(null);
+  const [cancelReason, setCancelReason] = useState('');
+  const [actionError, setActionError] = useState('');
 
   const fetchMatch = async () => {
     try {
@@ -77,6 +84,62 @@ export const MatchDetailPage: React.FC = () => {
     }
   };
 
+  const closeCancelModal = () => {
+    setCancelMode(null);
+    setCancelReason('');
+    setActionError('');
+  };
+
+  const handleCancelAction = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!cancelMode || !match) return;
+    if ((cancelMode === 'REQUEST' || cancelMode === 'CANCEL') && cancelReason.trim().length < 5) {
+      setActionError('Vui lòng nhập lý do ít nhất 5 ký tự.');
+      return;
+    }
+    try {
+      setIsProcessing(true);
+      setActionError('');
+      if (cancelMode === 'LEAVE') {
+        await api.delete(`/matches/${match.id}/leave`);
+        navigate('/matches?view=joined');
+        return;
+      }
+      if (cancelMode === 'REQUEST') {
+        await api.post(`/matches/${match.id}/cancel-request`, { reason: cancelReason.trim() });
+        closeCancelModal();
+        await fetchMatch();
+        return;
+      }
+      if (cancelMode === 'CANCEL') {
+        await api.put(`/matches/${match.id}/cancel`, { reason: cancelReason.trim() });
+        closeCancelModal();
+        await fetchMatch();
+        return;
+      }
+      await api.delete(`/matches/${match.id}`);
+      navigate('/matches?view=created');
+    } catch (err: unknown) {
+      setActionError((err as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Không thể thực hiện thao tác.');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleCancelRequestResponse = async (action: 'APPROVE' | 'REJECT') => {
+    if (!match) return;
+    try {
+      setIsProcessing(true);
+      setActionError('');
+      await api.put(`/matches/${match.id}/cancel-request/respond`, { action });
+      await fetchMatch();
+    } catch (err: unknown) {
+      setActionError((err as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Không thể xử lý yêu cầu hủy.');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
   if (isLoading || !match) {
     return (
       <div className="min-h-[60vh] flex items-center justify-center text-emerald-600">
@@ -102,6 +165,22 @@ export const MatchDetailPage: React.FC = () => {
           ? ' Đội thắng 40% - đội thua 60%'
           : 'Chia đôi 50% - 50% tiền sân';
 
+  const matchStartAt = Date.parse(`${match.matchDate}T${match.startTime}:00+07:00`);
+  const hoursUntilMatch = Math.max(0, (matchStartAt - Date.now()) / (60 * 60 * 1000));
+  const isCreator = match.creatorId === user?.id;
+  const isJoinedTeamB = Boolean(match.participants?.some(participant => participant.userId === user?.id && participant.team === 'B' && participant.status === 'CONFIRMED'));
+  const hasOpponent = Boolean(match.teamBJoined || match.status === 'FULL');
+  const pendingCancelRequest = match.cancelRequest?.status === 'PENDING' ? match.cancelRequest : undefined;
+  const statusLabel = match.status === 'PENDING_APPROVAL'
+    ? '🟡 Chờ Admin duyệt'
+    : match.status === 'OPEN'
+      ? '🟢 Đang Tìm Đối Thủ'
+      : match.status === 'CANCELLED'
+        ? '🔴 Đã hủy'
+        : match.status === 'COMPLETED'
+          ? '⚫ Đã hoàn thành'
+          : '🔵 Đã Có Đối Thủ';
+
 
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 space-y-8">
@@ -125,11 +204,7 @@ export const MatchDetailPage: React.FC = () => {
                 variant={match.status === 'PENDING_APPROVAL' ? 'amber' : match.status === 'OPEN' ? 'emerald' : 'slate'}
                 size="sm"
               >
-                {match.status === 'PENDING_APPROVAL'
-                  ? '🟡 Chờ Admin duyệt'
-                  : match.status === 'OPEN'
-                    ? '🟢 Đang Tìm Đối Thủ'
-                    : '🔵 Đã Có Đối Thủ'}
+                {statusLabel}
               </Badge>
             </div>
 
@@ -220,6 +295,33 @@ export const MatchDetailPage: React.FC = () => {
           </div>
         )}
 
+        {pendingCancelRequest && (
+          <div className="rounded-2xl border border-amber-300 bg-amber-50 p-4 space-y-3">
+            <div className="flex items-start gap-3">
+              <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+              <div className="min-w-0">
+                <p className="font-black text-amber-950 text-sm">Yêu cầu hủy bắt kèo đang chờ xác nhận</p>
+                <p className="text-xs text-amber-900 mt-1"><strong>{pendingCancelRequest.requestedByName}</strong>: {pendingCancelRequest.reason}</p>
+              </div>
+            </div>
+            {isCreator ? (
+              <div className="flex flex-wrap gap-2 pl-8">
+                <button type="button" disabled={isProcessing} onClick={() => handleCancelRequestResponse('APPROVE')} className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 disabled:opacity-50 text-white text-xs font-bold cursor-pointer">Chấp nhận và hủy kèo</button>
+                <button type="button" disabled={isProcessing} onClick={() => handleCancelRequestResponse('REJECT')} className="px-4 py-2 rounded-xl bg-white hover:bg-amber-100 disabled:opacity-50 border border-amber-300 text-amber-900 text-xs font-bold cursor-pointer">Từ chối yêu cầu</button>
+              </div>
+            ) : (
+              <p className="text-[11px] text-amber-800 pl-8">Người đăng kèo sẽ nhận thông báo và phản hồi yêu cầu của bạn.</p>
+            )}
+            {actionError && <p className="text-xs font-semibold text-rose-700 pl-8">{actionError}</p>}
+          </div>
+        )}
+
+        {match.status === 'CANCELLED' && match.cancellationReason && (
+          <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-xs text-rose-900">
+            <strong>Lý do hủy:</strong> {match.cancellationReason}
+          </div>
+        )}
+
         {/* Map Location */}
         <div className="space-y-2 pt-2">
           <span className="font-bold text-slate-900 text-xs block"> Vị trí địa điểm thi đấu trên Google Maps:</span>
@@ -254,6 +356,26 @@ export const MatchDetailPage: React.FC = () => {
               <span className="px-4 py-2.5 rounded-xl bg-sky-50 text-sky-800 border border-sky-200 text-xs font-bold">
                 ✓ Kèo này đã được Đội B bắt cặp
               </span>
+            )}
+            {isJoinedTeamB && match.status === 'FULL' && !pendingCancelRequest && matchStartAt > Date.now() && (
+              <button
+                type="button"
+                onClick={() => setCancelMode(hoursUntilMatch >= 6 ? 'LEAVE' : 'REQUEST')}
+                disabled={isProcessing}
+                className="px-4 py-2.5 rounded-xl bg-white hover:bg-rose-50 border border-rose-300 text-rose-700 text-xs font-bold flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+              >
+                {hoursUntilMatch >= 6 ? <><LogOut className="w-4 h-4" /> Hủy bắt kèo</> : <><Send className="w-4 h-4" /> Gửi yêu cầu hủy</>}
+              </button>
+            )}
+            {isCreator && !hasOpponent && ['OPEN', 'PENDING_APPROVAL'].includes(match.status) && (
+              <button type="button" onClick={() => setCancelMode('DELETE')} disabled={isProcessing} className="px-4 py-2.5 rounded-xl bg-white hover:bg-rose-50 border border-rose-300 text-rose-700 text-xs font-bold flex items-center gap-1.5 cursor-pointer disabled:opacity-50">
+                <Trash2 className="w-4 h-4" /> Xóa kèo
+              </button>
+            )}
+            {isCreator && hasOpponent && match.status === 'FULL' && (
+              <button type="button" onClick={() => setCancelMode('CANCEL')} disabled={isProcessing} className="px-4 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer disabled:opacity-50">
+                <XCircle className="w-4 h-4" /> Hủy kèo
+              </button>
             )}
           </div>
         </div>
@@ -313,6 +435,44 @@ export const MatchDetailPage: React.FC = () => {
               className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold transition-all shadow-xs cursor-pointer"
             >
               {isProcessing ? 'Đang xác nhận...' : ' Xác Nhận Bắt Kèo Ngay'}
+            </button>
+          </div>
+        </form>
+      </Modal>
+
+      <Modal
+        isOpen={cancelMode !== null}
+        onClose={closeCancelModal}
+        title={cancelMode === 'DELETE' ? 'Xóa bài đăng kèo' : cancelMode === 'CANCEL' ? 'Hủy kèo đã ghép' : cancelMode === 'REQUEST' ? 'Gửi yêu cầu hủy bắt kèo' : 'Hủy bắt kèo'}
+      >
+        <form onSubmit={handleCancelAction} className="space-y-4 text-xs">
+          <div className={`rounded-xl border p-3 ${cancelMode === 'DELETE' || cancelMode === 'CANCEL' ? 'border-rose-200 bg-rose-50 text-rose-900' : 'border-amber-200 bg-amber-50 text-amber-900'}`}>
+            {cancelMode === 'LEAVE' && `Trận đấu còn khoảng ${Math.ceil(hoursUntilMatch)} giờ. Sau khi bạn hủy, bài kèo vẫn được đăng và mở lại để tìm đối thủ khác.`}
+            {cancelMode === 'REQUEST' && 'Trận đấu còn dưới 6 giờ. Yêu cầu chỉ có hiệu lực khi người đăng kèo chấp nhận.'}
+            {cancelMode === 'CANCEL' && 'Kèo đã có đối thủ. Thao tác này sẽ hủy toàn bộ trận đấu và thông báo cho Đội B.'}
+            {cancelMode === 'DELETE' && 'Kèo chưa có đối thủ. Bài đăng sẽ bị xóa và không thể khôi phục.'}
+          </div>
+
+          {(cancelMode === 'REQUEST' || cancelMode === 'CANCEL') && (
+            <div>
+              <label className="block text-slate-700 font-bold mb-1">Lý do hủy *</label>
+              <textarea
+                required
+                minLength={5}
+                rows={4}
+                value={cancelReason}
+                onChange={(event) => setCancelReason(event.target.value)}
+                placeholder="Nhập lý do để đội còn lại nắm được thông tin..."
+                className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:bg-white focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20 resize-none"
+              />
+            </div>
+          )}
+
+          {actionError && <p className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-rose-700 font-semibold">{actionError}</p>}
+          <div className="flex justify-end gap-2">
+            <button type="button" onClick={closeCancelModal} disabled={isProcessing} className="px-4 py-2 rounded-xl text-slate-600 hover:bg-slate-100 font-bold cursor-pointer disabled:opacity-50">Quay lại</button>
+            <button type="submit" disabled={isProcessing} className="px-5 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold cursor-pointer disabled:opacity-50">
+              {isProcessing ? 'Đang xử lý...' : cancelMode === 'REQUEST' ? 'Gửi yêu cầu hủy' : cancelMode === 'DELETE' ? 'Xác nhận xóa' : 'Xác nhận hủy'}
             </button>
           </div>
         </form>

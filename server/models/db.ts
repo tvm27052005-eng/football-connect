@@ -943,7 +943,19 @@ export const mappers = {
     doi_truong_doi_b: m.teamBCaptain,
     sdt_doi_a: m.teamAPhone,
     sdt_doi_b: m.teamBPhone,
-    doi_b_da_tham_gia: m.teamBJoined
+    doi_b_da_tham_gia: m.teamBJoined,
+    ly_do_huy: m.cancellationReason,
+    nguoi_huy: m.cancelledBy,
+    thoi_gian_huy: m.cancelledAt,
+    yeu_cau_huy: m.cancelRequest ? {
+      nguoi_yeu_cau: m.cancelRequest.requestedBy,
+      ten_nguoi_yeu_cau: m.cancelRequest.requestedByName,
+      ly_do: m.cancelRequest.reason,
+      trang_thai: m.cancelRequest.status === 'PENDING' ? 'CHO_XAC_NHAN' : 'TU_CHOI',
+      thoi_gian_tao: m.cancelRequest.createdAt,
+      thoi_gian_xu_ly: m.cancelRequest.resolvedAt,
+      nguoi_xu_ly: m.cancelRequest.resolvedBy
+    } : undefined
   }),
   mongoToMatch: (doc: any): IMatch => ({
     id: doc.ma_keo_dau,
@@ -976,6 +988,18 @@ export const mappers = {
     teamAPhone: doc.sdt_doi_a,
     teamBPhone: doc.sdt_doi_b,
     teamBJoined: doc.doi_b_da_tham_gia,
+    cancellationReason: doc.ly_do_huy,
+    cancelledBy: doc.nguoi_huy,
+    cancelledAt: doc.thoi_gian_huy,
+    cancelRequest: doc.yeu_cau_huy?.nguoi_yeu_cau ? {
+      requestedBy: doc.yeu_cau_huy.nguoi_yeu_cau,
+      requestedByName: doc.yeu_cau_huy.ten_nguoi_yeu_cau,
+      reason: doc.yeu_cau_huy.ly_do,
+      status: doc.yeu_cau_huy.trang_thai === 'CHO_XAC_NHAN' ? 'PENDING' : 'REJECTED',
+      createdAt: doc.yeu_cau_huy.thoi_gian_tao,
+      resolvedAt: doc.yeu_cau_huy.thoi_gian_xu_ly,
+      resolvedBy: doc.yeu_cau_huy.nguoi_xu_ly
+    } : undefined,
     createdAt: doc.ngay_tao ? new Date(doc.ngay_tao).toISOString() : new Date().toISOString(),
     updatedAt: doc.ngay_cap_nhat ? new Date(doc.ngay_cap_nhat).toISOString() : new Date().toISOString()
   }),
@@ -1434,12 +1458,19 @@ class DatabaseStore {
   async deleteMatch(matchId: string): Promise<void> {
     this.ensureMongoConnected('xóa kèo đấu');
     try {
+      const conversationIds = this.conversations.filter(c => c.matchId === matchId).map(c => c.id);
       await Promise.all([
         (KeoGiaoHuuModel as any).deleteOne({ ma_keo_dau: matchId }),
-        (ThanhVienKeoModel as any).deleteMany({ ma_keo_dau: matchId })
+        (ThanhVienKeoModel as any).deleteMany({ ma_keo_dau: matchId }),
+        (HoiThoaiModel as any).deleteMany({ ma_keo_dau: matchId }),
+        conversationIds.length > 0
+          ? (TinNhanModel as any).deleteMany({ ma_hoi_thoai: { $in: conversationIds } })
+          : Promise.resolve()
       ]);
       this.matches = this.matches.filter(m => m.id !== matchId);
       this.matchParticipants = this.matchParticipants.filter(p => p.matchId !== matchId);
+      this.conversations = this.conversations.filter(c => c.matchId !== matchId);
+      this.messages = this.messages.filter(message => !conversationIds.includes(message.conversationId));
     } catch (err) {
       console.error('MongoDB deleteMatch error:', err);
       throw err;
