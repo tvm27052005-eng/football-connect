@@ -6,7 +6,7 @@
 
 Các trang đang tồn tại: tìm sân và chi tiết sân, đặt sân, lịch đặt cá nhân, kèo giao hữu, chat giữa người dùng, hồ sơ, đăng nhập/đăng ký; cổng chủ sân và quản trị theo vai trò. Trang đặt sân hiện hiển thị lựa chọn chuyển khoản ngân hàng và hướng dẫn QR. Chat giữa người dùng không được coi là kênh nhân viên hỗ trợ. Widget giữ phạm vi tích hợp sẵn có: hiển thị cho khách/người dùng/chủ sân, không hiển thị cho admin.
 
-Luồng: widget → `POST /api/ai/chat` → giới hạn body/tần suất → Zod kiểm tra input → truy xuất hướng dẫn có liên quan → AI provider tùy chọn → phản hồi hoặc hướng dẫn dự phòng. Nội dung trả lời dùng đúng nhãn giao diện như **Tìm sân bóng** và **Đặt lịch sân**, không hiện route trình duyệt. Backend trả thêm action có cấu trúc; frontend chỉ nhận các action trong whitelist rồi điều hướng nội bộ bằng React Router. Không có truy vấn SQL, shell, thao tác đặt sân hoặc đọc dữ liệu tài khoản do AI điều khiển.
+Luồng: widget → `POST /api/ai/chat` → giới hạn body/tần suất → Zod kiểm tra input → truy xuất hướng dẫn và dữ liệu sân/kèo công khai có liên quan → AI provider tùy chọn → phản hồi hoặc hướng dẫn dự phòng. Nội dung trả lời dùng đúng nhãn giao diện như **Tìm sân bóng** và **Đặt lịch sân**, không hiện route trình duyệt. Backend trả thêm action có cấu trúc; frontend chỉ nhận các action trong whitelist rồi điều hướng nội bộ bằng React Router. Không có truy vấn SQL do Gemini điều khiển, shell, thao tác đặt sân hoặc đọc dữ liệu tài khoản do AI điều khiển.
 
 Kho hướng dẫn nhỏ được truy xuất bằng ý định/từ khóa, hỗ trợ tìm lại chủ đề của tin người dùng trước đó. Đây không phải vector RAG. AI chỉ nhận đoạn hướng dẫn liên quan và lịch sử giới hạn; không nhận hồ sơ, token đăng nhập, email tài khoản hay dữ liệu người khác từ database. Email/số điện thoại và một số mẫu bí mật trong tin nhắn được che trước khi gửi AI. Cơ chế che không bảo đảm nhận diện mọi dạng dữ liệu cá nhân; giao diện yêu cầu người dùng không nhập bí mật.
 
@@ -17,6 +17,7 @@ Kho hướng dẫn nhỏ được truy xuất bằng ý định/từ khóa, hỗ
 - `server/middlewares/assistant.middleware.ts`: 12 yêu cầu/IP/phút, bộ nhớ giới hạn.
 - `server/services/assistant.knowledge.ts`: hướng dẫn tiếng Việt/Anh đã đối chiếu mã nguồn.
 - `server/services/assistant.service.ts`: ngữ cảnh, ngôn ngữ, chuyển tiếp, che dữ liệu, timeout/fallback.
+- `server/services/assistant.live-data.ts`: ảnh chụp dữ liệu công khai về sân và kèo; không đưa số điện thoại, dữ liệu đặt sân hay dữ liệu tài khoản vào AI.
 - `server/services/assistant.provider.ts`: interface có thể thay nhà cung cấp; adapter Gemini dùng SDK hiện có.
 - `server/app.ts`: giới hạn JSON chat 32 KB và lỗi JSON có cấu trúc.
 - `src/services/ai.api.ts`: lịch sử giới hạn, timeout 30 giây, hủy request.

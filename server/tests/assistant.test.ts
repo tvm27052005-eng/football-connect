@@ -36,10 +36,12 @@ test('retrieves verified booking guide and follows context', async () => {
   assert.match(english.reply, /To book/);
   assert.deepEqual(english.actions.map(action => action.id), ['create-booking', 'find-venues']);
 });
-test('unknown and live data questions do not invent facts', async () => {
+test('unknown questions do not invent facts and public venue data is sourced from the live store', async () => {
   assert.match((await answerQuestion('Tỷ số hôm nay?', [], null)).reply, /chưa có dữ liệu/);
   assert.match((await answerQuestion('Viết công thức nấu ăn', [], null)).reply, /chưa có dữ liệu/);
-  assert.match((await answerQuestion('Sân rẻ nhất?', [], null)).reply, /không thể xác nhận/);
+  const venues = await answerQuestion('Sân rẻ nhất?', [], null);
+  assert.equal(venues.liveData, true);
+  assert.match(venues.reply, /DỮ LIỆU SÂN CÔNG KHAI HIỆN THỜI/);
 });
 test('handoff reports unsent and validates configured address', async () => {
   const old = process.env.SUPPORT_EMAIL;

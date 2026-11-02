@@ -6,6 +6,7 @@ export interface AIMessageItem {
   text: string;
   timestamp: string;
   notice?: string;
+  liveData?: boolean;
   supportEmail?: string;
   actions?: AssistantAction[];
 }

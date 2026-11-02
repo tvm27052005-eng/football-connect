@@ -115,7 +115,8 @@ export const AIChatWidget: React.FC = () => {
         id: `ai_${Date.now()}`,
         sender: 'ai',
         text: data.reply || 'Xin lỗi, tôi chưa thể trả lời lúc này. Bạn vui lòng thử lại nhé!',
-        notice: data.reason === 'TIMEOUT' ? 'AI hết thời gian chờ · Đang dùng hướng dẫn website' : data.reason ? 'AI tạm gián đoạn · Đang dùng hướng dẫn website' : data.mode === 'knowledge' ? 'Nguồn: hướng dẫn website' : undefined,
+        notice: data.reason === 'TIMEOUT' ? 'AI hết thời gian chờ · Đang dùng hướng dẫn website' : data.reason ? 'AI tạm gián đoạn · Đang dùng hướng dẫn website' : data.liveData ? 'Dữ liệu sân/kèo cập nhật từ hệ thống' : data.mode === 'knowledge' ? 'Nguồn: hướng dẫn website' : undefined,
+        liveData: Boolean(data.liveData),
         supportEmail: data.handoff?.email || undefined,
         actions: getTrustedActions(data.actions),
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
