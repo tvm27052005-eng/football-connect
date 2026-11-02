@@ -6,6 +6,7 @@ import { chatInput } from '../controllers/ai.controller.js';
 import routes from '../routes/ai.routes.js';
 import { answerQuestion, redact, removeInternalRoutes } from '../services/assistant.service.js';
 import { retrieve } from '../services/assistant.knowledge.js';
+import { getLiveAssistantData } from '../services/assistant.live-data.js';
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { AssistantText } from '../../src/components/common/AssistantText.js';
@@ -42,6 +43,11 @@ test('unknown questions do not invent facts and public venue data is sourced fro
   const venues = await answerQuestion('Sân rẻ nhất?', [], null);
   assert.equal(venues.liveData, true);
   assert.match(venues.reply, /DỮ LIỆU SÂN CÔNG KHAI HIỆN THỜI/);
+});
+test('availability context requires a venue, date and time and excludes customer data', () => {
+  const data = getLiveAssistantData('Sân Bóng Đá Cầu Giấy Arena còn trống lúc 19:00 ngày 2099-01-02 không?');
+  assert.match(data || '', /TRA CỨU LỊCH THỰC TẾ/);
+  assert.doesNotMatch(data || '', /0912345678|@footballconnect/);
 });
 test('handoff reports unsent and validates configured address', async () => {
   const old = process.env.SUPPORT_EMAIL;

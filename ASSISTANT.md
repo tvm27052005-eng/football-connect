@@ -17,7 +17,7 @@ Kho hướng dẫn nhỏ được truy xuất bằng ý định/từ khóa, hỗ
 - `server/middlewares/assistant.middleware.ts`: 12 yêu cầu/IP/phút, bộ nhớ giới hạn.
 - `server/services/assistant.knowledge.ts`: hướng dẫn tiếng Việt/Anh đã đối chiếu mã nguồn.
 - `server/services/assistant.service.ts`: ngữ cảnh, ngôn ngữ, chuyển tiếp, che dữ liệu, timeout/fallback.
-- `server/services/assistant.live-data.ts`: ảnh chụp dữ liệu công khai về sân và kèo; không đưa số điện thoại, dữ liệu đặt sân hay dữ liệu tài khoản vào AI.
+- `server/services/assistant.live-data.ts`: ảnh chụp dữ liệu công khai về sân/kèo và kiểm tra ca sân theo tên sân, ngày, giờ; không đưa số điện thoại, dữ liệu đặt sân cá nhân hay dữ liệu tài khoản vào AI.
 - `server/services/assistant.provider.ts`: interface có thể thay nhà cung cấp; adapter Gemini dùng SDK hiện có.
 - `server/app.ts`: giới hạn JSON chat 32 KB và lỗi JSON có cấu trúc.
 - `src/services/ai.api.ts`: lịch sử giới hạn, timeout 30 giây, hủy request.
