@@ -26,13 +26,27 @@ export const VenuesPage: React.FC = () => {
     setIsLoading(true);
     try {
       const params = new URLSearchParams();
-      if (searchQuery) params.append('q', searchQuery);
+      if (searchQuery.trim()) params.append('search', searchQuery.trim());
       if (city) params.append('city', city);
       if (fieldType) params.append('fieldType', fieldType);
-      if (sortBy) params.append('sortBy', sortBy);
+      if (sortBy) params.append('sort', sortBy);
 
       const res = await api.get(`/venues?${params.toString()}`);
       setVenues(res.data.data);
+      setSearchParams((currentParams) => {
+        const nextParams = new URLSearchParams(currentParams);
+        const filters = {
+          q: searchQuery.trim(),
+          city,
+          fieldType,
+          sortBy: sortBy === 'rating_desc' ? '' : sortBy
+        };
+        Object.entries(filters).forEach(([key, value]) => {
+          if (value) nextParams.set(key, value);
+          else nextParams.delete(key);
+        });
+        return nextParams;
+      }, { replace: true });
     } catch (e) {
       console.error('Failed to load venues:', e);
     } finally {
@@ -41,13 +55,14 @@ export const VenuesPage: React.FC = () => {
   };
 
   useEffect(() => {
-    fetchVenues();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [city, fieldType, sortBy]);
+    setCurrentPage(1);
+    const searchTimer = window.setTimeout(() => {
+      void fetchVenues();
+    }, searchQuery.trim() ? 300 : 0);
 
-  const handleSearchSubmit = () => {
-    fetchVenues();
-  };
+    return () => window.clearTimeout(searchTimer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchQuery, city, fieldType, sortBy]);
 
   const handleReset = () => {
     setSearchQuery('');

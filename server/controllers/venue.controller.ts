@@ -4,6 +4,14 @@ import { AuthenticatedRequest } from '../middlewares/auth.middleware.js';
 import { geocodeAddress } from '../services/geocoding.service.js';
 import { IVenue, IField } from '../types/index.js';
 
+const normalizeSearchText = (value: string): string => value
+  .normalize('NFD')
+  .replace(/[\u0300-\u036f]/g, '')
+  .replace(/đ/g, 'd')
+  .replace(/Đ/g, 'D')
+  .toLowerCase()
+  .trim();
+
 export const venueController = {
   // GET /api/venues/geocode
   geocodeVenueAddress: async (req: AuthenticatedRequest, res: Response): Promise<void> => {
@@ -43,7 +51,9 @@ export const venueController = {
   // GET /api/venues
   getAllVenues: async (req: Request, res: Response): Promise<void> => {
     try {
-      const { search, city, district, fieldType, minPrice, maxPrice, rating, sort, status } = req.query;
+      const { search, q, city, district, fieldType, minPrice, maxPrice, rating, sort, sortBy, status } = req.query;
+      const searchTerm = typeof search === 'string' ? search : typeof q === 'string' ? q : '';
+      const sortOption = typeof sort === 'string' ? sort : typeof sortBy === 'string' ? sortBy : '';
 
       let results = [...db.venues];
 
@@ -85,25 +95,25 @@ export const venueController = {
       }
 
       // Text search
-      if (search && typeof search === 'string') {
-        const q = search.toLowerCase();
+      if (searchTerm.trim()) {
+        const normalizedQuery = normalizeSearchText(searchTerm);
         results = results.filter(v =>
-          v.name.toLowerCase().includes(q) ||
-          v.address.toLowerCase().includes(q) ||
-          v.district.toLowerCase().includes(q) ||
-          v.city.toLowerCase().includes(q) ||
-          v.amenities.some(a => a.toLowerCase().includes(q))
+          normalizeSearchText(v.name).includes(normalizedQuery) ||
+          normalizeSearchText(v.address).includes(normalizedQuery) ||
+          normalizeSearchText(v.district).includes(normalizedQuery) ||
+          normalizeSearchText(v.city).includes(normalizedQuery) ||
+          v.amenities.some(a => normalizeSearchText(a).includes(normalizedQuery))
         );
       }
 
       // Sorting
-      if (sort === 'rating_desc') {
+      if (sortOption === 'rating_desc') {
         results.sort((a, b) => b.rating - a.rating);
-      } else if (sort === 'price_asc') {
+      } else if (sortOption === 'price_asc') {
         results.sort((a, b) => a.priceRange.min - b.priceRange.min);
-      } else if (sort === 'price_desc') {
+      } else if (sortOption === 'price_desc') {
         results.sort((a, b) => b.priceRange.max - a.priceRange.max);
-      } else if (sort === 'reviews_desc') {
+      } else if (sortOption === 'reviews_desc') {
         results.sort((a, b) => b.reviewCount - a.reviewCount);
       } else {
         // Default latest
