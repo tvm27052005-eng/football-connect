@@ -326,6 +326,7 @@ export const MatchDetailPage: React.FC = () => {
         <div className="space-y-2 pt-2">
           <span className="font-bold text-slate-900 text-xs block"> Vị trí địa điểm thi đấu trên Google Maps:</span>
           <GoogleMapView
+            venue={match.venue}
             title={match.venueName}
             address={`${match.venueName}, ${match.venueAddress}`}
             height="h-64 sm:h-72"
